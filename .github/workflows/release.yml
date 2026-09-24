@@ -235,7 +235,8 @@ jobs:
 
             架构按文件名后缀区分：`x86_64`/`amd64` 为 64 位 x86，`aarch64`/`arm64` 为 ARM64。
 
-            安装后从应用菜单或 `zcode-libre` 启动。本分支与官方 ZCode 共用 `.zcode` 数据根，
+            安装后从应用菜单启动；走终端时用完整路径 `/opt/ZCode-Libre/zcode-libre`
+            （包不提供 `/usr/bin` 入口）。本分支与官方 ZCode 共用 `.zcode` 数据根，
             但使用独立的界面偏好目录，因此两者可以同时安装、同时运行。
 
             ## 关于这个版本 / About this build

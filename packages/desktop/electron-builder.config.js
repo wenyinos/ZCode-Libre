@@ -749,7 +749,21 @@ export default {
     // DT_NEEDED 的 mesa-libgbm 与 alsa-lib；rockylinux:8 最小化容器实测装完后启动报
     // libgbm.so.1 缺失。这里用 fpm 追加 -d（在默认 Requires 之后累积），不能用 depends——
     // depends 会整组替换默认 Requires 集。
-    fpm: ["-d", "mesa-libgbm", "-d", "alsa-lib"],
+    //
+    // _build_id_links none 是为了与官方 zcode 包共存：两个包内置同一批 Electron 二进制，
+    // ELF 内容相同 → build-id 相同，而 rpm 默认（宏 _build_id_links compat）会为主包生成
+    // /usr/lib/.build-id/xx/yyy 符号链接，于是两个包争用同一批路径，rpm -i 直接报
+    // file conflicts 拒绝安装。该目录只供 gdb / debuginfo 按 build-id 定位二进制，
+    // 本分支不发布 debuginfo 包，关掉生成即可。不能用 --replacefiles 替代：
+    // 那要用户手动加参数，且会让 rpm -V 长期报文件差异。
+    fpm: [
+      "-d",
+      "mesa-libgbm",
+      "-d",
+      "alsa-lib",
+      "--rpm-rpmbuild-define",
+      "_build_id_links none",
+    ],
   },
   dmg: {
     // 当前安装包携带的运行时资源（尤其 agent node_modules）体积已超过默认 DMG 估算值。
