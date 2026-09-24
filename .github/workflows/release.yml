@@ -178,7 +178,11 @@ jobs:
           gh run download "${{ inputs.reuse_run_id }}" \
             --repo "${{ github.repository }}" \
             --dir artifacts
-          find artifacts -maxdepth 2 -type f | head -20
+          # gh run download 会按 artifact 名建子目录，而 release 上传与 sha256sum 需要
+          # 同层文件；这里把子目录里的产物展平上来，再删掉空目录。
+          find artifacts -mindepth 2 -type f -exec mv -t artifacts {} +
+          find artifacts -mindepth 1 -type d -empty -delete
+          ls -la artifacts | head -20
 
       - uses: actions/download-artifact@v4
         if: inputs.reuse_run_id == ''
