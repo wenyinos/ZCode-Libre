@@ -2200,6 +2200,9 @@ app.whenReady().then(async () => {
   void armsUserIdentitySync.refresh();
 
   // 未配置 ARMS 端点时不初始化上报 context，避免把空转误当成已启用。
+  // 采样器与 IPC 注册同样只在遥测启用时执行：此前它们落在总开关之外，未配置端点的部署
+  // 仍会常驻定时器、周期扫描数据目录、注册 renderer heap 采样（其中数据体积上报直接调用
+  // armsRum.sendCustom，没有初始化守卫）。ZCode-Libre 默认关闭遥测，这里保持单一判定。
   if (ZCODE_TELEMETRY_ENABLED && ZCODE_ARMS_RUM_ENDPOINT) {
     configureDesktopStabilityTelemetry({
       deviceMid,
@@ -2219,34 +2222,34 @@ app.whenReady().then(async () => {
       appVersion: ZCODE_VERSION,
       armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
     });
-  }
-  configureDesktopMcpTelemetry({
-    deviceMid,
-    appVersion: ZCODE_VERSION,
-    armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
-  });
-  registerDesktopStabilityMonitors(logger, crashCapturePaths);
-  registerDesktopResourceTelemetry(logger);
-  // 主窗口 renderer 的 60 秒 heap 样本入口；随 App 生命周期常驻，只注册一次。
-  registerRendererHeapSampleIpc();
-  const defaultDataBaseDir = process.env.HOME?.trim() || homedir();
-  registerDesktopZCodeDataSizeTelemetry({
-    context: {
+    configureDesktopMcpTelemetry({
+      deviceMid,
       appVersion: ZCODE_VERSION,
       armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
-      dataRootKind:
-        resolve(getDataBaseDir()) === resolve(defaultDataBaseDir) ? "default" : "custom",
-      deviceMid,
-      platform: process.platform,
-    },
-    getSystemIdleTimeSeconds: () => powerMonitor.getSystemIdleTime(),
-    isAppBackground: () => resolveResourceUsageScene() === "background",
-    isZCodeBusy: () => getRunningAgentSessionCount() > 0,
-    logger,
-    rootPath: getZCodeDataRootDir(),
-    stateFile: join(app.getPath("userData"), "zcode-data-size-telemetry.json"),
-  });
-  registerDesktopNetworkTelemetry(logger);
+    });
+    registerDesktopStabilityMonitors(logger, crashCapturePaths);
+    registerDesktopResourceTelemetry(logger);
+    // 主窗口 renderer 的 60 秒 heap 样本入口；随 App 生命周期常驻，只注册一次。
+    registerRendererHeapSampleIpc();
+    const defaultDataBaseDir = process.env.HOME?.trim() || homedir();
+    registerDesktopZCodeDataSizeTelemetry({
+      context: {
+        appVersion: ZCODE_VERSION,
+        armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
+        dataRootKind:
+          resolve(getDataBaseDir()) === resolve(defaultDataBaseDir) ? "default" : "custom",
+        deviceMid,
+        platform: process.platform,
+      },
+      getSystemIdleTimeSeconds: () => powerMonitor.getSystemIdleTime(),
+      isAppBackground: () => resolveResourceUsageScene() === "background",
+      isZCodeBusy: () => getRunningAgentSessionCount() > 0,
+      logger,
+      rootPath: getZCodeDataRootDir(),
+      stateFile: join(app.getPath("userData"), "zcode-data-size-telemetry.json"),
+    });
+    registerDesktopNetworkTelemetry(logger);
+  }
 
   // 本地未打包 dev 构建（app.isPackaged === false）必须跳过远端强制升级 gate。
   // 原因：force-update gate 只看 ZCODE_ENV === "production"，但 dev 构建（如 dev:desktop:cua

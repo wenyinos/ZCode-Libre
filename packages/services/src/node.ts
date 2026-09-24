@@ -11,6 +11,7 @@ import {
 } from "@zcode/provider-node";
 import { getAppConfigDir as resolveAppConfigDir } from "./paths.js";
 import {
+  LIBRE_VENDOR_SERVICES,
   buildLocalMediaPreviewUrl,
   isProviderProvisioningAccountCredentialKey,
   type ProviderProvisioningTrigger,
@@ -313,6 +314,7 @@ import { IBotsService } from "./bots/bots.js";
 import { IFileWatcherService } from "./fileWatcher/fileWatcher.js";
 import { IOAuthService } from "./oauth/oauth.js";
 import { IUsageStatsService } from "./usage-stats/usageStats.js";
+import { IProviderBalanceService } from "./provider-balance/providerBalance.js";
 import { ICodingPlanSubscriptionService } from "./coding-plan-subscription/codingPlanSubscription.js";
 import { IClientScenesService } from "./client-scenes/clientScenes.js";
 import { ISkillsService } from "./skills/skills.js";
@@ -398,6 +400,7 @@ import {
   type IAccountRequestAuthService,
 } from "./model-provider/accountRequestAuthService.js";
 import { createUsageStatsService } from "./usage-stats/usageStatsService.js";
+import { createProviderBalanceService } from "./provider-balance/providerBalanceService.js";
 import { createCodingPlanSubscriptionService } from "./coding-plan-subscription/codingPlanSubscriptionService.js";
 import { createClientConfigService } from "./client-config/clientConfigService.js";
 import { IClientConfigService } from "./client-config/clientConfig.js";
@@ -2418,16 +2421,21 @@ export function createLocalServices(options: {
       return tokenSet?.zcodeJwtToken ?? tokenSet?.accessToken ?? null;
     },
   });
-  const conversationShareService: IConversationShareServiceType = isDesktopAttachedRemote
-    ? createUnsupportedConversationShareService({
-        message: "Conversation publishing is not available for remote workspaces",
-      })
-    : new ConversationShareService({
-        zcodeAgentService,
-        zcodeSessionService,
-        client: conversationShareClient,
-        artifactSource: createLocalConversationShareArtifactSource(),
-      });
+  // ZCode-Libre：会话分享默认关闭（内容会打包上传到厂商分享服务），远程工作区原本也不支持。
+  // 两种情况都复用现成的 unsupported 实现，代码与类型契约保留，便于跟随上游同步。
+  const conversationShareService: IConversationShareServiceType =
+    isDesktopAttachedRemote || !LIBRE_VENDOR_SERVICES.conversationShare
+      ? createUnsupportedConversationShareService({
+          message: isDesktopAttachedRemote
+            ? "Conversation publishing is not available for remote workspaces"
+            : "Conversation publishing is disabled in this build",
+        })
+      : new ConversationShareService({
+          zcodeAgentService,
+          zcodeSessionService,
+          client: conversationShareClient,
+          artifactSource: createLocalConversationShareArtifactSource(),
+        });
   // 注册链上的懒工厂（如 OffPeak）会各自创建 tasks-index sqlite repo；先收集到本数组，
   // services 集合建好后在 return 前统一登记进 sharedSqliteRepos 侧表
   const sqliteReposToClose: Array<{ close(): void }> = [];
@@ -2464,6 +2472,8 @@ export function createLocalServices(options: {
     )
     .register(IFileWatcherService, createFileWatcherService())
     .register(IOAuthService, oauthService)
+    // 额度查询只用用户已配置的 API Key，不依赖账号体系，因此无需额外依赖注入。
+    .register(IProviderBalanceService, createProviderBalanceService())
     .register(
       IUsageStatsService,
       createUsageStatsService({

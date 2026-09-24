@@ -12,6 +12,7 @@ import {
   CodingPlanUpgradeDialog,
   type CodingPlanUpgradeDialogTarget,
 } from "@/settings/CodingPlanUpgradeDialog.js";
+import { LIBRE_VENDOR_SERVICES } from "@zcode/shared";
 
 import {
   useCodingPlanEntryPlanList,
@@ -47,6 +48,11 @@ export function CodingPlanUpgradeDialogProvider({ children }: { children: ReactN
       nextTarget: CodingPlanUpgradeDialogTarget,
       observation?: { signal: AbortSignal; onResult: (opened: boolean) => void },
     ) => {
+      // ZCode-Libre：套餐购买依赖厂商账号体系与购买页，默认关闭。
+      // 所有购买入口都经此处统一守卫，因此在此返回 false 即可让全部入口静默失效。
+      if (!LIBRE_VENDOR_SERVICES.codingPlanPurchase) {
+        return false;
+      }
       // 所有入口统一守卫；查询完成后不自动重放之前被拦截的点击。
       const { status, entryPlanList } = inventoryRef.current;
       if (observation?.signal.aborted) return false;

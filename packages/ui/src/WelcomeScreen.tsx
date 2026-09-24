@@ -89,7 +89,9 @@ function LoginPanel({ active, onComplete }: LoginPanelProps) {
   const loginEntryRequest = useZCodeStore((s) => s.loginEntryRequest);
   const clearLoginEntryRequest = useZCodeStore((s) => s.clearLoginEntryRequest);
   const markLoginEntryAttemptStatus = useZCodeStore((s) => s.markLoginEntryAttemptStatus);
-  const [loginMode, setLoginMode] = useState<"providers" | "apiKey">("providers");
+  // ZCode-Libre：官方账号登录默认关闭，登录页默认展示 API Key 表单。
+  // 显式开启 OAuth（ZAI_OAUTH_ENABLED / BIGMODEL_OAUTH_ENABLED）时仍可切换回渠道列表。
+  const [loginMode, setLoginMode] = useState<"providers" | "apiKey">("apiKey");
   const wasActiveRef = useRef(active);
   const consumedLoginRequestRef = useRef<number | null>(null);
   const observedOAuthSuccessSeqRef = useRef(oauthSuccessSeq);
@@ -356,7 +358,9 @@ function LoginPanel({ active, onComplete }: LoginPanelProps) {
 
         {status === "idle" && loginMode === "apiKey" ? (
           <LoginApiKeyForm
-            onCancel={() => setLoginMode("providers")}
+            // 没有可返回的 OAuth 渠道时不传 onCancel，由表单隐藏返回按钮，
+            // 避免把用户带到"没有可用登录提供方"的空列表。
+            onCancel={visibleProviders.length > 0 ? () => setLoginMode("providers") : undefined}
             onSaved={() => {
               resetApiKeyForm();
               return onComplete("apiKey");

@@ -1,4 +1,5 @@
 import {
+  LIBRE_VENDOR_SERVICES,
   ZAI_PROVIDER_ID,
   buildRuntimeZaiBusinessUrl,
   buildRuntimeZaiOAuthUrl,
@@ -15,7 +16,10 @@ import {
 const ZAI_OAUTH_PROVIDER_CONFIG: Omit<OAuthProviderRuntimeConfig, "appSecret"> = {
   id: ZAI_PROVIDER_ID,
   displayName: "Z.ai",
-  enabled: true,
+  // 默认值来自分支策略（见 libre-features.ts）：官方账号登录默认关闭，
+  // 模型经 API Key 接入（zai-api / zai-standard-api 模板）。
+  // 需要账号体系的自建部署可用 ZAI_OAUTH_ENABLED=1 显式开启。
+  enabled: LIBRE_VENDOR_SERVICES.officialAccountLogin,
   order: 1,
   // ZAI 当前 OAuth 授权入口使用 /api/oauth 前缀，继续走 /auth/oauth 会打开旧入口。
   authorizeUrl: "https://chat.z.ai/api/oauth/authorize",

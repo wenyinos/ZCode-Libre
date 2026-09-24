@@ -54,7 +54,10 @@ export function useProviderAvailabilityLoginEntryGuard({
         : modelSelectionView;
       const availability = resolveProviderAvailabilityState({ modelSelectionView: refreshedView });
       const { hasUsableProvider, providerCount } = availability;
-      const shouldOpenLoginEntry = !providerFamilyDomain || (!user && !hasUsableProvider);
+      // ZCode-Libre：官方账号登录默认关闭，providerFamilyDomain 不再参与门禁判定。
+      // 上游在未设置 domain 时无条件弹登录页，会让只用 API Key 的用户每次启动都被拦截；
+      // 现在只在"未登录且没有任何可用模型配置"时引导，用户填好 API Key 后即可直接进入。
+      const shouldOpenLoginEntry = !user && !hasUsableProvider;
 
       // 未登录且没有可用模型配置时必须引导用户连接账号或填写 API Key。
       // 启动检查、API Key 设置回流等入口统一走这里，避免各处复制判断后语义分叉。

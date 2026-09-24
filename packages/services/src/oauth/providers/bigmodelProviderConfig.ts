@@ -1,4 +1,4 @@
-import { BIGMODEL_PROVIDER_ID, buildBigModelApiUrl } from "@zcode/shared";
+import { BIGMODEL_PROVIDER_ID, LIBRE_VENDOR_SERVICES, buildBigModelApiUrl } from "@zcode/shared";
 import type { OAuthProviderRuntimeConfig } from "../runtimeConfig.js";
 import {
   buildDesktopOAuthRedirectUriFromEnv,
@@ -13,7 +13,10 @@ const BIGMODEL_AUTHORIZE_PATH = "/login";
 const BIGMODEL_OAUTH_PROVIDER_CONFIG: Omit<OAuthProviderRuntimeConfig, "appSecret"> = {
   id: BIGMODEL_PROVIDER_ID,
   displayName: "BigModel",
-  enabled: true,
+  // 默认值来自分支策略（见 libre-features.ts）：官方账号登录默认关闭，
+  // 模型经 API Key 接入（bigmodel-api / bigmodel-standard-api 模板）。
+  // 需要账号体系的自建部署可用 BIGMODEL_OAUTH_ENABLED=1 显式开启。
+  enabled: LIBRE_VENDOR_SERVICES.officialAccountLogin,
   order: 0,
   authorizeUrl: "https://bigmodel.cn/login",
   tokenUrl: "https://zcode.z.ai/api/v1/oauth/token",

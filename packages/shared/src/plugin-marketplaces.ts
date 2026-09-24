@@ -1,3 +1,5 @@
+import { LIBRE_VENDOR_SERVICES } from "./libre-features.js";
+
 export interface DefaultPluginMarketplace {
   id: string;
   source: string;
@@ -29,17 +31,24 @@ export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set(
   // bootstrap 的「Settings 默认启用集合与 CLI 的官方插件声明一致」单测机械对照两者。
 ]);
 
-export const DEFAULT_PLUGIN_MARKETPLACES: DefaultPluginMarketplace[] = [
-  {
-    // ZCode 官方唯一市场：本地 seed 分片与 CDN 分片在 Agent storage 内合并。
-    // CDN manifest 的 name 必须与该 canonical id 一致。
-    id: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
-    source: "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json",
-    name: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
-    description: "Official ZCode plugins marketplace: built-in and community plugins for ZCode.",
-    pluginCount: 0,
-  },
-];
+const ZCODE_OFFICIAL_MARKETPLACE: DefaultPluginMarketplace = {
+  // ZCode 官方唯一市场：本地 seed 分片与 CDN 分片在 Agent storage 内合并。
+  // CDN manifest 的 name 必须与该 canonical id 一致。
+  id: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+  source: "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json",
+  name: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+  description: "Official ZCode plugins marketplace: built-in and community plugins for ZCode.",
+  pluginCount: 0,
+};
+
+/**
+ * ZCode-Libre：默认不播种任何远端市场源，避免启动时向 cdn-zcode.z.ai 拉取市场清单。
+ * 内置插件不受影响 —— 它们的市场分片由安装包本地写出（bundled-plugins.ts），
+ * browser-use / documents / pdf / spreadsheets 等能力照常可用。
+ * 自建部署可把 LIBRE_VENDOR_SERVICES.pluginMarketplaceRemoteSource 置为 true 恢复官方市场源。
+ */
+export const DEFAULT_PLUGIN_MARKETPLACES: DefaultPluginMarketplace[] =
+  LIBRE_VENDOR_SERVICES.pluginMarketplaceRemoteSource ? [ZCODE_OFFICIAL_MARKETPLACE] : [];
 
 // 商店「公开」分段只有一个 ZCode 官方市场 id，内置与 CDN 不再拆分身份。
 export const PUBLIC_STORE_MARKETPLACE_IDS = [ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID] as const;
