@@ -20,10 +20,30 @@
       <path d="M256 0.130127L102.401 217.732H0L153.599 0.130127H256Z"/>
       <path d="M121.601 217.732L139.65 192.134C142.465 188.166 147.076 185.734 152.067 185.734H249.604V217.736H121.601V217.732Z"/>
     </g>
+    <!--
+      缺口是品牌分界：只换色的 Z 与官方标志轮廓完全一致，单色场景分辨不出来。
+      在斜杠下缘裁掉一块三角，靠轮廓即可区分。坐标已换算到本文件的外层坐标系
+      （Z 自身坐标先平移 +61.578 再缩放 0.609375、再平移 +50）。
+      与 packages/ui/src/assets/brand/zcode-libre-mark.svg、启动页内嵌 SVG 的缺口同源。
+    -->
+    <mask
+      id="zlNotch"
+      maskUnits="userSpaceOnUse"
+      maskContentUnits="userSpaceOnUse"
+      x="0"
+      y="0"
+      width="256"
+      height="256"
+    >
+      <rect x="0" y="0" width="256" height="256" fill="#fff"/>
+      <path d="M164.56 118.86L138.97 155.42L134.09 122.52Z" fill="#000"/>
+    </mask>
   </defs>
   <circle cx="128" cy="128" r="128" fill="url(#zlSurface)"/>
   <circle cx="128" cy="128" r="126" fill="none" stroke="url(#zlRim)" stroke-width="2.5"/>
-  <g transform="translate(50 61.578125) scale(0.609375)" fill="url(#zlMark)">
-    <use href="#zlShape"/>
+  <g mask="url(#zlNotch)">
+    <g transform="translate(50 61.578125) scale(0.609375)" fill="url(#zlMark)">
+      <use href="#zlShape"/>
+    </g>
   </g>
 </svg>

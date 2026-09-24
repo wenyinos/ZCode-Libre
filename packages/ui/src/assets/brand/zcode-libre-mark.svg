@@ -9,7 +9,7 @@
 >
   <!--
     UI 品牌标：只保留 Z 字形，去掉圆形深色底，便于在深浅两种标题栏背景上直接使用。
-    Z 的几何与配色派生自 public/logo/zcode-libre.svg，两者改动需同步。
+    几何与配色派生自 public/logo/zcode-libre.svg，两者改动需同步。
     画布取正方形并把 Z 垂直居中，避免在方形按钮容器（size-5）里被拉伸变形。
   -->
   <defs>
@@ -18,8 +18,26 @@
       <stop offset="0.45" stop-color="#38BDF8" />
       <stop offset="1" stop-color="#6366F1" />
     </linearGradient>
+    <!--
+      缺口是品牌分界：只换色的 Z 与官方标志轮廓完全一致，单色场景（启动页、关于、
+      标题栏）分辨不出来。这里在斜杠下缘裁掉一块三角，靠轮廓即可区分。
+      遮罩坐标是 Z 自身坐标系平移 +19 后的结果，与外层 <g transform> 配套。
+    -->
+    <mask
+      id="zcodeLibreNotch"
+      maskUnits="userSpaceOnUse"
+      maskContentUnits="userSpaceOnUse"
+      x="0"
+      y="0"
+      width="256"
+      height="256"
+    >
+      <rect x="0" y="0" width="256" height="256" fill="#fff" />
+      <path d="M188 113L146 173L138 119Z" fill="#000" />
+    </mask>
   </defs>
-  <g transform="translate(0 19)" fill="url(#zcodeLibreMark)">
+  <g mask="url(#zcodeLibreNotch)">
+    <g transform="translate(0 19)" fill="url(#zcodeLibreMark)">
     <path
       d="M134.4 0.130152L116.48 25.6022C113.665 29.5699 109.054 32.0019 104.064 32.0019H6.3999V0C6.3999 0.130149 134.4 0.130152 134.4 0.130152Z"
     />
@@ -27,5 +45,6 @@
     <path
       d="M121.601 217.732L139.65 192.134C142.465 188.166 147.076 185.734 152.067 185.734H249.604V217.736H121.601V217.732Z"
     />
+    </g>
   </g>
 </svg>
