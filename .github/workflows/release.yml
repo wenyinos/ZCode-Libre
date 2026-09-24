@@ -15,8 +15,11 @@ permissions:
   contents: write
 
 concurrency:
+  # 手动触发时取消同分支上仍在跑的旧运行：试跑阶段反复触发很常见，
+  # 不取消就会让新运行一直排队等旧运行结束。
+  # tag 推送时保持不取消，避免打断正在进行的正式发布。
   group: release-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
 
 jobs:
   # macOS 与 Windows 在托管 runner 上直接构建。
