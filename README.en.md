@@ -6,6 +6,11 @@
 <p align="center">
   <a href="README.md">简体中文</a> | English
 </p>
+<p align="center">
+  <a href="https://wenyinos.github.io/ZCode-Libre/">Website</a> ·
+  <a href="https://github.com/wenyinos/ZCode-Libre/releases">Download</a> ·
+  <a href="https://github.com/wenyinos/ZCode-Libre/discussions">Discussions</a>
+</p>
 
 ZCode-Libre is an AI coding workspace with desktop, browser, and terminal interfaces. This repository contains the clients, backend services, shared UI, and Agent CLI and runtime source code.
 

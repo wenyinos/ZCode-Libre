@@ -6,6 +6,11 @@
 <p align="center">
   简体中文 | <a href="README.en.md">English</a>
 </p>
+<p align="center">
+  <a href="https://wenyinos.github.io/ZCode-Libre/">项目站点</a> ·
+  <a href="https://github.com/wenyinos/ZCode-Libre/releases">下载</a> ·
+  <a href="https://github.com/wenyinos/ZCode-Libre/discussions">讨论</a>
+</p>
 
 ZCode-Libre 是 AI 编程工作台，提供桌面应用、浏览器界面和终端 Agent。本仓库包含客户端、后端服务、共享 UI，以及 Agent CLI 与运行时源码。
 
