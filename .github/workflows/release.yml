@@ -31,9 +31,6 @@ jobs:
           - name: macOS-arm64
             os: macos-latest
             args: --os mac --arch arm64
-          - name: macOS-x64
-            os: macos-15-intel
-            args: --os mac --arch x64
           # Windows 只出 x64：仓库的预编译原生工具（bfs/ripgrep/ugrep）只提供 macOS 与
           # Linux 的 x64+aarch64，没有 Windows 产物；为 arm64 单独补下载或跳过逻辑会显著
           # 增加构建复杂度，收益不成比例。
@@ -66,6 +63,14 @@ jobs:
 
       # 产物未签名：macOS 首次打开会被 Gatekeeper 拦截，Windows 会提示 SmartScreen，
       # 下载页与 README 都写明了绕过方式。签名需要各平台的证书，不在此 workflow 范围内。
+      - name: 安装 Linux 打包工具
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          # fpm 生成 deb 用系统自带的 dpkg-deb；生成 rpm 需要 rpmbuild、生成 pacman 包
+          # 需要 bsdtar，这两者在 ubuntu runner 上默认缺失，fpm 会以 exit 127 失败。
+          sudo apt-get install -y --no-install-recommends rpm libarchive-tools
+
       - name: 打包
         run: pnpm bundle:desktop -- ${{ matrix.args }}
 
