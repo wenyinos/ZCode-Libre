@@ -155,6 +155,22 @@ jobs:
           ZCODE_LINUX_TARGET: ${{ matrix.pkg }}
         run: pnpm bundle:desktop -- --os linux --arch ${{ matrix.arch }}
 
+      # 官方 zcode 包与本分支包内置同一批 Electron 二进制，ELF 内容相同所以 build-id 相同。
+      # rpm 默认（宏 _build_id_links compat）会为主包生成 /usr/lib/.build-id/xx/yyy 符号链接，
+      # 两个包争用同一批路径会让 rpm -i 直接报 file conflicts 装不上。
+      # electron-builder.config.js 已传 _build_id_links none 关掉生成；这里断言它真的生效——
+      # 该宏只在 rpmbuild 侧生效，配置写错不会有别的报错，只会在用户安装时炸。
+      - name: 校验 rpm 不含 build-id 链接
+        if: matrix.pkg == 'rpm'
+        run: |
+          found=$(rpm -qpl packages/desktop/dist/*.rpm | grep '/usr/lib/.build-id' || true)
+          if [ -n "$found" ]; then
+            echo "::error::rpm 仍包含 build-id 链接，与官方 zcode 包会冲突："
+            echo "$found"
+            exit 1
+          fi
+          echo "已确认 rpm 不含 /usr/lib/.build-id 条目，可与官方包共存"
+
       - name: 收集产物
         uses: actions/upload-artifact@v4
         with:
