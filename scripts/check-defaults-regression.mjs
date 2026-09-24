@@ -138,6 +138,14 @@ expectContains(
   "社群入口解析缺少分支策略门禁，厂商远端配置会重新生效",
 );
 
+// 「紫夜」主题在桌面 Linux 必须走纯色：Electron 在原生 Wayland 下拿不到带 alpha 的窗口
+// surface，半透明 token 会被合成器压成实心深紫，透明只在 macOS/Windows 成立。
+expectContains(
+  "packages/ui/src/styles.css",
+  "html.platform-linux-desktop.theme-zai-dusk",
+  "桌面 Linux 的纯色回退丢失，紫夜主题会重新变成拿不到透明的半透明配色",
+);
+
 // 官方账号登录默认关闭，且保留显式开启的逃生舱。
 // 实现可以写死 false，也可以引用策略常量；两种都表示默认关闭，但绝不能是 enabled: true。
 for (const path of [

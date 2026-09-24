@@ -906,8 +906,16 @@ body {
  * 因此这里把该主题的背景类 token 覆盖为纯色 —— Web 端用纯色呈现。
  * 桌面端由 Electron 的 vibrancy / acrylic / 透明窗口提供底层，不设置
  * data-zcode-browser-theme-surface，不受此覆盖影响，保持透明。
+ *
+ * 桌面 Linux 例外：Electron 在原生 Wayland 下拿不到带 alpha 的窗口 surface，
+ * Chromium 反而会在每次提交时用 wl_surface.set_opaque_region 把整窗声明为不透明，
+ * 合成器因此不做混合，半透明 token 会被压成实心深紫。--enable-transparent-visuals、
+ * --disable-gpu 试过都无效，属后端实现限制。所以 Linux 与 Web 同口径用纯色，
+ * 只有 macOS（vibrancy）/ Windows（acrylic）保留透明。
+ * platform-linux-desktop 由桌面渲染进程入口按 navigator.userAgent 打在根节点上。
  */
-html[data-zcode-browser-theme-surface].theme-zai-dusk {
+html[data-zcode-browser-theme-surface].theme-zai-dusk,
+html.platform-linux-desktop.theme-zai-dusk {
   --color-background: #232136;
   --color-background-win-alt: #2d2a45;
   --color-sidebar: #1f1d2e;
