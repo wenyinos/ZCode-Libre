@@ -7,12 +7,17 @@ on:
       tag:
         description: "发布 tag（如 v3.14.4）。留空则只构建产物、不创建 Release。"
         required: false
+      reuse_run_id:
+        description: "复用指定运行的产物发布（填运行 ID）：跳过构建，直接把该运行的 artifacts 发到 Release，全程在服务端完成。"
+        required: false
   push:
     tags:
       - "v*"
 
 permissions:
   contents: write
+  # 复用已有产物时要读取该运行的 artifacts。
+  actions: read
 
 concurrency:
   # 手动触发时取消同分支上仍在跑的旧运行：试跑阶段反复触发很常见，
@@ -27,6 +32,8 @@ jobs:
   # Windows 只出 x64：预编译原生工具（bfs/ripgrep/ugrep）没有 Windows 产物。
   build:
     name: Build ${{ matrix.name }}
+    # 复用已有产物时跳过构建。
+    if: inputs.reuse_run_id == ''
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -77,6 +84,8 @@ jobs:
   # 容器内同时装 rpmbuild 作为 fpm 的后端。
   build-linux:
     name: Build ${{ matrix.name }}
+    # 复用已有产物时跳过构建。
+    if: inputs.reuse_run_id == ''
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     strategy:
@@ -154,12 +163,25 @@ jobs:
     name: Publish release
     needs: [build, build-linux]
     # 只有打了 v* tag、或手动填了 tag 时才发布；否则 Runs 里只留构建产物。
-    if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
+    # always() 让复用模式（构建被跳过）下仍会运行。
+    if: always() && (startsWith(github.ref, 'refs/tags/v') || inputs.tag != '')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      # 复用模式：直接取指定运行的 artifacts，不重新构建，也不经过本地。
+      - name: 下载已有产物
+        if: inputs.reuse_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "${{ inputs.reuse_run_id }}" \
+            --repo "${{ github.repository }}" \
+            --dir artifacts
+          find artifacts -maxdepth 2 -type f | head -20
+
       - uses: actions/download-artifact@v4
+        if: inputs.reuse_run_id == ''
         with:
           path: artifacts
           merge-multiple: true
