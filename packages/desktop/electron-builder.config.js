@@ -167,7 +167,7 @@ const PACMAN_RUNTIME_DEPENDENCIES = [
   "xdg-utils",
 ];
 
-const WINDOWS_INSTALL_MANIFEST_NAME = ".zcode-install-manifest";
+const WINDOWS_INSTALL_MANIFEST_NAME = ".zcode-libre-install-manifest";
 
 async function writeWindowsInstallManifest(context) {
   if (context.electronPlatformName !== "win32") return;
@@ -281,7 +281,7 @@ async function runTimedAsync(label, fn) {
 
 function resolveAppAsarPath(context) {
   if (context.electronPlatformName === "darwin") {
-    const appName = `${context.packager?.appInfo?.productFilename ?? "ZCode"}.app`;
+    const appName = `${context.packager?.appInfo?.productFilename ?? "ZCode-Libre"}.app`;
     return resolve(context.appOutDir, appName, "Contents", "Resources", "app.asar");
   }
 
@@ -290,7 +290,7 @@ function resolveAppAsarPath(context) {
 
 function resolvePackagedResourcesDir(context) {
   if (context.electronPlatformName === "darwin") {
-    const appName = `${context.packager?.appInfo?.productFilename ?? "ZCode"}.app`;
+    const appName = `${context.packager?.appInfo?.productFilename ?? "ZCode-Libre"}.app`;
     return resolve(context.appOutDir, appName, "Contents", "Resources");
   }
 
@@ -459,10 +459,10 @@ export default {
   extraMetadata: {
     version: buildMetadata.appVersion,
     zcodeProductFlavor: desktopProductIdentity.flavor,
-    homepage: "https://zcode.z.ai",
+    homepage: "https://github.com/wenyinos/ZCode-Libre",
     author: {
-      name: "ZCode",
-      email: "dev@zcode.z.ai",
+      name: "ZCode-Libre",
+      email: "admin@wenyinos.com",
     },
   },
   // macOS 签名阶段会对 Electron Framework 下每个语言包逐个 codesign。
@@ -699,11 +699,11 @@ export default {
     artifactName: buildDesktopArtifactName("linux"),
     // desktop 包名是 scoped package（@zcode/desktop），electron-builder 默认会把
     // Linux executable/Icon 推成 @zcodedesktop。部分桌面环境无法按这个 icon name 命中
-    // hicolor 图标，最终回退成系统齿轮。这里固定成稳定的小写名称，让 Icon=zcode
-    // 与 /usr/share/icons/hicolor/*/apps/zcode.png 保持一致。
+    // hicolor 图标，最终回退成系统齿轮。这里固定成稳定的小写名称，让 Icon=zcode-libre
+    // 与 /usr/share/icons/hicolor/*/apps/zcode-libre.png 保持一致。
     executableName: desktopProductIdentity.linuxExecutableName,
     category: "Development",
-    maintainer: "ZCode <dev@zcode.z.ai>",
+    maintainer: "ZCode-Libre <admin@wenyinos.com>",
   },
   deb: {
     // 生产版与 Preview 必须是两个 dpkg package；只改可执行名仍会让安装器把另一版本当成升级替换。

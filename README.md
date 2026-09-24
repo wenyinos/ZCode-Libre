@@ -1,23 +1,74 @@
-# ZCode
+# ZCode-Libre
 
 <div align="center">
-  <img src="public/logo/icons/1024x1024.png" alt="ZCode" width="128" height="128" />
+  <img src="public/logo/zcode-libre.svg" alt="ZCode-Libre" width="128" height="128" />
 </div>
-<p align="center">
-  <a href="https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=47ag983c-8fcb-4d6d-814b-5395193a712c&amp;qr_code=true">飞书社群</a> ·
-  <a href="https://discord.gg/z9aBcQXZQ3">Discord</a>
-</p>
 <p align="center">
   简体中文 | <a href="README.en.md">English</a>
 </p>
 
+ZCode-Libre 是 AI 编程工作台，提供桌面应用、浏览器界面和终端 Agent。本仓库包含客户端、后端服务、共享 UI，以及 Agent CLI 与运行时源码。
 
+ZCode-Libre 是 [ZCode](https://github.com/zai-org/ZCode) 的社区分支，遵循 Chrome → Chromium、VS Code → VSCodium 的分支模式：保留上游的完整功能与代码历史，另行使用独立的品牌身份与发行渠道，便于独立审计、独立分发和本地化定制。
 
-ZCode 是 AI 编程工作台，提供桌面应用、浏览器界面和终端 Agent。本仓库包含客户端、后端服务、共享 UI，以及 Agent CLI 与运行时源码。
+## 与上游的区别
+
+| 维度       | 上游 ZCode           | ZCode-Libre                            |
+| ---------- | -------------------- | -------------------------------------- |
+| 产品名称   | ZCode                | ZCode-Libre                            |
+| 应用标识   | `dev.zcode.app`      | `dev.zcode-libre.app`                  |
+| 应用图标   | 圆角方形 + 白色 Z    | 圆形 + 青蓝渐变 Z                      |
+| 发行渠道   | 上游官方 Releases    | 本仓库自行构建与分发                   |
+| 会话与设置 | ——                   | 与上游共用                             |
+| 界面偏好   | `ZCode` 数据目录     | `ZCode-Libre` 数据目录（互相独立）     |
+
+**会话与设置和上游共用**。对话记录、模型设置与凭据存放在 `.zcode` 数据根（如 `~/.zcode/cli/db/db.sqlite`、`~/.zcode/v2/setting.json`），两边完全互通：装上本分支就能直接读到官方客户端的对话与配置，无需迁移数据或重新登录。
+
+**界面偏好各自独立**。Electron 用户数据目录使用 `ZCode-Libre`，主题、语言、面板布局等界面偏好以及内置浏览器/Coding Plan 内嵌页的登录态互不影响。因此两个客户端**可以同时运行**，也不会因两边版本分叉而共用 Electron 缓存。
+
+从上游同步更新的流程与全部偏离点见 [UPSTREAM.md](UPSTREAM.md)。
+
+以下标识**有意保持与上游一致**，因为它们是跨端契约而非品牌展示位，改动会破坏与既有服务端、协议和用户项目的兼容性：`zcode://` 协议 scheme、`@zcode/*` 包 scope、`ZCODE_*` 环境变量前缀、`.zcode` 数据根目录（含用户项目里的 `.zcode/config.json`、`.zcode/agents`）、`zcode` CLI 命令名。
+
+## 遥测与厂商服务
+
+本分支默认关闭遥测与依赖厂商后端的服务。改动走**默认关闭、不删代码**的路线，以便跟随上游同步；开关集中登记在 [UPSTREAM.md](UPSTREAM.md)。
+
+| 项目 | 默认 | 开启方式 |
+| --- | --- | --- |
+| 遥测上报（数仓 / ARMS / OTLP） | 关闭 | 设 `ZCODE_TELEMETRY_ENABLED=1` |
+| 官方账号登录（z.ai / BigModel OAuth） | 关闭 | 设 `ZAI_OAUTH_ENABLED=1` / `BIGMODEL_OAUTH_ENABLED=1` |
+| 会话分享（上传对话到远端） | 关闭 | `packages/shared/src/libre-features.ts` |
+| 用户反馈 | 关闭 | 同上 |
+| Coding Plan 套餐购买入口 | 关闭 | 同上 |
+| 插件市场远端源（CDN 清单） | 关闭 | 同上；内置插件不受影响 |
+| 应用内更新 | 仅检测自有 Release | 检测到新版本后引导前往本仓库 Releases 下载，不在应用内下载或安装 |
+
+内置能力插件（浏览器控制、文档、PDF、表格、演示文稿等）默认保持启用，它们不依赖厂商服务。
+
+### 更新
+
+「帮助 → 检查更新」只查询本仓库的 GitHub Release 并比较版本，不会像上游那样从厂商服务器取更新清单——那会把官方 ZCode 装回来覆盖本分支。检测到新版本时，界面给出「前往下载」按钮，在浏览器中打开 Release 页面，由你选择对应平台的安装包自行下载安装。
+
+### 用 API Key 接入模型
+
+官方账号登录默认关闭，模型通过 API Key 接入，**无需任何账号**：
+
+1. 首次启动显示配置页，默认就是 API Key 表单；也可随时从「设置 → 模型服务商」添加。
+2. 选择渠道、填入 API Key、保存即可，重启后不会再被登录页拦截。
+
+两种 Key 的请求路径不同，按需选择：
+
+| 模板 | 端点 | 请求路径 |
+| --- | --- | --- |
+| Z.ai / BigModel **标准 API** | `https://api.z.ai/api/paas/v4`、`https://open.bigmodel.cn/api/paas/v4` | **直连**厂商 API，不经过任何中间网关 |
+| Z.ai / BigModel（登录页默认） | `https://api.z.ai/api/anthropic`、`https://open.bigmodel.cn/api/anthropic` | 经 ZCode 平台网关做套餐权益校验后转发（鉴权头原样透传，不依赖账号登录态） |
+
+需要完全绕开厂商网关时，在「设置 → 模型服务商」选择**标准 API** 模板；使用 Coding Plan 的 Key 则需走网关，因为套餐权益校验在网关侧完成。
 
 ## 更新
 
-- 2026-9-23：更新至 ZCode v3.14.3 版本。
+- 2026-09-24：建立 ZCode-Libre 品牌分支。独立应用标识、独立数据目录、全新圆形标志，并同步上游 v3.14.3 源码。
 
 ## 初始化
 
@@ -79,9 +130,9 @@ ZCODE_SERVER_WORKSPACE=/path/to/project pnpm dev:web
 
 该命令同时启动 Web 开发服务器（默认 `http://localhost:5173`）和后端（默认 `http://localhost:3030`）；浏览器访问前者。`/ws` 和一般 `/api` 请求代理到本地后端，`/api/v1/oauth/token` 单独代理到当前配置的产品服务。
 
-Agent 源码修改后，执行 `pnpm --filter @zcode/cli... build` 并重启服务。需要验证完整发行包时，按下方“ZCode 命令行版”打包章节解压运行。
+Agent 源码修改后，执行 `pnpm --filter @zcode/cli... build` 并重启服务。需要验证完整发行包时，按下方“命令行版”打包章节解压运行。
 
-### ZCode 命令行版
+### ZCode-Libre 命令行版
 
 命令行发行包包含 TUI、Web 和 Agent，统一使用 `zcode` 启动：无参数进入 TUI；第一个参数为 `--web` 时启动 Web；其他参数交给现有 Agent CLI 处理。两种模式都在本机运行，无需 Electron。
 
@@ -151,13 +202,13 @@ pnpm bundle:desktop -- --help
 
 默认目标为 macOS arm64，默认输出目录为 `packages/desktop/dist/`。`--os` 支持 `mac`、`win`、`linux`，`--arch` 支持 `x64`、`arm64`；实际打包与签名需要目标平台对应的工具和配置。
 
-安装：双击打开产物 DMG，将 ZCode 拖入"应用程序"。本地构建未签名，首次打开若被 macOS 拦截，执行：
+安装：双击打开产物 DMG，将 ZCode-Libre 拖入"应用程序"。本地构建未签名，首次打开若被 macOS 拦截，执行：
 
 ```bash
-sudo xattr -rd com.apple.quarantine /Applications/ZCode.app
+sudo xattr -rd com.apple.quarantine /Applications/ZCode-Libre.app
 ```
 
-### ZCode 命令行版
+### 命令行版
 
 构建入口为 `pnpm build:zcode`。脚本会依次构建 CLI/TUI、后端和 Web，收集 TUI 的原生库、worker 与运行时依赖，再组装发行包；运行发行包仍需要 Node.js，版本以 `mise.toml` 为准。
 
@@ -184,8 +235,6 @@ pnpm build:zcode --help
 
 完整目录可上传到配置的下载根地址。安装脚本从该地址下载运行包，默认安装到 `~/.zcode/runtime`，并在 `~/.local/bin` 创建 `zcode` 命令。安装目录可通过 `ZCODE_DIST_HOME` 修改，命令目录可通过 `ZCODE_DIST_BIN_DIR` 修改。
 
-旧 Lite 用户需要改用上述构建命令、环境变量和新的安装脚本。新安装不会删除旧 Lite 目录，也不会迁移或删除已有会话数据。
-
 本地调试打包产物时，可直接解压运行，无需上传或安装：
 
 ```bash
@@ -203,6 +252,16 @@ node dist/zcode/debug/zcode/bin/zcode.mjs --web \
 
 浏览器打开 `http://127.0.0.1:3030`，即可验证同一后端服务托管 Web 页面和 Agent 的完整链路。该端口需要空闲；如正在运行 `pnpm dev:web`，可改用其他 `--port`。
 
+## 品牌资源
+
+应用图标以 [public/logo/zcode-libre.svg](public/logo/zcode-libre.svg) 为唯一源文件。修改标志后重新生成全量位图资源：
+
+```bash
+python3 scripts/generate-logo-assets.py
+```
+
+脚本需要 ImageMagick（`magick` 命令，需 librsvg 支持）与 Python 的 Pillow，会把 PNG/ICO/ICNS 分发到 `public/logo/icons/`、`public/icon_512@2x.png` 与 `packages/desktop/build/`。
+
 ## 仓库结构
 
 | 目录                                                 | 职责                                       |
@@ -218,6 +277,8 @@ node dist/zcode/debug/zcode/bin/zcode.mjs --web \
 | `apps/zcode-cli`                                     | Agent CLI、TUI、运行时与工具               |
 | `scripts`、`config`、`third-party`                   | 构建维护脚本、内置配置与第三方声明材料     |
 
-## 项目声明
+## 许可与来源
 
-功能与优惠范围、维护规则、执行与数据风险，以及许可和第三方版权说明，详见 [NOTICE.md](NOTICE.md)。
+本仓库源码来自 ZCode，第一方代码依照根 [LICENSE](LICENSE) 采用 Apache-2.0，原始版权归 Z.AI Co., Ltd 所有。ZCode-Libre 的修改、品牌资源与构建产物由本分支维护，同样以 Apache-2.0 提供；该许可不替其他权利人新增授权，也不覆盖第三方软件、复制代码、原生二进制、字体、图标与网页素材。
+
+功能范围、维护规则、执行与数据风险，以及完整的第三方版权说明，详见 [NOTICE.md](NOTICE.md)。

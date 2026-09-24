@@ -8,10 +8,11 @@ import {
   type LinuxDeepLinkRegistrationLogger,
 } from "./desktopLinuxXdg.js";
 
-const LINUX_DEEP_LINK_DESKTOP_FILE = "zcode.desktop";
+const LINUX_DEEP_LINK_DESKTOP_FILE = "zcode-libre.desktop";
 const LINUX_DEEP_LINK_MIME_TYPE = "x-scheme-handler/zcode";
-// 归属标记：用于识别用户级 zcode.desktop 是否由本应用写入（历史所有版本都带这行 Comment）。
-const LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKER = "Comment=ZCode Desktop App";
+// 归属标记：用于识别用户级 zcode-libre.desktop 是否由本应用写入（历史所有版本都带这行 Comment）。
+// 与上游 ZCode 的 Comment 不同，因此本分支只清理自己的条目，不会误删官方安装的 desktop 文件。
+const LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKER = "Comment=ZCode-Libre";
 
 type LinuxDesktopEnv = {
   APPIMAGE?: string;
@@ -109,8 +110,8 @@ function createLinuxDeepLinkDesktopEntry(params: {
   productName?: string;
   iconName?: string;
 }): string {
-  const productName = params.productName ?? "ZCode";
-  const iconName = params.iconName ?? "zcode";
+  const productName = params.productName ?? "ZCode-Libre";
+  const iconName = params.iconName ?? "zcode-libre";
   const command = {
     executablePath: params.executablePath,
     args: params.args ?? [],

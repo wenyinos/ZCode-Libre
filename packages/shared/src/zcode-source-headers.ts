@@ -1,9 +1,9 @@
 import { DEFAULT_ZCODE_ENDPOINT_ORIGIN } from "./zcodeEndpoint.js";
 
 export const ZCODE_SOURCE_HEADERS = {
-  "User-Agent": "ZCode/unknown",
+  "User-Agent": "ZCode-Libre/unknown",
   "HTTP-Referer": DEFAULT_ZCODE_ENDPOINT_ORIGIN,
-  "X-Title": "Z Code@electron",
+  "X-Title": "ZCode-Libre@electron",
 } as const;
 
 export interface BuildZCodeSourceHeadersFromContextOptions {
@@ -45,9 +45,9 @@ export function buildZCodeSourceHeadersFromContext(
   return {
     ...ZCODE_SOURCE_HEADERS,
     "HTTP-Referer": endpointOrigin,
-    "User-Agent": `ZCode/${appVersion ?? "unknown"}`,
+    "User-Agent": `ZCode-Libre/${appVersion ?? "unknown"}`,
     ...(appVersion ? { "X-ZCode-App-Version": appVersion } : {}),
-    "X-Title": `Z Code@${sourceTitle}`,
+    "X-Title": `ZCode-Libre@${sourceTitle}`,
     ...(platform && arch ? { "X-Platform": `${platform}-${arch}` } : {}),
     ...(releaseChannel ? { "X-Release-Channel": releaseChannel } : {}),
     "X-Client-Language": clientLanguage,

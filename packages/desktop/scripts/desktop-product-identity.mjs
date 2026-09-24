@@ -7,19 +7,19 @@ export const ZCODE_PREVIEW_IDENTITY_ENV = "ZCODE_PREVIEW_IDENTITY";
 
 const PRODUCTION_IDENTITY = Object.freeze({
   flavor: "production",
-  appId: "dev.zcode.app",
-  productName: "ZCode",
-  linuxExecutableName: "zcode",
-  linuxPackageName: "zcode",
+  appId: "dev.zcode-libre.app",
+  productName: "ZCode-Libre",
+  linuxExecutableName: "zcode-libre",
+  linuxPackageName: "zcode-libre",
   cuaHelperInstallVariant: null,
 });
 
 const PREVIEW_IDENTITY = Object.freeze({
   flavor: "preview",
-  appId: "dev.zcode.app.preview",
-  productName: "ZCode Preview",
-  linuxExecutableName: "zcode-preview",
-  linuxPackageName: "zcode-preview",
+  appId: "dev.zcode-libre.app.preview",
+  productName: "ZCode-Libre Preview",
+  linuxExecutableName: "zcode-libre-preview",
+  linuxPackageName: "zcode-libre-preview",
   cuaHelperInstallVariant: "preview",
 });
 
@@ -79,12 +79,12 @@ export function resolveDesktopArtifactSuffix(env = process.env) {
  * 返回 Windows Shell 使用的 AppUserModelId。
  *
  * 打包态必须复用 electron-builder 的 appId，否则快捷方式里的 AUMID、开始菜单索引
- * 和运行中的 Electron 进程会被 Windows 视为三个不同的应用。开发态继续保留旧身份，
+ * 和运行中的 Electron 进程会被 Windows 视为三个不同的应用。开发态使用独立的开发身份，
  * 避免本地调试快捷方式和正式/Preview 安装包互相污染。
  */
 export function resolveWindowsAppUserModelIdForFlavor(flavor, runtime = { isPackaged: true }) {
   if (runtime.isPackaged === false) {
-    return "cn.aminer.zcode";
+    return "dev.zcode-libre.app.development";
   }
   return desktopProductIdentities[flavor === "preview" ? "preview" : "production"].appId;
 }

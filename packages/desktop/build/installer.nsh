@@ -2,10 +2,10 @@
 !include FileFunc.nsh
 
 !ifndef ZCODE_INSTALLER_DEFAULT_LOG_PATH
-  !define ZCODE_INSTALLER_DEFAULT_LOG_PATH "$TEMP\ZCode-installer.log"
+  !define ZCODE_INSTALLER_DEFAULT_LOG_PATH "$TEMP\ZCode-Libre-installer.log"
 !endif
 !ifndef ZCODE_INSTALLER_ELEVATED_LOG_PATH
-  !define ZCODE_INSTALLER_ELEVATED_LOG_PATH "$WINDIR\Logs\ZCode-installer.log"
+  !define ZCODE_INSTALLER_ELEVATED_LOG_PATH "$WINDIR\Logs\ZCode-Libre-installer.log"
 !endif
 !ifndef ZCODE_INSTALLER_IS_ELEVATED_INNER
   ; 来源只在测试夹具模拟内层，正式默认恒假会让提权进程继续使用调用方 /LOG。
@@ -15,11 +15,11 @@
 !endif
 
 !ifndef ZCODE_INSTALL_MANIFEST_NAME
-  !define ZCODE_INSTALL_MANIFEST_NAME ".zcode-install-manifest"
+  !define ZCODE_INSTALL_MANIFEST_NAME ".zcode-libre-install-manifest"
 !endif
 
 !ifndef ZCODE_UNINSTALLER_LOG_PATH
-  !define ZCODE_UNINSTALLER_LOG_PATH "$TEMP\ZCode-uninstaller.log"
+  !define ZCODE_UNINSTALLER_LOG_PATH "$TEMP\ZCode-Libre-uninstaller.log"
 !endif
 !ifndef ZCODE_UNINSTALLER_FUNCTION_PREFIX
   !define ZCODE_UNINSTALLER_FUNCTION_PREFIX "un."
@@ -30,7 +30,7 @@
 
   ; 卸载器只在更新时删除旧文件；单独记录清理阶段，避免外层把权限/空间错误误报成应用仍在运行。
   !macro ZCodeReportUninstallerStage MESSAGE
-    DetailPrint "ZCode: ${MESSAGE}"
+    DetailPrint "ZCode-Libre: ${MESSAGE}"
     Push "${MESSAGE}"
     Call ${ZCODE_UNINSTALLER_FUNCTION_PREFIX}ZCodeWriteUninstallerLog
   !macroend
@@ -148,7 +148,7 @@
   ; 详情面板和文件日志共用同一条阶段事件，避免静默安装丢失关键上下文。
   !macro ZCodeReportInstallerStage MESSAGE
     SetDetailsPrint listonly
-    DetailPrint "ZCode: ${MESSAGE}"
+    DetailPrint "ZCode-Libre: ${MESSAGE}"
     Push "${MESSAGE}"
     Call ZCodeWriteInstallerLog
   !macroend

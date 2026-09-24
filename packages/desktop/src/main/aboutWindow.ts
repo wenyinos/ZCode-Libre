@@ -94,16 +94,12 @@ export function createCustomAboutDialogHtml(input: CustomAboutDialogHtmlInput): 
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
-        background: linear-gradient(180deg, #000000 0%, #151718 100%);
-        color: #ffffff;
-        box-shadow: 0 10px 13px -3px rgb(0 0 0 / 0.2), 0 4px 5px -3px rgb(0 0 0 / 0.2);
+        filter: drop-shadow(0 10px 13px rgb(0 0 0 / 0.2)) drop-shadow(0 4px 5px rgb(0 0 0 / 0.2));
       }
 
       .app-logo {
-        width: 30px;
-        height: auto;
+        width: 52px;
+        height: 52px;
         display: block;
       }
 
@@ -173,22 +169,40 @@ export function createCustomAboutDialogHtml(input: CustomAboutDialogHtmlInput): 
           <div class="app-icon" aria-hidden="true">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="118"
-              height="100"
+              width="52"
+              height="52"
               fill="none"
-              viewBox="0 0 256 218"
+              viewBox="0 0 256 256"
               class="app-logo"
               focusable="false"
             >
-              <path
-                fill="currentColor"
-                d="M134.4 0.130152L116.48 25.6022C113.665 29.5699 109.054 32.0019 104.064 32.0019H6.3999V0C6.3999 0.130149 134.4 0.130152 134.4 0.130152Z"
-              />
-              <path fill="currentColor" d="M256 0.130127L102.401 217.732H0L153.599 0.130127H256Z" />
-              <path
-                fill="currentColor"
-                d="M121.601 217.732L139.65 192.134C142.465 188.166 147.076 185.734 152.067 185.734H249.604V217.736H121.601V217.732Z"
-              />
+              <defs>
+                <linearGradient id="aboutSurface" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#1C2129" />
+                  <stop offset="1" stop-color="#0A0C10" />
+                </linearGradient>
+                <linearGradient id="aboutMark" x1="0" y1="0" x2="0.85" y2="1">
+                  <stop offset="0" stop-color="#5EEAD4" />
+                  <stop offset="0.45" stop-color="#38BDF8" />
+                  <stop offset="1" stop-color="#6366F1" />
+                </linearGradient>
+                <linearGradient id="aboutRim" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#5EEAD4" stop-opacity="0.7" />
+                  <stop offset="0.5" stop-color="#38BDF8" stop-opacity="0.25" />
+                  <stop offset="1" stop-color="#6366F1" stop-opacity="0.55" />
+                </linearGradient>
+              </defs>
+              <circle cx="128" cy="128" r="128" fill="url(#aboutSurface)" />
+              <circle cx="128" cy="128" r="126" fill="none" stroke="url(#aboutRim)" stroke-width="2.5" />
+              <g transform="translate(50 61.578125) scale(0.609375)" fill="url(#aboutMark)">
+                <path
+                  d="M134.4 0.130152L116.48 25.6022C113.665 29.5699 109.054 32.0019 104.064 32.0019H6.3999V0C6.3999 0.130149 134.4 0.130152 134.4 0.130152Z"
+                />
+                <path d="M256 0.130127L102.401 217.732H0L153.599 0.130127H256Z" />
+                <path
+                  d="M121.601 217.732L139.65 192.134C142.465 188.166 147.076 185.734 152.067 185.734H249.604V217.736H121.601V217.732Z"
+                />
+              </g>
             </svg>
           </div>
           <h1 id="about-title" class="title">
