@@ -1,10 +1,14 @@
 interface CustomAboutDialogHtmlInput {
   applicationName: string;
   appVersion: string;
+  /** 第三方分支声明，与上游版权分两行展示，避免被读成厂商自述。 */
+  disclaimer: string;
   copyright: string;
   optimizationLine: string;
   versionLabel: string;
   okButtonLabel: string;
+  /** 内容本体高度，与 BrowserWindow 高度分开维护，避免两处各写一个数字。 */
+  contentHeight: number;
 }
 
 function escapeHtml(value: string): string {
@@ -59,7 +63,7 @@ export function createCustomAboutDialogHtml(input: CustomAboutDialogHtmlInput): 
       .about-window {
         width: 100%;
         max-width: 256px;
-        height: 280px;
+        height: ${input.contentHeight}px;
         display: grid;
         place-items: stretch;
         padding: 0;
@@ -191,17 +195,35 @@ export function createCustomAboutDialogHtml(input: CustomAboutDialogHtmlInput): 
                   <stop offset="0.5" stop-color="#38BDF8" stop-opacity="0.25" />
                   <stop offset="1" stop-color="#6366F1" stop-opacity="0.55" />
                 </linearGradient>
+                <!--
+                  缺口是品牌分界：只换色的 Z 与官方标志轮廓完全一致，关于窗口是单色
+                  渲染，没有缺口就分不出这是本分支。坐标与 public/logo/zcode-libre.svg 同源。
+                -->
+                <mask
+                  id="aboutLogoNotch"
+                  maskUnits="userSpaceOnUse"
+                  maskContentUnits="userSpaceOnUse"
+                  x="0"
+                  y="0"
+                  width="256"
+                  height="256"
+                >
+                  <rect x="0" y="0" width="256" height="256" fill="#fff" />
+                  <path d="M164.56 118.86L138.97 155.42L134.09 122.52Z" fill="#000" />
+                </mask>
               </defs>
               <circle cx="128" cy="128" r="128" fill="url(#aboutSurface)" />
               <circle cx="128" cy="128" r="126" fill="none" stroke="url(#aboutRim)" stroke-width="2.5" />
-              <g transform="translate(50 61.578125) scale(0.609375)" fill="url(#aboutMark)">
-                <path
-                  d="M134.4 0.130152L116.48 25.6022C113.665 29.5699 109.054 32.0019 104.064 32.0019H6.3999V0C6.3999 0.130149 134.4 0.130152 134.4 0.130152Z"
-                />
-                <path d="M256 0.130127L102.401 217.732H0L153.599 0.130127H256Z" />
-                <path
-                  d="M121.601 217.732L139.65 192.134C142.465 188.166 147.076 185.734 152.067 185.734H249.604V217.736H121.601V217.732Z"
-                />
+              <g mask="url(#aboutLogoNotch)">
+                <g transform="translate(50 61.578125) scale(0.609375)" fill="url(#aboutMark)">
+                  <path
+                    d="M134.4 0.130152L116.48 25.6022C113.665 29.5699 109.054 32.0019 104.064 32.0019H6.3999V0C6.3999 0.130149 134.4 0.130152 134.4 0.130152Z"
+                  />
+                  <path d="M256 0.130127L102.401 217.732H0L153.599 0.130127H256Z" />
+                  <path
+                    d="M121.601 217.732L139.65 192.134C142.465 188.166 147.076 185.734 152.067 185.734H249.604V217.736H121.601V217.732Z"
+                  />
+                </g>
               </g>
             </svg>
           </div>
@@ -211,6 +233,7 @@ export function createCustomAboutDialogHtml(input: CustomAboutDialogHtmlInput): 
           </h1>
           <div class="meta">
             ${input.optimizationLine ? `<div>${escapeHtml(input.optimizationLine)}</div>` : ""}
+            <div class="disclaimer">${escapeHtml(input.disclaimer)}</div>
             <div>${escapeHtml(input.copyright)}</div>
           </div>
         </div>

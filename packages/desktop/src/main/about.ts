@@ -55,8 +55,11 @@ interface AboutSnapshotOptions {
 const ABOUT_APPLICATION_NAME = "ZCode-Libre";
 // 自定义 About 内容本体是 256x280；原生窗口如果同尺寸会让内容贴满透明窗口边界。
 // 这里给 BrowserWindow 额外留出背景呼吸空间，避免正式 About 看起来比 demo 更局促。
+// 加入第三方分支声明后内容变高：macOS 那句 Apple Silicon 提示会让 meta 区变成四行，
+// 280 高度会把确定按钮挤到贴边，因此内容本体加高到 328、窗口同步留 32px 呼吸空间。
+const ABOUT_CONTENT_HEIGHT = 328;
 const ABOUT_WINDOW_WIDTH = 256;
-const ABOUT_WINDOW_HEIGHT = 312;
+const ABOUT_WINDOW_HEIGHT = ABOUT_CONTENT_HEIGHT + 32;
 const ABOUT_MESSAGES: Record<
   Locale,
   {
@@ -64,6 +67,8 @@ const ABOUT_MESSAGES: Record<
     versionLabel: string;
     okButtonLabel: string;
     optimizedForAppleSilicon: string;
+    /** 第三方分支声明：本分支与上游厂商无隶属关系，必须与上游版权分开表述。 */
+    disclaimer: string;
     copyright: (year: number) => string;
   }
 > = {
@@ -72,14 +77,16 @@ const ABOUT_MESSAGES: Record<
     versionLabel: "版本",
     okButtonLabel: "确定",
     optimizedForAppleSilicon: "已针对 Apple Silicon 优化。",
-    copyright: (year) => `版权所有 © ${year} Z.AI Co., Ltd（ZCode-Libre 分支）。`,
+    disclaimer: "基于 ZCode 的第三方分支，与智谱（Z.AI）官方无关。",
+    copyright: (year) => `上游版权 © ${year} Z.AI Co., Ltd。`,
   },
   "en-US": {
     aboutTitle: "About ZCode-Libre",
     versionLabel: "version",
     okButtonLabel: "OK",
     optimizedForAppleSilicon: "Optimized for Apple Silicon.",
-    copyright: (year) => `Copyright © ${year} Z.AI Co., Ltd (ZCode-Libre fork).`,
+    disclaimer: "Third-party fork of ZCode, not affiliated with Z.AI.",
+    copyright: (year) => `Upstream copyright © ${year} Z.AI Co., Ltd.`,
   },
 };
 
@@ -257,7 +264,9 @@ export async function showAboutDialog(
       createCustomAboutDialogHtml({
         applicationName: ABOUT_APPLICATION_NAME,
         appVersion: snapshot.appVersion,
+        disclaimer: aboutMessages.disclaimer,
         copyright: formatAboutCopyright(undefined, locale),
+        contentHeight: ABOUT_CONTENT_HEIGHT,
         optimizationLine: formatAboutOptimizationLine(snapshot, locale),
         versionLabel: aboutMessages.versionLabel,
         okButtonLabel: aboutMessages.okButtonLabel,
