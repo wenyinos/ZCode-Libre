@@ -102,6 +102,16 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      # 容器内运行用户与检出文件的属主可能不一致，git 2.35+ 的 dubious ownership 检查
+      # 会直接拒绝操作（bootstrap 第一步就是 git submodule update）。
+      # 这里放开白名单，并打印版本与状态，失败时能直接定位到是不是 git 的问题。
+      - name: 容器内信任工作目录
+        run: |
+          git config --global --add safe.directory '*'
+          echo "git: $(git --version)"
+          git status --short | head -3
+          git submodule status 2>&1 | head -3 || true
+
       # 直接取 Node 官方二进制而非走各发行版仓库：三个发行版的 Node 版本差异很大，
       # 统一版本才能与 mise.toml / .nvmrc 保持一致。
       - name: 安装 Node 24 与 pnpm
