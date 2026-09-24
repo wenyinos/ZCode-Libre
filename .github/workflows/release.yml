@@ -63,7 +63,11 @@ jobs:
 
       # 产物未签名：macOS 首次打开被 Gatekeeper 拦截、Windows 提示 SmartScreen，
       # 下载页写明了绕过方式。签名需要各平台证书，不在此 workflow 范围内。
+      # 必须显式指定生产后端：未设置 ZCODE_ENV 时会被当作 test，
+      # 产物会带上 _TEST 后缀（连测试后端）与 Preview 身份，不能作为正式版本发布。
       - name: 打包
+        env:
+          ZCODE_ENV: production
         run: pnpm bundle:desktop -- ${{ matrix.args }}
 
       - name: 收集产物
@@ -147,6 +151,7 @@ jobs:
       # ZCODE_LINUX_TARGET 让每个 job 只产出自己那一种格式。
       - name: 打包
         env:
+          ZCODE_ENV: production
           ZCODE_LINUX_TARGET: ${{ matrix.pkg }}
         run: pnpm bundle:desktop -- --os linux --arch ${{ matrix.arch }}
 
