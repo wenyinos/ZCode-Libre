@@ -87,13 +87,18 @@ jobs:
       # 容器里没有 Node，也未必有所需格式的打包后端，先按发行版补齐。
       - name: 安装基础工具与打包后端
         run: |
+          # 各发行版补齐两类依赖：
+          #   1) 打包后端：dpkg-dev / rpm-build / libarchive
+          #   2) 原生模块工具链：node-pty 等需要 node-gyp 现场编译，
+          #      ubuntu runner 预装了 build-essential，精简容器里没有。
           if command -v apt-get >/dev/null 2>&1; then
             apt-get update
-            apt-get install -y --no-install-recommends ca-certificates curl git xz-utils dpkg-dev
+            apt-get install -y --no-install-recommends \
+              ca-certificates curl git xz-utils dpkg-dev build-essential python3
           elif command -v dnf >/dev/null 2>&1; then
-            dnf install -y curl git xz tar which rpm-build
+            dnf install -y curl git xz tar which rpm-build gcc-c++ make python3
           elif command -v pacman >/dev/null 2>&1; then
-            pacman -Sy --noconfirm curl git xz tar libarchive
+            pacman -Sy --noconfirm curl git xz tar libarchive base-devel python
           fi
 
       - uses: actions/checkout@v4
