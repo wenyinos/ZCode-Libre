@@ -26,15 +26,26 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # 用对应架构的托管 runner 原生构建，避免交叉编译时原生模块（node-pty、koffi 等）
+          # 与预编译工具架构不匹配。
           - name: macOS-arm64
             os: macos-latest
             args: --os mac --arch arm64
+          - name: macOS-x64
+            os: macos-15-intel
+            args: --os mac --arch x64
+          # Windows 只出 x64：仓库的预编译原生工具（bfs/ripgrep/ugrep）只提供 macOS 与
+          # Linux 的 x64+aarch64，没有 Windows 产物；为 arm64 单独补下载或跳过逻辑会显著
+          # 增加构建复杂度，收益不成比例。
           - name: Windows-x64
             os: windows-latest
             args: --os win --arch x64
           - name: Linux-x64
             os: ubuntu-latest
             args: --os linux --arch x64
+          - name: Linux-arm64
+            os: ubuntu-24.04-arm
+            args: --os linux --arch arm64
     steps:
       - uses: actions/checkout@v4
 
