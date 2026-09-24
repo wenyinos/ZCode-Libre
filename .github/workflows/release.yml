@@ -1,0 +1,135 @@
+name: Release
+
+# 手动触发用于试跑与补发；推送 v* tag 时自动构建并发布。
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "发布 tag（如 v3.14.4）。留空则只构建产物、不创建 Release。"
+        required: false
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS-arm64
+            os: macos-latest
+            args: --os mac --arch arm64
+          - name: Windows-x64
+            os: windows-latest
+            args: --os win --arch x64
+          - name: Linux-x64
+            os: ubuntu-latest
+            args: --os linux --arch x64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # 版本以仓库的 .nvmrc / mise.toml 为准，避免 CI 与本地分叉。
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # 桌面打包需要 workspace 依赖与随包的本地运行资源，按 README 的初始化流程准备。
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 准备构建资源
+        run: pnpm bootstrap
+
+      # 产物未签名：macOS 首次打开会被 Gatekeeper 拦截，Windows 会提示 SmartScreen，
+      # 下载页与 README 都写明了绕过方式。签名需要各平台的证书，不在此 workflow 范围内。
+      - name: 打包
+        run: pnpm bundle:desktop -- ${{ matrix.args }}
+
+      - name: 收集产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          if-no-files-found: error
+          path: |
+            packages/desktop/dist/*.dmg
+            packages/desktop/dist/*.zip
+            packages/desktop/dist/*.exe
+            packages/desktop/dist/*.deb
+            packages/desktop/dist/*.rpm
+            packages/desktop/dist/*.pkg.tar.zst
+
+  publish:
+    name: Publish release
+    needs: build
+    # 只有打了 v* tag、或手动填了 tag 时才发布；否则 Runs 里只留构建产物。
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: 生成校验和
+        run: |
+          cd artifacts
+          # 汇总所有平台产物，供用户下载后核对。
+          sha256sum * | grep -v 'checksums.txt' > checksums.txt
+          cat checksums.txt
+
+      - name: 发布
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          name: ${{ inputs.tag || github.ref_name }}
+          draft: false
+          generate_release_notes: true
+          files: artifacts/*
+          body: |
+            ## 下载 / Downloads
+
+            未签名构建，首次打开会被系统安全提示拦截；用下方的 `checksums.txt` 核对 SHA256。
+            Unsigned builds — the first launch is blocked by Gatekeeper / SmartScreen. Verify against `checksums.txt`.
+
+            **macOS**（Apple Silicon）
+
+            下载 `.dmg`，把 ZCode-Libre 拖入「应用程序」。首次打开若被拦截：
+            `sudo xattr -rd com.apple.quarantine /Applications/ZCode-Libre.app`
+
+            **Windows**（x64）
+
+            下载 `.exe`，SmartScreen 提示时选「更多信息」→「仍要运行」。
+
+            **Linux**（x64）
+
+            按发行版选择系统包，并核对 `checksums.txt`。
+
+            | 发行版 / Distro | 包格式 |
+            |---|---|
+            | Debian / Ubuntu | `.deb`（`sudo apt install ./<file>.deb`） |
+            | Fedora / RHEL / openSUSE | `.rpm`（`sudo dnf install ./<file>.rpm`） |
+            | Arch Linux | `.pkg.tar.zst`（`sudo pacman -U <file>`） |
+
+            安装后从应用菜单或 `zcode-libre` 启动。本分支与官方 ZCode 共用 `.zcode` 数据根，
+            但使用独立的界面偏好目录，因此两者可以同时安装、同时运行。
+
+            ## 关于这个版本 / About this build
+
+            - 遥测与厂商服务默认关闭，模型用你自己的 API Key 接入。
+            - 应用内更新只检测本仓库的 Release 并引导下载，不会自动安装，也不会被换回官方版本。
+            - 与上游的完整差异见 [UPSTREAM.md](https://github.com/wenyinos/ZCode-Libre/blob/main/UPSTREAM.md)。
