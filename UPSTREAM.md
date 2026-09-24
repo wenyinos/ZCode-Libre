@@ -20,14 +20,19 @@ git remote add upstream https://github.com/zai-org/ZCode
 
 ```bash
 git fetch upstream
+
+# 1) 先审计：列出上游待合入提交，并标出动了本分支偏离文件的那些
+pnpm audit:upstream               # 加 --strict 可在有高危提交时以退出码 1 结束
+
 git merge upstream/main          # 或按需 git rebase upstream/main
 
-# 1) 解决冲突（热点文件见下节）
-# 2) 上游新文案仍写着 ZCode，用脚本补齐品牌名
+# 2) 解决冲突（热点文件见下节）
+# 3) 上游新文案仍写着 ZCode，用脚本补齐品牌名
 python3 scripts/apply-brand-naming.py --check    # 列出遗留项，退出码 1 表示有遗留
 python3 scripts/apply-brand-naming.py --write    # 补齐
 
-# 3) 回归验证
+# 4) 回归验证：默认关闭项是否仍成立
+pnpm check:defaults              # 遥测、厂商服务、登录门禁、更新源
 pnpm typecheck
 pnpm lint
 ```
@@ -227,6 +232,7 @@ pnpm lint
 ## 同步后自检
 
 ```bash
+pnpm check:defaults                                    # 默认关闭项未被改回
 python3 scripts/apply-brand-naming.py --check          # 品牌文案无遗留
 grep -rn "dev.zcode.app" packages/desktop/scripts/     # 无残留上游 appId
 grep -rn "initializeCrashCapture(logger, true)" packages/desktop/src/   # 无残留硬编码
