@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ZCode-Libre — ZCode 的社区分支</title>
+    <meta
+      name="description"
+      content="ZCode-Libre 是 ZCode 的社区分支：保留完整功能，遥测与厂商服务默认关闭，模型用 API Key 直接接入，与上游保持可同步。"
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Crect width='256' height='256' rx='128' fill='%23232136'/%3E%3Cpath d='M134.4.13 116.48 25.6a13 13 0 0 1-12.42 6.4H6.4V0ZM256 .13 102.4 217.73H0L153.6.13ZM121.6 217.73l18.05-25.6a13 13 0 0 1 12.42-6.4h97.53v32Z' fill='%2338bdf8'/%3E%3C/svg%3E" />
+    <style>
+      :root {
+        --bg: #1a1826;
+        --bg-elevated: #232136;
+        --card: #2a2740;
+        --border: rgba(196, 167, 231, 0.18);
+        --text: #eae8ff;
+        --text-muted: #cdcbe0;
+        --text-faint: #8b86a8;
+        --accent: #c4a7e7;
+        --accent-2: #38bdf8;
+        --accent-3: #5eead4;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        background:
+          radial-gradient(900px 500px at 12% -8%, rgba(196, 167, 231, 0.18), transparent 60%),
+          radial-gradient(800px 460px at 88% 8%, rgba(56, 189, 248, 0.12), transparent 62%),
+          var(--bg);
+        color: var(--text);
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          "PingFang SC",
+          "Microsoft YaHei",
+          sans-serif;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 940px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 28px 0 8px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 650;
+        font-size: 17px;
+        letter-spacing: 0.01em;
+      }
+      .brand svg {
+        width: 30px;
+        height: 30px;
+        display: block;
+      }
+      .lang {
+        display: flex;
+        gap: 4px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 3px;
+      }
+      .lang button {
+        border: 0;
+        background: transparent;
+        color: var(--text-muted);
+        font: inherit;
+        font-size: 13px;
+        padding: 4px 12px;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+      .lang button[aria-pressed="true"] {
+        background: var(--accent);
+        color: #191726;
+        font-weight: 600;
+      }
+      .hero {
+        padding: 56px 0 40px;
+      }
+      h1 {
+        font-size: clamp(30px, 5vw, 46px);
+        line-height: 1.18;
+        letter-spacing: -0.02em;
+        font-weight: 700;
+        margin-bottom: 18px;
+      }
+      h1 em {
+        font-style: normal;
+        background: linear-gradient(100deg, var(--accent-3), var(--accent-2) 45%, var(--accent));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .lead {
+        font-size: 17px;
+        color: var(--text-muted);
+        max-width: 720px;
+      }
+      .cta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 28px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 11px 20px;
+        border-radius: 10px;
+        font-size: 14.5px;
+        font-weight: 600;
+        text-decoration: none;
+        border: 1px solid transparent;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #191726;
+      }
+      .btn-ghost {
+        border-color: var(--border);
+        color: var(--text);
+      }
+      section {
+        padding: 34px 0;
+        border-top: 1px solid var(--border);
+      }
+      h2 {
+        font-size: 20px;
+        font-weight: 650;
+        margin-bottom: 6px;
+      }
+      .section-note {
+        color: var(--text-faint);
+        font-size: 14px;
+        margin-bottom: 22px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(258px, 1fr));
+        gap: 14px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px 18px 20px;
+      }
+      .card h3 {
+        font-size: 15px;
+        font-weight: 650;
+        margin-bottom: 7px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--accent-2);
+        flex: none;
+      }
+      .dot.teal {
+        background: var(--accent-3);
+      }
+      .dot.purple {
+        background: var(--accent);
+      }
+      .card p {
+        font-size: 14px;
+        color: var(--text-muted);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 11px 12px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+      th {
+        color: var(--text-faint);
+        font-weight: 600;
+        font-size: 12.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      td:first-child {
+        color: var(--text);
+        white-space: nowrap;
+      }
+      td:last-child {
+        color: var(--text-muted);
+      }
+      code {
+        background: rgba(196, 167, 231, 0.12);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 1.5px 6px;
+        font-size: 13px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      pre {
+        background: var(--bg-elevated);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 18px;
+        overflow-x: auto;
+        font-size: 13.5px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: var(--text-muted);
+      }
+      ul.plain {
+        list-style: none;
+        display: grid;
+        gap: 9px;
+        font-size: 14.5px;
+        color: var(--text-muted);
+      }
+      ul.plain li {
+        padding-left: 20px;
+        position: relative;
+      }
+      ul.plain li::before {
+        content: "";
+        position: absolute;
+        left: 2px;
+        top: 10px;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+      a {
+        color: var(--accent-2);
+      }
+      footer {
+        padding: 30px 0 46px;
+        border-top: 1px solid var(--border);
+        color: var(--text-faint);
+        font-size: 13.5px;
+      }
+      footer p + p {
+        margin-top: 7px;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      @media (max-width: 560px) {
+        .hero {
+          padding: 36px 0 28px;
+        }
+        th:nth-child(2),
+        td:nth-child(2) {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="brand">
+          <svg viewBox="0 0 256 256" fill="none" aria-hidden="true">
+            <circle cx="128" cy="128" r="128" fill="#232136" />
+            <circle cx="128" cy="128" r="126" fill="none" stroke="#c4a7e7" stroke-opacity="0.45" stroke-width="2.5" />
+            <g transform="translate(50 61.578125) scale(0.609375)" fill="#38bdf8">
+              <path d="M134.4 0.130152L116.48 25.6022C113.665 29.5699 109.054 32.0019 104.064 32.0019H6.3999V0C6.3999 0.130149 134.4 0.130152 134.4 0.130152Z" />
+              <path d="M256 0.130127L102.401 217.732H0L153.599 0.130127H256Z" />
+              <path d="M121.601 217.732L139.65 192.134C142.465 188.166 147.076 185.734 152.067 185.734H249.604V217.736H121.601V217.732Z" />
+            </g>
+          </svg>
+          <span>ZCode-Libre</span>
+        </div>
+        <div class="lang" role="group" aria-label="Language">
+          <button type="button" id="lang-zh" aria-pressed="true">中文</button>
+          <button type="button" id="lang-en" aria-pressed="false">English</button>
+        </div>
+      </header>
+
+      <main>
+        <div class="hero">
+          <h1 data-zh>ZCode 的<em>社区分支</em>，只做该做的改动</h1>
+          <h1 data-en hidden>An independent <em>community fork</em> of ZCode</h1>
+          <p class="lead" data-zh>
+            保留完整功能与上游可同步性；遥测与厂商服务默认关闭，模型用你自己的 API Key 直接接入，会话与设置仍与官方客户端共用同一份数据。
+          </p>
+          <p class="lead" data-en hidden>
+            Full upstream feature set, kept in sync. Telemetry and vendor services are off by default,
+            models connect with your own API key, and sessions stay shared with the official client.
+          </p>
+          <div class="cta">
+            <a class="btn btn-primary" href="https://github.com/wenyinos/ZCode-Libre/releases">
+              <span data-zh>下载</span><span data-en hidden>Download</span>
+            </a>
+            <a class="btn btn-ghost" href="https://github.com/wenyinos/ZCode-Libre">GitHub</a>
+            <a class="btn btn-ghost" href="https://github.com/wenyinos/ZCode-Libre/blob/main/UPSTREAM.md">
+              <span data-zh>与上游的差异</span><span data-en hidden>Upstream differences</span>
+            </a>
+          </div>
+        </div>
+
+        <section>
+          <h2 data-zh>默认关闭的东西</h2>
+          <h2 data-en hidden>Off by default</h2>
+          <p class="section-note" data-zh>上游这些能力都保留在代码里，只是不再默认启用；把开关打开即恢复原行为。</p>
+          <p class="section-note" data-en hidden>Upstream keeps the code — it is simply not enabled by default. Flip the switch to restore it.</p>
+          <div class="grid">
+            <div class="card">
+              <h3><span class="dot teal"></span><span data-zh>遥测与监控</span><span data-en hidden>Telemetry</span></h3>
+              <p data-zh>数仓上报、ARMS、OTLP 全部默认关闭；采样器注册也一并纳入总开关，不留后台常驻定时器。</p>
+              <p data-en hidden>Warehouse reporting, ARMS and OTLP are off; sampler registration is gated by the same switch, so nothing keeps polling in the background.</p>
+            </div>
+            <div class="card">
+              <h3><span class="dot"></span><span data-zh>官方账号体系</span><span data-en hidden>Account sign-in</span></h3>
+              <p data-zh>不要求登录，也不再用账号状态作为启动门禁；模型通过 API Key 直接接入。</p>
+              <p data-en hidden>No sign-in required, and account state no longer gates startup. Models connect directly with an API key.</p>
+            </div>
+            <div class="card">
+              <h3><span class="dot purple"></span><span data-zh>厂商服务</span><span data-en hidden>Vendor services</span></h3>
+              <p data-zh>反馈、会话分享、套餐购买入口、插件市场远端源默认关闭；本地内置插件不受影响。</p>
+              <p data-en hidden>Feedback, conversation sharing, plan purchase and the remote plugin marketplace are off; bundled plugins still work.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-zh>相对上游多做的事</h2>
+          <h2 data-en hidden>What this fork adds</h2>
+          <div class="grid">
+            <div class="card">
+              <h3><span class="dot"></span><span data-zh>模型额度显示</span><span data-en hidden>Model balance</span></h3>
+              <p data-zh>用已配置的 API Key 查询 DeepSeek、GLM Coding、Kimi、MiniMax、OpenRouter 的余额与套餐余量；未配置的厂商自动隐藏。</p>
+              <p data-en hidden>Query balances for DeepSeek, GLM Coding, Kimi, MiniMax and OpenRouter using the keys you already configured. Providers without one stay hidden.</p>
+            </div>
+            <div class="card">
+              <h3><span class="dot teal"></span><span data-zh>透明的紫色主题</span><span data-en hidden>Translucent theme</span></h3>
+              <p data-zh>「紫夜」主题让桌面与窗口材质透出来，色板取自 Zed 的 Nightfox 主题包。Web 端自动改用纯色。</p>
+              <p data-en hidden>A "Dusk" theme reveals the desktop through vibrancy and acrylic, with a palette taken from Zed's Nightfox pack. The web build falls back to solid colour.</p>
+            </div>
+            <div class="card">
+              <h3><span class="dot purple"></span><span data-zh>更新只检测，不代装</span><span data-en hidden>Check-only updates</span></h3>
+              <p data-zh>检测本仓库的 Release 并引导你前往下载，不在应用内下载或安装——避免被装回官方版本。</p>
+              <p data-en hidden>Detects a newer release and sends you to the download page. Nothing is installed in-app, so you can never be silently switched back to upstream.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2 data-zh>与官方客户端的边界</h2>
+          <h2 data-en hidden>How it relates to upstream</h2>
+          <p class="section-note" data-zh>两者可以并排安装，数据边界清晰：</p>
+          <p class="section-note" data-en hidden>Install side by side; the data boundary is explicit:</p>
+          <table>
+            <tr>
+              <th data-zh>项目</th>
+              <th data-zh>说明</th>
+              <th data-en hidden>Item</th>
+              <th data-en hidden>Behaviour</th>
+            </tr>
+            <tr>
+              <td data-zh>会话与模型设置</td>
+              <td data-zh>存放在 <code>.zcode</code> 数据根，与官方客户端共用同一份，装上即可读到既有对话与配置。</td>
+              <td data-en hidden>Sessions &amp; settings</td>
+              <td data-en hidden>Shared through the <code>.zcode</code> data root, so existing conversations and configuration carry over.</td>
+            </tr>
+            <tr>
+              <td data-zh>界面偏好</td>
+              <td data-zh>使用独立的 Electron 数据目录，两者互不影响，也因此可以同时运行。</td>
+              <td data-en hidden>UI preferences</td>
+              <td data-en hidden>A separate Electron data directory keeps them independent — which is why both can run at once.</td>
+            </tr>
+            <tr>
+              <td data-zh>跨端契约</td>
+              <td data-zh><code>zcode://</code> 协议、<code>@zcode/*</code> 包名、<code>ZCODE_*</code> 环境变量与 <code>.zcode</code> 目录名保持与上游一致。</td>
+              <td data-en hidden>Contracts</td>
+              <td data-en hidden>The <code>zcode://</code> scheme, <code>@zcode/*</code> scopes, <code>ZCODE_*</code> variables and the <code>.zcode</code> directory intentionally match upstream.</td>
+            </tr>
+          </table>
+        </section>
+
+        <section>
+          <h2 data-zh>本地构建</h2>
+          <h2 data-en hidden>Build locally</h2>
+          <p class="section-note" data-zh>需要 Git、Node.js 24.14.0 与 pnpm 10.33.2，版本以仓库的 <code>mise.toml</code> 为准。</p>
+          <p class="section-note" data-en hidden>Requires Git, Node.js 24.14.0 and pnpm 10.33.2; <code>mise.toml</code> is the source of truth.</p>
+          <pre><code>git clone https://github.com/wenyinos/ZCode-Libre.git
+cd ZCode-Libre
+pnpm bootstrap
+pnpm dev:desktop     # 桌面开发 / desktop dev
+pnpm bundle:desktop  # 打包当前平台 / package for this platform</code></pre>
+        </section>
+
+        <section>
+          <h2 data-zh>许可与来源</h2>
+          <h2 data-en hidden>License &amp; provenance</h2>
+          <ul class="plain">
+            <li data-zh>源码来自 ZCode，第一方代码依 Apache-2.0 授权，原始版权归 Z.AI Co., Ltd 所有，授权与声明保持上游原样。</li>
+            <li data-en hidden>Source comes from ZCode. First-party code is Apache-2.0; original copyright remains with Z.AI Co., Ltd, and the license text is unchanged.</li>
+            <li data-zh>本分支的修改与新增功能同样以 Apache-2.0 提供；品牌资源与构建产物由本分支维护。</li>
+            <li data-en hidden>Changes and additions in this fork are offered under the same Apache-2.0 terms; brand assets and build artifacts are maintained here.</li>
+            <li data-zh>与 Z.ai 无从属关系，也不代表其立场。</li>
+            <li data-en hidden>Not affiliated with, nor endorsed by, Z.ai.</li>
+          </ul>
+        </section>
+      </main>
+
+      <footer>
+        <p>
+          <a href="https://github.com/wenyinos/ZCode-Libre">GitHub</a> ·
+          <a href="https://github.com/wenyinos/ZCode-Libre/issues"><span data-zh>问题反馈</span><span data-en hidden>Issues</span></a> ·
+          <a href="https://github.com/wenyinos/ZCode-Libre/discussions"><span data-zh>讨论</span><span data-en hidden>Discussions</span></a> ·
+          <a href="https://github.com/wenyinos/ZCode-Libre/blob/main/NOTICE.md"><span data-zh>项目声明</span><span data-en hidden>Notice</span></a>
+        </p>
+        <p data-zh>ZCode-Libre 是 ZCode 的社区分支，遵循 Chrome → Chromium、VS Code → VSCodium 的分支模式。</p>
+        <p data-en hidden>ZCode-Libre follows the same pattern as Chrome → Chromium and VS Code → VSCodium.</p>
+      </footer>
+    </div>
+
+    <script>
+      (() => {
+        const buttons = { zh: document.getElementById("lang-zh"), en: document.getElementById("lang-en") };
+        const apply = (lang) => {
+          document.documentElement.lang = lang === "en" ? "en" : "zh-CN";
+          document.title = lang === "en" ? "ZCode-Libre — a community fork of ZCode" : "ZCode-Libre — ZCode 的社区分支";
+          document.querySelectorAll("[data-zh]").forEach((el) => el.toggleAttribute("hidden", lang === "en"));
+          document.querySelectorAll("[data-en]").forEach((el) => el.toggleAttribute("hidden", lang !== "en"));
+          buttons.zh.setAttribute("aria-pressed", String(lang !== "en"));
+          buttons.en.setAttribute("aria-pressed", String(lang === "en"));
+        };
+        buttons.zh.addEventListener("click", () => apply("zh"));
+        buttons.en.addEventListener("click", () => apply("en"));
+        // 首次访问按浏览器语言选择。
+        apply((navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en");
+      })();
+    </script>
+  </body>
+</html>
