@@ -20,6 +20,7 @@ import type {
   IProviderSettingsService,
 } from "./model-provider/providerFacadeServices.js";
 import type { IUsageStatsService } from "./usage-stats/usageStats.js";
+import type { IProviderBalanceService } from "./provider-balance/providerBalance.js";
 import type { ICodingPlanSubscriptionService } from "./coding-plan-subscription/codingPlanSubscription.js";
 import type { IClientConfigService } from "./client-config/clientConfig.js";
 import type { IClientScenesService } from "./client-scenes/clientScenes.js";
@@ -69,6 +70,8 @@ export interface IServiceAccessor {
   /** 当前 Environment Registry 发布的唯一模型选择 View。 */
   readonly modelSelectionService: IModelSelectionService;
   readonly usageStatsService: IUsageStatsService;
+  /** 模型额度：用已配置的 API Key 查询各厂商余额与套餐余量。 */
+  readonly providerBalanceService: IProviderBalanceService;
   readonly codingPlanSubscriptionService: ICodingPlanSubscriptionService;
   readonly clientConfigService: IClientConfigService;
   readonly clientScenesService: IClientScenesService;

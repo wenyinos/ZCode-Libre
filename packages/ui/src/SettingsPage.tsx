@@ -149,6 +149,10 @@ function SettingsUsageProviderTabs({
       id: "app" as const,
       label: intl.formatMessage({ id: "settings.usage.tab.appUsage" }),
     },
+    {
+      id: "balance" as const,
+      label: intl.formatMessage({ id: "settings.usage.tab.balance" }),
+    },
     ...codingPlanSources.map((source, index) => ({
       id: createSettingsUsageCodingPlanTabId(source.id),
       label: resolveSettingsUsageCodingPlanTabLabel({
@@ -1293,6 +1297,7 @@ export function SettingsPage({
         value === "dark" ||
         value === "zai-light" ||
         value === "zai-dark" ||
+        value === "zai-dusk" ||
         value === "system"
       ) {
         runUserAction({

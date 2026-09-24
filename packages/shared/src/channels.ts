@@ -112,6 +112,8 @@ export const ServiceChannels = {
   ProviderProvisioningTarget: "provider-provisioning-target",
   /** 本地 usage 统计服务 */
   UsageStats: "usage-stats",
+  /** 模型额度服务：用已配置的 API Key 查询各厂商余额与套餐余量 */
+  ProviderBalance: "provider-balance",
   /** Coding Plan 订阅购买服务 */
   CodingPlanSubscription: "coding-plan-subscription",
   ClientConfig: "client-config",
