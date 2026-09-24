@@ -236,6 +236,24 @@ const PACKAGING_PRUNE_PATTERNS = [
   "!**/SECURITY*",
 ];
 
+const LINUX_PACKAGE_TARGETS = ["deb", "rpm", "pacman"];
+
+/**
+ * Linux 包格式：默认全出；CI 通过 ZCODE_LINUX_TARGET 限定为单个格式。
+ * 取值会与允许集合求交集，未知值一律回落到默认，避免把构建配置交给外部输入。
+ */
+function resolveLinuxPackageTargets() {
+  const override = process.env.ZCODE_LINUX_TARGET?.trim();
+  if (!override) {
+    return LINUX_PACKAGE_TARGETS;
+  }
+  const picked = override
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter((item) => LINUX_PACKAGE_TARGETS.includes(item));
+  return picked.length > 0 ? picked : LINUX_PACKAGE_TARGETS;
+}
+
 function buildDesktopArtifactName(platformName, extension = "${ext}") {
   // 测试环境产物必须和正式安装包文件名区分，避免上传、下载或人工验收时混用。
   return `\${productName}-\${version}-${platformName}-\${arch}${desktopArtifactEnvSuffix}.${extension}`;
@@ -697,7 +715,9 @@ export default {
   linux: {
     // ZCode-Libre：不产出 AppImage。桌面端以系统包分发（deb / rpm / pacman），
     // 免安装的单文件形态不在发行范围内。
-    target: ["deb", "rpm", "pacman"],
+    // CI 按包格式拆 job，用 ZCODE_LINUX_TARGET 让每个 job 只产出对应格式，
+    // 从而让 deb / rpm / pacman 各自在目标发行版容器内构建。
+    target: resolveLinuxPackageTargets(),
     artifactName: buildDesktopArtifactName("linux"),
     // desktop 包名是 scoped package（@zcode/desktop），electron-builder 默认会把
     // Linux executable/Icon 推成 @zcodedesktop。部分桌面环境无法按这个 icon name 命中

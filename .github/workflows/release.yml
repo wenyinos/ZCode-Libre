@@ -19,6 +19,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # macOS 与 Windows 在托管 runner 上直接构建。
+  # macOS 只出 arm64：Apple 已停止支持 Intel 机型。
+  # Windows 只出 x64：预编译原生工具（bfs/ripgrep/ugrep）没有 Windows 产物。
   build:
     name: Build ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
@@ -26,23 +29,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # 用对应架构的托管 runner 原生构建，避免交叉编译时原生模块（node-pty、koffi 等）
-          # 与预编译工具架构不匹配。
           - name: macOS-arm64
             os: macos-latest
             args: --os mac --arch arm64
-          # Windows 只出 x64：仓库的预编译原生工具（bfs/ripgrep/ugrep）只提供 macOS 与
-          # Linux 的 x64+aarch64，没有 Windows 产物；为 arm64 单独补下载或跳过逻辑会显著
-          # 增加构建复杂度，收益不成比例。
           - name: Windows-x64
             os: windows-latest
             args: --os win --arch x64
-          - name: Linux-x64
-            os: ubuntu-latest
-            args: --os linux --arch x64
-          - name: Linux-arm64
-            os: ubuntu-24.04-arm
-            args: --os linux --arch arm64
     steps:
       - uses: actions/checkout@v4
 
@@ -50,27 +42,17 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # 版本以仓库的 .nvmrc / mise.toml 为准，避免 CI 与本地分叉。
           node-version-file: .nvmrc
           cache: pnpm
 
-      # 桌面打包需要 workspace 依赖与随包的本地运行资源，按 README 的初始化流程准备。
       - name: 安装依赖
         run: pnpm install --frozen-lockfile
 
       - name: 准备构建资源
         run: pnpm bootstrap
 
-      # 产物未签名：macOS 首次打开会被 Gatekeeper 拦截，Windows 会提示 SmartScreen，
-      # 下载页与 README 都写明了绕过方式。签名需要各平台的证书，不在此 workflow 范围内。
-      - name: 安装 Linux 打包工具
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          # fpm 生成 deb 用系统自带的 dpkg-deb；生成 rpm 需要 rpmbuild、生成 pacman 包
-          # 需要 bsdtar，这两者在 ubuntu runner 上默认缺失，fpm 会以 exit 127 失败。
-          sudo apt-get install -y --no-install-recommends rpm libarchive-tools
-
+      # 产物未签名：macOS 首次打开被 Gatekeeper 拦截、Windows 提示 SmartScreen，
+      # 下载页写明了绕过方式。签名需要各平台证书，不在此 workflow 范围内。
       - name: 打包
         run: pnpm bundle:desktop -- ${{ matrix.args }}
 
@@ -83,13 +65,79 @@ jobs:
             packages/desktop/dist/*.dmg
             packages/desktop/dist/*.zip
             packages/desktop/dist/*.exe
+
+  # Linux 按包格式拆分：deb 在 Debian、rpm 在 Fedora、pacman 在 Arch 容器内构建，
+  # 各自使用发行版原生的打包后端（dpkg-deb / rpmbuild / bsdtar），
+  # 而不是在单一发行版上补装异构后端——工具版本与元数据默认值都会更贴合目标发行版。
+  build-linux:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Linux-deb-x64, os: ubuntu-latest, container: "debian:12", pkg: deb, arch: x64 }
+          - { name: Linux-deb-arm64, os: ubuntu-24.04-arm, container: "debian:12", pkg: deb, arch: arm64 }
+          - { name: Linux-rpm-x64, os: ubuntu-latest, container: "fedora:latest", pkg: rpm, arch: x64 }
+          - { name: Linux-rpm-arm64, os: ubuntu-24.04-arm, container: "fedora:latest", pkg: rpm, arch: arm64 }
+          - { name: Linux-pacman-x64, os: ubuntu-latest, container: "archlinux:base-devel", pkg: pacman, arch: x64 }
+          - { name: Linux-pacman-arm64, os: ubuntu-24.04-arm, container: "archlinux:base-devel", pkg: pacman, arch: arm64 }
+    steps:
+      # 容器里没有 Node，也未必有所需格式的打包后端，先按发行版补齐。
+      - name: 安装基础工具与打包后端
+        run: |
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update
+            apt-get install -y --no-install-recommends ca-certificates curl git xz-utils dpkg-dev
+          elif command -v dnf >/dev/null 2>&1; then
+            dnf install -y curl git xz tar which rpm-build
+          elif command -v pacman >/dev/null 2>&1; then
+            pacman -Sy --noconfirm curl git xz tar libarchive
+          fi
+
+      - uses: actions/checkout@v4
+
+      # 直接取 Node 官方二进制而非走各发行版仓库：三个发行版的 Node 版本差异很大，
+      # 统一版本才能与 mise.toml / .nvmrc 保持一致。
+      - name: 安装 Node 24 与 pnpm
+        run: |
+          case "$(uname -m)" in
+            x86_64) NODE_ARCH=x64 ;;
+            aarch64|arm64) NODE_ARCH=arm64 ;;
+            *) echo "unsupported arch: $(uname -m)"; exit 1 ;;
+          esac
+          curl -fsSL "https://nodejs.org/dist/v24.14.0/node-v24.14.0-linux-${NODE_ARCH}.tar.xz" \
+            | tar -xJ -C /usr/local --strip-components=1
+          corepack enable
+          corepack prepare pnpm@10.33.2 --activate
+          node --version && pnpm --version
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 准备构建资源
+        run: pnpm bootstrap
+
+      # ZCODE_LINUX_TARGET 让每个 job 只产出自己那一种格式。
+      - name: 打包
+        env:
+          ZCODE_LINUX_TARGET: ${{ matrix.pkg }}
+        run: pnpm bundle:desktop -- --os linux --arch ${{ matrix.arch }}
+
+      - name: 收集产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          if-no-files-found: error
+          path: |
             packages/desktop/dist/*.deb
             packages/desktop/dist/*.rpm
             packages/desktop/dist/*.pkg.tar.zst
 
   publish:
     name: Publish release
-    needs: build
+    needs: [build, build-linux]
     # 只有打了 v* tag、或手动填了 tag 时才发布；否则 Runs 里只留构建产物。
     if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
     runs-on: ubuntu-latest
@@ -104,7 +152,6 @@ jobs:
       - name: 生成校验和
         run: |
           cd artifacts
-          # 汇总所有平台产物，供用户下载后核对。
           sha256sum * | grep -v 'checksums.txt' > checksums.txt
           cat checksums.txt
 
@@ -119,10 +166,10 @@ jobs:
           body: |
             ## 下载 / Downloads
 
-            未签名构建，首次打开会被系统安全提示拦截；用下方的 `checksums.txt` 核对 SHA256。
+            未签名构建，首次打开会被系统安全提示拦截；用下方 `checksums.txt` 核对 SHA256。
             Unsigned builds — the first launch is blocked by Gatekeeper / SmartScreen. Verify against `checksums.txt`.
 
-            **macOS**（Apple Silicon）
+            **macOS**（Apple Silicon / arm64）
 
             下载 `.dmg`，把 ZCode-Libre 拖入「应用程序」。首次打开若被拦截：
             `sudo xattr -rd com.apple.quarantine /Applications/ZCode-Libre.app`
@@ -131,15 +178,17 @@ jobs:
 
             下载 `.exe`，SmartScreen 提示时选「更多信息」→「仍要运行」。
 
-            **Linux**（x64）
+            **Linux**（x64 与 arm64 均可用）
 
-            按发行版选择系统包，并核对 `checksums.txt`。
+            按发行版选择系统包：包在对应发行版容器内构建，使用该发行版原生的打包后端。
 
             | 发行版 / Distro | 包格式 |
             |---|---|
             | Debian / Ubuntu | `.deb`（`sudo apt install ./<file>.deb`） |
             | Fedora / RHEL / openSUSE | `.rpm`（`sudo dnf install ./<file>.rpm`） |
             | Arch Linux | `.pkg.tar.zst`（`sudo pacman -U <file>`） |
+
+            架构按文件名后缀区分：`x86_64`/`amd64` 为 64 位 x86，`aarch64`/`arm64` 为 ARM64。
 
             安装后从应用菜单或 `zcode-libre` 启动。本分支与官方 ZCode 共用 `.zcode` 数据根，
             但使用独立的界面偏好目录，因此两者可以同时安装、同时运行。
