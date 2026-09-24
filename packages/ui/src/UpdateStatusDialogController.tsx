@@ -164,9 +164,10 @@ export function UpdateStatusDialogController({
     async (enabled: boolean) => {
       setAutoDownloadAndInstallUpdates(enabled);
       await platform.setAutoDownloadAndInstallUpdates?.(enabled);
-      if (enabled && updateState?.kind === "update-available") {
+      if (enabled && updateState?.kind === "update-available" && !updateState.downloadUrl) {
         // 功能原因：用户在“已发现更新”弹窗里勾选自动下载时，期望当前版本也进入自动流程。
         // 这里只触发同一个下载入口；真正是否下载、缓存命中和状态广播仍由 main 进程裁决。
+        // 自有 Release 模式（downloadUrl 存在）只做检测，不进入应用内下载流程。
         await handleDownloadUpdate();
       }
     },
@@ -280,10 +281,15 @@ export function UpdateStatusDialogController({
     ? intl.formatMessage({ id: "updateDialog.releaseDate" }, { date: restoredReleaseDate })
     : null;
 
+  // 自有 Release 模式下主进程会带回下载页地址，界面据此把主按钮切成「前往下载」。
+  const downloadPageUrl =
+    updateState?.kind === "update-available" ? (updateState.downloadUrl ?? null) : null;
+
   return (
     <UpdateStatusDialog
       autoDownloadAndInstallUpdates={autoDownloadAndInstallUpdates}
       displayVersion={displayVersion}
+      downloadPageUrl={downloadPageUrl}
       edgeToEdge={edgeToEdge}
       intl={intl}
       isUpdateActionPending={updateActionInFlight !== null}

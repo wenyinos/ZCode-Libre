@@ -22,6 +22,7 @@ type LocalizedUpdateReleaseNotes = {
 
 export function UpdateStatusDialog({
   displayVersion,
+  downloadPageUrl,
   edgeToEdge = false,
   intl,
   isUpdateActionPending,
@@ -30,6 +31,7 @@ export function UpdateStatusDialog({
   onCancelDownload,
   onDownloadUpdate,
   onOpenChange,
+  onOpenReleaseNotesExternalUrl,
   onRestartUpdate,
   onSkipUpdate,
   open,
@@ -41,6 +43,11 @@ export function UpdateStatusDialog({
   skippableVersion,
 }: {
   displayVersion: string;
+  /**
+   * 自有 Release 的下载页地址。存在时表示本次更新只做检测：主按钮改为「前往下载」，
+   * 在浏览器中打开该地址，由用户自行下载安装，应用内不再下载。
+   */
+  downloadPageUrl?: string | null;
   edgeToEdge?: boolean;
   intl: IntlInstance;
   isUpdateActionPending: boolean;
@@ -150,7 +157,8 @@ export function UpdateStatusDialog({
       ) : null}
 
       <div className={cn("[app-region:no-drag]", isDownloading ? "-mt-2" : null)}>
-        {isBeforeDownload ? (
+        {/* 自有 Release 模式只在浏览器里下载，应用内不会下载，自动下载开关无意义，隐藏。 */}
+        {isBeforeDownload && !downloadPageUrl ? (
           <label className="mb-4 flex min-w-0 items-center gap-2 text-ui-base leading-5 text-foreground">
             <Checkbox
               checked={autoDownloadAndInstallUpdates}
@@ -238,6 +246,16 @@ export function UpdateStatusDialog({
                 onClick={() => void onCancelDownload()}
               >
                 {intl.formatMessage({ id: "updateDialog.cancelDownload" })}
+              </Button>
+            ) : downloadPageUrl ? (
+              <Button
+                type="button"
+                size="lg"
+                className="h-9 px-4"
+                disabled={isUpdateActionPending}
+                onClick={() => onOpenReleaseNotesExternalUrl(downloadPageUrl)}
+              >
+                {intl.formatMessage({ id: "updateDialog.goToDownload" })}
               </Button>
             ) : (
               <Button

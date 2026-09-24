@@ -6,6 +6,7 @@ import {
   desktopMenuMessageIds,
   formatDesktopMenuMessage,
   getDesktopMenuMessage,
+  LIBRE_VENDOR_SERVICES,
   PlatformChannels,
   resolveRuntimeZCodeEndpointOrigin,
   ZCODE_VERSION,
@@ -19,6 +20,7 @@ import { app, BrowserWindow, ipcMain, Menu } from "electron";
 import pkg, { CancellationToken } from "electron-updater";
 import semver from "semver";
 import { logger } from "./logger.js";
+import { checkSelfHostedRelease } from "./githubReleaseUpdates.js";
 import { getElectronReleasePlatform, ManifestUpdateProvider } from "./manifestUpdateProvider.js";
 const { autoUpdater } = pkg;
 
@@ -1502,7 +1504,9 @@ export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Pro
   // Windows/NSIS 在窗口关闭后会异步启动安装；如果用户紧接着关机，安装器可能被系统中断，
   // 留下半更新状态并导致下次启动失败。
   // 这里仅在 Windows 关闭“退出即自动安装”，要求用户显式点更新；其他平台保持原有行为，避免改动既有升级链路。
-  autoUpdater.autoInstallOnAppQuit = process.platform !== "win32";
+  // ZCode-Libre：自有 Release 模式下全程只做检测，任何平台都不启用退出时自动安装。
+  autoUpdater.autoInstallOnAppQuit =
+    !LIBRE_VENDOR_SERVICES.selfHostedReleaseUpdates && process.platform !== "win32";
   autoUpdater.logger = logger;
   applyManifestUpdateProvider(options);
 
@@ -1753,6 +1757,13 @@ export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Pro
     await skipAvailableUpdateVersion(validatedVersion, options.settingService);
   });
 
+  // ZCode-Libre：自有 Release 模式不启用 electron-updater 的启动检查与轮询。
+  // 这两条路径会请求厂商 manifest（给出的是上游 ZCode 版本），而本分支的更新检测
+  // 只由用户手动触发，走 checkSelfHostedRelease 查询自有 GitHub Release。
+  if (LIBRE_VENDOR_SERVICES.selfHostedReleaseUpdates) {
+    return;
+  }
+
   triggerCheckForUpdates("startup");
 
   autoUpdatePollTimer = setInterval(() => {
@@ -1834,6 +1845,52 @@ export function requestForceAutoUpdate(
   };
 }
 
+/**
+ * 自有 Release 检测路径：只判断版本并带上下载页，不触发 electron-updater 的下载或安装。
+ * 与原有流程共用 UpdateCheckResult / UpdateStatePayload，菜单与标题栏按钮无需新增分支；
+ * 并发保护复用 beginAutoUpdateCheck / completeAutoUpdateCheck，连点检查时旧结果不会覆盖新结果。
+ */
+async function runSelfHostedReleaseCheck(targetWindow: BrowserWindow): Promise<void> {
+  const checkId = beginAutoUpdateCheck();
+  setAutoUpdaterMenuState({ kind: "checking", enabled: true });
+  const currentVersion = getCurrentAppVersionForUpdate();
+  try {
+    const outcome = await checkSelfHostedRelease(currentVersion);
+    if (targetWindow.isDestroyed()) {
+      return;
+    }
+    if (outcome.kind === "error") {
+      setAutoUpdaterMenuState({ kind: "idle", enabled: true });
+      targetWindow.webContents.send(PlatformChannels.UpdateCheckResult, {
+        kind: "error",
+        message: outcome.message,
+      } satisfies UpdateCheckResultPayload);
+      return;
+    }
+    if (outcome.kind === "up-to-date") {
+      setAutoUpdaterMenuState({ kind: "idle", enabled: true });
+      targetWindow.webContents.send(PlatformChannels.UpdateCheckResult, {
+        kind: "up-to-date",
+        currentVersion: outcome.currentVersion,
+      } satisfies UpdateCheckResultPayload);
+      return;
+    }
+    setAutoUpdaterMenuState({
+      kind: "update-available",
+      enabled: true,
+      version: outcome.release.version,
+      downloadUrl: outcome.release.downloadUrl,
+    });
+    targetWindow.webContents.send(PlatformChannels.UpdateCheckResult, {
+      kind: "available",
+      version: outcome.release.version,
+      downloadUrl: outcome.release.downloadUrl,
+    } satisfies UpdateCheckResultPayload);
+  } finally {
+    completeAutoUpdateCheck("self-hosted release check", checkId);
+  }
+}
+
 export function checkForUpdateMenuClick(originWindow?: BrowserWindow | null) {
   logger.info("[auto-update] user clicked Check for Updates");
 
@@ -1854,6 +1911,13 @@ export function checkForUpdateMenuClick(originWindow?: BrowserWindow | null) {
     targetWindow.webContents.send(PlatformChannels.UpdateCheckResult, {
       kind: "dev-skipped",
     } satisfies UpdateCheckResultPayload);
+    return;
+  }
+
+  if (LIBRE_VENDOR_SERVICES.selfHostedReleaseUpdates) {
+    // 自有 Release 检测取代厂商 manifest 流程：只报版本并给出下载页，不下载不安装。
+    // 上游 manifest 会提供官方 ZCode 版本，安装它会覆盖本分支的品牌与默认关闭设置。
+    void runSelfHostedReleaseCheck(targetWindow);
     return;
   }
 
@@ -1887,6 +1951,8 @@ export function checkForUpdateMenuClick(originWindow?: BrowserWindow | null) {
       version: menuState.version,
       ...(menuState.channel ? { channel: menuState.channel } : {}),
       ...(menuState.releaseNotes ? { releaseNotes: menuState.releaseNotes } : {}),
+      // 自有 Release 模式下菜单重放也要带上下载页，否则弹窗会退回应用内下载按钮。
+      ...(menuState.downloadUrl ? { downloadUrl: menuState.downloadUrl } : {}),
     } satisfies UpdateCheckResultPayload);
     return;
   }

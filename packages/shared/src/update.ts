@@ -19,6 +19,11 @@ export type UpdateCheckResultPayload =
       version: string;
       channel?: ElectronReleaseChannel;
       releaseNotes?: PostUpdateReleaseNotesPayload;
+      /**
+       * 自有 Release 的下载页地址。存在时表示本次更新只做检测：界面引导用户前往该地址
+       * 自行下载安装，不在应用内下载。缺省则沿用 electron-updater 的应用内下载流程。
+       */
+      downloadUrl?: string;
     }
   | { kind: "downloading"; version: string }
   | { kind: "already-downloading"; version: string; progress: string }
@@ -38,6 +43,8 @@ export type UpdateStatePayload =
       version: string;
       channel?: ElectronReleaseChannel;
       releaseNotes?: PostUpdateReleaseNotesPayload;
+      /** 自有 Release 下载页；存在时界面按钮引导前往下载，而不是应用内下载安装。 */
+      downloadUrl?: string;
     }
   | {
       kind: "download-progress";
