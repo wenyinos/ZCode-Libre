@@ -272,6 +272,12 @@ export interface AppSettings {
    * 关闭后按钮不再渲染，且不因重启或版本更新自愈，仅能在设置页重新开启。
    */
   computerUseComposerEntryHidden?: boolean;
+  // 厂商服务开关；未设置表示沿用 libre-features.ts 的分支默认值（默认关闭）。
+  vendorServiceSignInEnabled?: boolean;
+  vendorServiceConversationShareEnabled?: boolean;
+  vendorServiceFeedbackEnabled?: boolean;
+  vendorServiceCodingPlanPurchaseEnabled?: boolean;
+  vendorServicePluginMarketplaceEnabled?: boolean;
   /** 自动归档已完成旧任务的总开关 */
   taskAutoArchiveEnabled?: boolean;
   /** 自动归档阈值；当任务最后更新时间早于该天数时允许被归档 */

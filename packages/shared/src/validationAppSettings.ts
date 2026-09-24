@@ -436,6 +436,13 @@ const appSettingsObjectSchema = z.object({
   // 输入框电脑操作入口改为默认不展示，设置项保留、默认关闭。
   // default 只对缺省字段生效，显式存过 false 的用户仍保持展示。
   computerUseComposerEntryHidden: z.boolean().default(true),
+  // ZCode-Libre 厂商服务开关。留空表示沿用 libre-features.ts 的分支默认值（默认关闭），
+  // 用户显式开启后才覆盖；每一项在设置页「隐私与服务」中可自助调整。
+  vendorServiceSignInEnabled: z.boolean().optional(),
+  vendorServiceConversationShareEnabled: z.boolean().optional(),
+  vendorServiceFeedbackEnabled: z.boolean().optional(),
+  vendorServiceCodingPlanPurchaseEnabled: z.boolean().optional(),
+  vendorServicePluginMarketplaceEnabled: z.boolean().optional(),
   taskAutoArchiveEnabled: z.boolean().default(false),
   taskAutoArchiveOlderThanDays: z.number().int().positive().max(365).default(7),
   closeToTrayOnWindows: z.boolean().default(true),
@@ -504,6 +511,12 @@ export const appSettingsPatchSchema = z.object({
   embeddedBrowserAllowInsecureCertificates: z.boolean().optional(),
   embeddedBrowserViewportPreference: embeddedBrowserViewportPreferenceSchema.optional(),
   computerUseComposerEntryHidden: z.boolean().optional(),
+  // 厂商服务开关的 patch 版本：留空沿用策略默认值。
+  vendorServiceSignInEnabled: z.boolean().optional(),
+  vendorServiceConversationShareEnabled: z.boolean().optional(),
+  vendorServiceFeedbackEnabled: z.boolean().optional(),
+  vendorServiceCodingPlanPurchaseEnabled: z.boolean().optional(),
+  vendorServicePluginMarketplaceEnabled: z.boolean().optional(),
   taskAutoArchiveEnabled: z.boolean().optional(),
   taskAutoArchiveOlderThanDays: z.number().int().positive().max(365).optional(),
   closeToTrayOnWindows: z.boolean().optional(),

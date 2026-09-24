@@ -58,6 +58,7 @@ import { ModelProviderSection } from "@/settings/ModelProviderSection.js";
 import { useCodingPlanUpgradeDialog } from "@/settings/CodingPlanUpgradeDialogProvider.js";
 import { useEnterpriseCodingPlanProducts } from "@/settings/model-provider-section/useEnterpriseCodingPlanProducts.js";
 import { UsageStatsSection, type UsageStatsSectionTab } from "@/settings/UsageStatsSection.js";
+import { VendorServicesSection } from "@/settings/VendorServicesSection.js";
 import {
   buildCodingPlanUsageSources,
   type CodingPlanUsageSource,
@@ -1952,6 +1953,8 @@ export function SettingsPage({
                             remoteTarget={activeWorkspaceTab?.remoteTarget}
                             localWorkspacePath={activeWorkspaceTab?.localWorkspacePath}
                           />
+                        ) : activeSection === "vendorServices" ? (
+                          <VendorServicesSection />
                         ) : null}
                       </div>
                     </div>

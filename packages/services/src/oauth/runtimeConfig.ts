@@ -27,8 +27,14 @@ export interface OAuthRuntimeConfig {
  *
  * 注意：这里只能在 host process 使用，避免把敏感配置暴露给 renderer。
  */
-export function createOAuthRuntimeConfig(env: NodeJS.ProcessEnv = process.env): OAuthRuntimeConfig {
+export function createOAuthRuntimeConfig(
+  env: NodeJS.ProcessEnv = process.env,
+  options: { signInEnabled?: boolean } = {},
+): OAuthRuntimeConfig {
   return {
-    providers: [createBigModelProviderRuntimeConfig(env), createZaiProviderRuntimeConfig(env)],
+    providers: [
+      createBigModelProviderRuntimeConfig(env, options.signInEnabled),
+      createZaiProviderRuntimeConfig(env, options.signInEnabled),
+    ],
   };
 }

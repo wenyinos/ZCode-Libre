@@ -14,6 +14,7 @@ import {
 } from "@zcode/shared";
 import type { ISettingService } from "./setting.js";
 import { normalizeSettingsPatch } from "#src/setting/normalizeSettingsPatch.js";
+import { setVendorServiceSettingsSnapshot } from "@zcode/shared";
 import { copyDataDirectory, getDataBaseDir, validateDataBaseDirTarget } from "../paths.js";
 import { isEffectiveDevelopmentNodeEnv } from "../runtime-tools/nodeEnv.js";
 import { maybeThrowInjectedFsFault } from "../fs/fsFaultInjection.js";
@@ -279,6 +280,9 @@ export function createSettingServiceWithMigrations(): {
       await updateQueue;
       const result = await readSettingsWithMeta();
       if (!result.needsMigrationPersist) {
+        // 顺带刷新厂商服务开关快照：服务装配是同步的，消费点在运行期同步读取这份快照，
+        // 放在设置读取的唯一入口可以保证用户改完开关后，下一次读取即生效。
+        setVendorServiceSettingsSnapshot(result.settings);
         return result.settings;
       }
 
@@ -293,7 +297,9 @@ export function createSettingServiceWithMigrations(): {
         await writeSettings(latest.settings, shouldCommit, runSettingsCommit, enterCommitPhase);
       });
 
-      return readSettings();
+      const migratedSettings = await readSettings();
+      setVendorServiceSettingsSnapshot(migratedSettings);
+      return migratedSettings;
     },
 
     async update(patch: Partial<AppSettings>, expectedAccountSettings): Promise<void> {

@@ -11,7 +11,7 @@ import {
 } from "@zcode/provider-node";
 import { getAppConfigDir as resolveAppConfigDir } from "./paths.js";
 import {
-  LIBRE_VENDOR_SERVICES,
+  isVendorServiceEnabled,
   buildLocalMediaPreviewUrl,
   isProviderProvisioningAccountCredentialKey,
   type ProviderProvisioningTrigger,
@@ -2343,6 +2343,9 @@ export function createLocalServices(options: {
     settingService,
     credentialService,
   });
+  // 官方账号登录保持策略默认值（关闭）：createLocalServices 是同步装配，无法在此读异步设置。
+  // 需要账号体系时用 ZAI_OAUTH_ENABLED / BIGMODEL_OAUTH_ENABLED 显式开启；
+  // oauthService 的 signInEnabled 依赖已就绪，将来接入异步装配时可直接传入。
   const oauthService = createOAuthService(credentialService, {
     apiClient,
     onProviderLogout: handleOAuthProviderLogout,
@@ -2421,10 +2424,10 @@ export function createLocalServices(options: {
       return tokenSet?.zcodeJwtToken ?? tokenSet?.accessToken ?? null;
     },
   });
-  // ZCode-Libre：会话分享默认关闭（内容会打包上传到厂商分享服务），远程工作区原本也不支持。
-  // 两种情况都复用现成的 unsupported 实现，代码与类型契约保留，便于跟随上游同步。
+  // ZCode-Libre：会话分享默认关闭（设置页可开启），内容会打包上传到厂商分享服务；
+  // 远程工作区原本也不支持。两种情况都复用现成的 unsupported 实现，保留类型契约。
   const conversationShareService: IConversationShareServiceType =
-    isDesktopAttachedRemote || !LIBRE_VENDOR_SERVICES.conversationShare
+    isDesktopAttachedRemote || !isVendorServiceEnabled("conversationShare")
       ? createUnsupportedConversationShareService({
           message: isDesktopAttachedRemote
             ? "Conversation publishing is not available for remote workspaces"

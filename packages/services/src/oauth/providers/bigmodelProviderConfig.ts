@@ -27,10 +27,16 @@ const BIGMODEL_OAUTH_PROVIDER_CONFIG: Omit<OAuthProviderRuntimeConfig, "appSecre
 
 export function createBigModelProviderRuntimeConfig(
   env: NodeJS.ProcessEnv,
+  signInEnabledOverride?: boolean,
 ): OAuthProviderRuntimeConfig {
   return {
     ...BIGMODEL_OAUTH_PROVIDER_CONFIG,
-    enabled: readBoolean(env, "BIGMODEL_OAUTH_ENABLED", BIGMODEL_OAUTH_PROVIDER_CONFIG.enabled),
+    // 优先级：环境变量 > 设置页开关 > 分支默认值（默认关闭）。
+    enabled: readBoolean(
+      env,
+      "BIGMODEL_OAUTH_ENABLED",
+      signInEnabledOverride ?? BIGMODEL_OAUTH_PROVIDER_CONFIG.enabled,
+    ),
     authorizeUrl:
       readEnv(env, "BIGMODEL_OAUTH_AUTHORIZE_URL") ??
       buildBigModelApiUrl(env, BIGMODEL_AUTHORIZE_PATH),

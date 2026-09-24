@@ -1,5 +1,6 @@
 import {
   Monitor,
+  ShieldCheck,
   Moon,
   Settings,
   Settings2,
@@ -136,6 +137,13 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     id: "computerUse",
     icon: Monitor,
     titleId: "settings.computerUse.title",
+    groupId: "basics",
+  },
+  // 厂商服务开关：默认关闭项的集中入口，与「电脑控制」同属本机能力边界配置。
+  {
+    id: "vendorServices",
+    icon: ShieldCheck,
+    titleId: "settings.vendorServices.title",
     groupId: "basics",
   },
   // 键盘快捷键紧跟「电脑控制」：同属本机操控/效率配置，收纳在基础设置尾部。

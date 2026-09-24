@@ -1,4 +1,4 @@
-import { LIBRE_VENDOR_SERVICES, redactFeedbackText } from "@zcode/shared";
+import { isVendorServiceEnabled, redactFeedbackText } from "@zcode/shared";
 /* eslint-disable max-lines -- 反馈 HTTP 客户端集中维护新后端协议、鉴权头合并、OSS 表单直传和响应归一化。 */
 import { randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
@@ -314,9 +314,9 @@ export class FeedbackHttpClient {
     init?: ApiRequestInit,
     authHeaders?: Record<string, string>,
   ): Promise<T> {
-    // ZCode-Libre：反馈默认关闭，请求在这里统一截断，不再出网。附件上传先经此接口取凭证，
-    // 因此 OSS 直传路径也被一并阻断；本地日志打包、展示等非网络方法保持可用。
-    if (!LIBRE_VENDOR_SERVICES.feedback) {
+    // ZCode-Libre：反馈默认关闭（设置页可开启），请求在这里统一截断。附件上传先经此接口
+    // 取凭证，因此 OSS 直传路径也被一并阻断；本地日志打包、展示等非网络方法保持可用。
+    if (!isVendorServiceEnabled("feedback")) {
       throw new Error("Feedback is disabled in this build");
     }
     const headers = mergeFeedbackRequestHeaders(

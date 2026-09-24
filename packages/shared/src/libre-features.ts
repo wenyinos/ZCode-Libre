@@ -33,3 +33,66 @@ export const LIBRE_VENDOR_SERVICES = {
    */
   selfHostedReleaseUpdates: true,
 } as const;
+
+/** 带用户开关的厂商服务。selfHostedReleaseUpdates 属实现策略，不暴露给用户。 */
+export type VendorServiceId =
+  | "officialAccountLogin"
+  | "conversationShare"
+  | "feedback"
+  | "codingPlanPurchase"
+  | "pluginMarketplaceRemoteSource";
+
+/** 设置页可覆盖的厂商服务开关；留空沿用上面的分支默认值。 */
+export interface VendorServiceSettingsOverride {
+  vendorServiceSignInEnabled?: boolean;
+  vendorServiceConversationShareEnabled?: boolean;
+  vendorServiceFeedbackEnabled?: boolean;
+  vendorServiceCodingPlanPurchaseEnabled?: boolean;
+  vendorServicePluginMarketplaceEnabled?: boolean;
+}
+
+const SETTINGS_KEY_BY_SERVICE = {
+  officialAccountLogin: "vendorServiceSignInEnabled",
+  conversationShare: "vendorServiceConversationShareEnabled",
+  feedback: "vendorServiceFeedbackEnabled",
+  codingPlanPurchase: "vendorServiceCodingPlanPurchaseEnabled",
+  pluginMarketplaceRemoteSource: "vendorServicePluginMarketplaceEnabled",
+} as const satisfies Record<VendorServiceId, keyof VendorServiceSettingsOverride>;
+
+/**
+ * 解析厂商服务的有效开关：用户设置优先，未设置时回到分支默认值。
+ *
+ * 集中一个入口，避免各消费点各写一遍 `?? LIBRE_VENDOR_SERVICES.xxx`——
+ * 漏写默认值就等于把服务重新打开，而这正是回归检查要防的问题。
+ */
+export function resolveVendorServiceEnabled(
+  service: VendorServiceId,
+  settings: VendorServiceSettingsOverride | null | undefined,
+): boolean {
+  const override = settings?.[SETTINGS_KEY_BY_SERVICE[service]];
+  return typeof override === "boolean" ? override : LIBRE_VENDOR_SERVICES[service];
+}
+
+/**
+ * 当前生效的厂商服务设置快照。
+ *
+ * 服务装配是同步的、设置读取是异步的，两者无法直接串联；这里维护进程内快照：
+ * host 启动后异步刷新一次，各消费点同步读取。快照默认是 null，也就是
+ * 「全部按策略默认（关闭）」——即使还没刷新，行为也已经是分支预期，不会误开服务。
+ */
+let vendorServiceSettingsSnapshot: VendorServiceSettingsOverride | null = null;
+
+export function setVendorServiceSettingsSnapshot(
+  settings: VendorServiceSettingsOverride | null,
+): void {
+  vendorServiceSettingsSnapshot = settings;
+}
+
+export function getVendorServiceSettingsSnapshot(): VendorServiceSettingsOverride | null {
+  return vendorServiceSettingsSnapshot;
+}
+
+/** 消费点用这个同步入口，避免每个调用方各自解析默认值。 */
+export function isVendorServiceEnabled(service: VendorServiceId): boolean {
+  return resolveVendorServiceEnabled(service, vendorServiceSettingsSnapshot);
+}

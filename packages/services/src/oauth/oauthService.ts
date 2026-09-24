@@ -70,6 +70,12 @@ interface OAuthServiceDependencies {
   now?: () => number;
   env?: NodeJS.ProcessEnv;
   onProviderLogout?: (provider: OAuthProviderId, accountIdentity?: string | null) => Promise<void>;
+  /**
+   * 官方账号登录是否可用；未传时沿用分支默认值（关闭）。
+   * 环境变量 ZAI_OAUTH_ENABLED / BIGMODEL_OAUTH_ENABLED 优先级更高。
+   * 注意：createLocalServices 是同步装配，当前没有调用方传入该值，留作异步装配接入点。
+   */
+  signInEnabled?: boolean;
 }
 
 function readTrimmedString(value: unknown): string | null {
@@ -146,7 +152,7 @@ export class OAuthService implements IOAuthService {
 
     const adapters =
       dependencies.adapters ??
-      createOAuthProviderAdapters(createOAuthRuntimeConfig(dependencies.env), {
+      createOAuthProviderAdapters(createOAuthRuntimeConfig(dependencies.env, { signInEnabled: dependencies.signInEnabled }), {
         apiClient: dependencies.apiClient,
       });
 
@@ -1186,7 +1192,7 @@ export function createOAuthService(
 ): OAuthService {
   return new OAuthService(credentialService, {
     ...dependencies,
-    adapters: createOAuthProviderAdapters(createOAuthRuntimeConfig(dependencies.env), {
+    adapters: createOAuthProviderAdapters(createOAuthRuntimeConfig(dependencies.env, { signInEnabled: dependencies.signInEnabled }), {
       apiClient: dependencies.apiClient,
     }),
   });

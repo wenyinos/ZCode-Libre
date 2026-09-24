@@ -31,10 +31,18 @@ const ZAI_OAUTH_PROVIDER_CONFIG: Omit<OAuthProviderRuntimeConfig, "appSecret"> =
   redirectUri: "zcode://oauth/callback",
 };
 
-export function createZaiProviderRuntimeConfig(env: NodeJS.ProcessEnv): OAuthProviderRuntimeConfig {
+export function createZaiProviderRuntimeConfig(
+  env: NodeJS.ProcessEnv,
+  signInEnabledOverride?: boolean,
+): OAuthProviderRuntimeConfig {
   return {
     ...ZAI_OAUTH_PROVIDER_CONFIG,
-    enabled: readBoolean(env, "ZAI_OAUTH_ENABLED", ZAI_OAUTH_PROVIDER_CONFIG.enabled),
+    // 优先级：环境变量 > 设置页开关 > 分支默认值（默认关闭）。
+    enabled: readBoolean(
+      env,
+      "ZAI_OAUTH_ENABLED",
+      signInEnabledOverride ?? ZAI_OAUTH_PROVIDER_CONFIG.enabled,
+    ),
     authorizeUrl:
       readEnv(env, "ZAI_OAUTH_AUTHORIZE_URL") ??
       buildRuntimeZaiOAuthUrl(env, "/api/oauth/authorize"),
