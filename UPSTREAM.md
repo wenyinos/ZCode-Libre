@@ -27,6 +27,9 @@ pnpm audit:upstream               # 加 --strict 可在有高危提交时以退�
 git merge upstream/main          # 或按需 git rebase upstream/main
 
 # 2) 解决冲突（热点文件见下节）
+#    注意 package.json 的 version：本分支只对齐上游的大版本线，patch 位自己走，
+#    冲突时保留本分支的值，别接受上游的 patch 号：
+node -p "require('./package.json').version"
 # 3) 上游新文案仍写着 ZCode，用脚本补齐品牌名
 python3 scripts/apply-brand-naming.py --check    # 列出遗留项，退出码 1 表示有遗留
 python3 scripts/apply-brand-naming.py --write    # 补齐
@@ -38,6 +41,16 @@ pnpm lint
 ```
 
 若上游更新了 `public/logo/` 之外的图标源或应用名，另需检查下节「品牌资源」与「产品身份」。
+
+### 版本号：只对齐大版本线，patch 自己走
+
+`package.json` 的 `version` 由本分支维护（用户 2026-09-24 明确要求）。规则：
+
+- **`major.minor` 对齐上游的发布线**（当前 `3.14`）。上游升到 `3.15` 时才跟着换前两段。
+- **`patch` 位是本分支自己的递增计数**，不跟随上游的 patch 号。本分支的补丁、品牌与默认关闭设置不与上游同步发布，跟上游 patch 号会让产物名与实际包含的改动对不上。
+- 合并上游时若 `package.json` 的 `version` 冲突，**保留本分支的值**；合并后按上面的命令确认没被改回上游值。
+- 必须是**标准 semver 三段式**。四段式（如 `3.14.3.1`）会让应用内更新检测失效：`packages/desktop/src/main/githubReleaseUpdates.ts` 用 `semver.coerce` 解析，`3.14.3.1` 被截断成 `3.14.3`，与上一版比较会判定为"已是最新"，连续的四段版本之间也无法排序。
+- `version` 同时决定产物文件名（`ZCode-Libre-<version>-<平台>-<架构>.<ext>`），改它等于改发布产物命名，见下节「产品身份」。
 
 ## 偏离上游的改动清单
 
