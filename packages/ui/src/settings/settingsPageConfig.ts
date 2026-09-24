@@ -6,6 +6,7 @@ import {
   Package,
   Bot,
   Palette,
+  Sparkles,
   Sun,
   BarChart3,
   Terminal,
@@ -28,6 +29,7 @@ export const THEME_MODES: Array<{
 }> = [
   { mode: "system", icon: Monitor },
   { mode: "zai-dark", icon: Moon },
+  { mode: "zai-dusk", icon: Sparkles },
   { mode: "zai-light", icon: Sun },
 ];
 

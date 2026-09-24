@@ -278,6 +278,11 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
                       id: "sidebar.settings.theme.zai-dark",
                     })}
                   </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="zai-dusk">
+                    {intl.formatMessage({
+                      id: "sidebar.settings.theme.zai-dusk",
+                    })}
+                  </DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="zai-light">
                     {intl.formatMessage({
                       id: "sidebar.settings.theme.zai-light",

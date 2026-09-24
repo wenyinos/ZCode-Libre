@@ -19,7 +19,7 @@ export interface TestActions extends TaskListE2EActions {
   /** 获取当前主题 */
   getTheme: () => string;
   /** 设置主题 */
-  setTheme: (theme: "light" | "dark" | "zai-light" | "zai-dark" | "system") => void;
+  setTheme: (theme: "light" | "dark" | "zai-light" | "zai-dark" | "zai-dusk" | "system") => void;
   /** 获取当前语言，仅供跨语言展示 E2E */
   getLocale: () => "zh-CN" | "en-US";
   /** 设置当前语言，仅供跨语言展示 E2E */

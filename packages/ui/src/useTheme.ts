@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 
-export type Theme = "light" | "dark" | "zai-light" | "zai-dark" | "system";
+export type Theme = "light" | "dark" | "zai-light" | "zai-dark" | "zai-dusk" | "system";
 export type ResolvedTheme = "light" | "dark";
 
 const STORAGE_KEY = "zcode-theme";
@@ -15,7 +15,8 @@ export function resolveTheme(theme: Theme): ResolvedTheme {
     return getSystemTheme();
   }
 
-  return theme === "dark" || theme === "zai-dark" ? "dark" : "light";
+  // zai-dusk（紫夜透明）与 zai-dark 同属深色，深色分支的组件判断无需逐处改动。
+  return theme === "dark" || theme === "zai-dark" || theme === "zai-dusk" ? "dark" : "light";
 }
 
 export function normalizeThemePreference(theme: Theme): Theme {
@@ -66,6 +67,7 @@ export function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle("dark", resolved === "dark");
   document.documentElement.classList.toggle("theme-zai-light", appliedTheme === "zai-light");
   document.documentElement.classList.toggle("theme-zai-dark", appliedTheme === "zai-dark");
+  document.documentElement.classList.toggle("theme-zai-dusk", appliedTheme === "zai-dusk");
   syncBrowserThemeSurface(resolved);
 }
 
@@ -75,6 +77,7 @@ function isTheme(value: string | null): value is Theme {
     value === "dark" ||
     value === "zai-light" ||
     value === "zai-dark" ||
+    value === "zai-dusk" ||
     value === "system"
   );
 }

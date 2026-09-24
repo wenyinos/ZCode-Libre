@@ -48,7 +48,7 @@ function resolveWebThemePreference(defaultTheme: Theme = WEB_DEFAULT_THEME): The
       ? window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "light"
-      : saved === "dark" || saved === "zai-dark"
+      : saved === "dark" || saved === "zai-dark" || saved === "zai-dusk"
         ? "dark"
         : "light";
   const appliedTheme =
@@ -64,6 +64,7 @@ function resolveWebThemePreference(defaultTheme: Theme = WEB_DEFAULT_THEME): The
   document.documentElement.classList.toggle("dark", resolved === "dark");
   document.documentElement.classList.toggle("theme-zai-light", appliedTheme === "zai-light");
   document.documentElement.classList.toggle("theme-zai-dark", appliedTheme === "zai-dark");
+  document.documentElement.classList.toggle("theme-zai-dusk", appliedTheme === "zai-dusk");
 }
 
 async function resolveFeedbackUrl(): Promise<string | undefined> {
@@ -96,7 +97,7 @@ function isWebOAuthCallback(params: URLSearchParams): boolean {
 }
 
 function renderWebAuthCallbackPage(): void {
-  document.title = "ZCode - Sign In";
+  document.title = "ZCode-Libre - Sign In";
   const callbackState = parseOAuthState(
     new URLSearchParams(window.location.search).get("state") ?? "",
   );
@@ -121,7 +122,7 @@ async function renderConversationSharePage(): Promise<void> {
   document.documentElement.lang = routeLocale;
   // 分享页必须设置 title：否则浏览器标签只显示 index.html 的通用标题。
   // 会话标题要等 preview 加载完，先给一个语言正确的兜底。
-  document.title = routeLocale === "zh-CN" ? "ZCode 会话分享" : "ZCode Conversation Share";
+  document.title = routeLocale === "zh-CN" ? "ZCode-Libre 会话分享" : "ZCode-Libre Conversation Share";
   const shareCode = resolveConversationShareCodeFromPath(window.location.pathname);
   if (!shareCode) {
     root.render(
@@ -416,7 +417,7 @@ function WebBootstrapErrorScreen({ message }: { message: string }) {
 }
 
 function renderWebBootstrapError(error: unknown): void {
-  document.title = "ZCode - Web";
+  document.title = "ZCode-Libre - Web";
   root.render(
     <WebBootstrapErrorScreen message={error instanceof Error ? error.message : String(error)} />,
   );
@@ -447,7 +448,7 @@ async function bootstrapWebApp() {
       onClose: () => {},
     });
     const platform = createWebPlatform();
-    document.title = "ZCode - Web + Server";
+    document.title = "ZCode-Libre - Web + Server";
 
     root.render(
       <AppErrorBoundary>

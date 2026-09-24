@@ -46,8 +46,18 @@ User-facing theme choices are:
 - System
 - Light Theme, backed by Zai Light
 - Dark Theme, backed by Zai Dark
+- Dusk Theme, backed by Zai Dusk — a translucent purple theme. Its palette follows the Duskfox
+  variant of Zed's Nightfox theme. The root background and sidebar stay near 85% opacity so the
+  desktop and native window material show through (macOS vibrancy / Windows acrylic / Linux
+  transparent window), while cards, inputs, and overlays are progressively more opaque so text
+  stays readable.
 
 Default light and dark CSS variables still exist as fallback foundations, but new UI should be validated against Zai Light and Zai Dark as the active light/dark experiences.
+
+Zai Dusk resolves to `dark`: `resolveTheme("zai-dusk")` returns `dark`, so components that branch on
+the resolved theme need no extra case. Code that compares theme names directly must list the dusk
+value explicitly — `applyTheme`, the desktop renderer bootstrap, and the resource manager window
+each toggle their own theme class.
 
 ## Color Palette
 

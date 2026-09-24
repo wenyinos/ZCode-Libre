@@ -750,6 +750,181 @@ body {
 }
 
 /*
+ * 紫夜（透明）。
+ * 色板取自 Zed 的 Nightfox 主题包中 Duskfox - blurred 变体，铺开到项目的语义 token 上。
+ * 透明层次沿用该变体的思路：根背景与侧栏保持 85% 上下不透明，透出桌面与窗口材质
+ * （macOS vibrancy / Windows acrylic / Linux 透明底）；内容承载层逐级加实，
+ * 保证卡片、输入框与浮层上的文字始终可读。
+ */
+.theme-zai-dusk {
+  --animated-gradient-text-strong: rgba(234, 232, 255, 1);
+  --animated-gradient-text-soft: rgba(234, 232, 255, 0.22);
+  --color-background: #2321368c;
+  --color-background-win-alt: #2d2a45;
+  --color-background-alt: color-mix(in oklab, var(--color-background-win-alt) 60%, transparent);
+  --color-brand: #c4a7e7;
+  --color-trajectory-user: #65b1cd;
+  --color-trajectory-assistant: #a3be8c;
+  --color-trajectory-reasoning: #c4a7e7;
+  --color-trajectory-tool-call: #f6c177;
+  --color-trajectory-tool-result: #9ccfd8;
+  --color-workflow-rule: rgba(234, 232, 255, 0.065);
+  --color-workflow-trace: rgba(234, 232, 255, 0.35);
+  --color-workflow-trace-strong: rgba(234, 232, 255, 0.6);
+  --color-accent: #2d2a45;
+  --color-find-highlight: #4a3a2a;
+  --color-find-highlight-active: #f6c177;
+  --color-border: rgba(196, 167, 231, 0.18);
+  --color-border-hover: rgba(196, 167, 231, 0.3);
+  --color-hover: rgba(196, 167, 231, 0.08);
+  --color-selected: rgba(196, 167, 231, 0.14);
+  --color-header: #232136b8;
+  --color-panel: #232136b8;
+  --color-sidebar: #1f1d2ea6;
+  --color-surface: rgba(196, 167, 231, 0.07);
+  --color-surface-hover: rgba(196, 167, 231, 0.13);
+  --color-card: #2a2740eb;
+  --color-card-selected: var(--color-input);
+  --color-card-border: var(--color-border);
+  --color-popover: #2a2740f2;
+  --color-popover-foreground: var(--color-foreground);
+  --color-popover-header: #232136d9;
+  --color-popover-border: var(--color-border);
+  --color-input: #2a2740f2;
+  --color-input-focused: var(--color-input);
+  --color-input-border: var(--color-border);
+  --color-input-border-hover: var(--color-border-hover);
+  --color-input-border-focused: var(--color-border-hover);
+  --color-terminal-bg: var(--color-background);
+  --color-terminal-fg: var(--color-foreground);
+  --color-terminal-cursor: #f6c177;
+  --color-terminal-cursor-accent: #232136;
+  --color-terminal-selection: rgba(196, 167, 231, 0.28);
+  --color-terminal-selection-inactive: rgba(234, 232, 255, 0.1);
+  --color-terminal-black: #393552;
+  --color-terminal-red: #eb6f92;
+  --color-terminal-green: #a3be8c;
+  --color-terminal-yellow: #f6c177;
+  --color-terminal-blue: #569fba;
+  --color-terminal-magenta: #c4a7e7;
+  --color-terminal-cyan: #9ccfd8;
+  --color-terminal-white: #e0def4;
+  --color-terminal-bright-black: #47407d;
+  --color-terminal-bright-red: #f083a2;
+  --color-terminal-bright-green: #b1d196;
+  --color-terminal-bright-yellow: #f9cb8c;
+  --color-terminal-bright-blue: #65b1cd;
+  --color-terminal-bright-magenta: #ccb1ed;
+  --color-terminal-bright-cyan: #a6dae3;
+  --color-terminal-bright-white: #e2e0f7;
+  --color-usage-chart-1: #c4a7e7;
+  --color-usage-chart-2: #a3be8c;
+  --color-usage-chart-3: #65b1cd;
+  --color-usage-chart-4: #eb6f92;
+  --color-usage-chart-5: #f6c177;
+  --color-usage-chart-6: #9ccfd8;
+  --color-context-breakdown-1: #c4a7e7;
+  --color-context-breakdown-2: #cbb3ec;
+  --color-context-breakdown-3: #d3bfef;
+  --color-context-breakdown-4: #dccbf3;
+  --color-context-breakdown-5: #e4d7f7;
+  --color-context-breakdown-6: #ede3fa;
+  --color-context-breakdown-7: #f5effd;
+  --color-usage-heatmap-0: color-mix(in oklab, #c4a7e7 0%, var(--color-surface));
+  --color-usage-heatmap-1: color-mix(in oklab, #c4a7e7 24%, var(--color-surface));
+  --color-usage-heatmap-2: color-mix(in oklab, #c4a7e7 42%, var(--color-surface));
+  --color-usage-heatmap-3: color-mix(in oklab, #c4a7e7 62%, var(--color-surface));
+  --color-usage-heatmap-4: color-mix(in oklab, #ccb1ed 78%, var(--color-surface));
+  --color-tab: #232136b8;
+  --color-tab-active: #2a2740eb;
+  --color-tab-border: var(--color-border);
+  --color-menu: #2a2740f2;
+  --color-menu-hover: #3a3457;
+  --color-primary: #c4a7e7;
+  --color-primary-foreground: #191726;
+  --color-secondary: #3a3457;
+  --color-interaction-ask-surface: #2d2a45;
+  --color-interaction-ask-foreground: #ccb1ed;
+  --color-interaction-ask-fill: rgba(163, 190, 140, 0.24);
+  --color-interaction-confirmation-surface: rgba(163, 190, 140, 0.16);
+  --color-interaction-confirmation-foreground: #b1d196;
+  --color-foreground: #eae8ff;
+  --color-foreground-subtle: color-mix(in oklab, #eae8ff 62%, transparent);
+  --color-foreground-subtlest: color-mix(in oklab, #eae8ff 34%, transparent);
+  --color-foreground-inverse: #191726;
+  --color-success: #a3be8c;
+  --color-success-foreground: #191726;
+  --color-idle-task: #c4a7e7;
+  --color-idle-task-surface: #2a2440;
+  --color-destructive: #eb6f92;
+  --color-destructive-foreground: #ffffff;
+  --color-warning: #f6c177;
+  --color-feedback-privacy-hint: var(--color-yellow-300);
+  --color-warning-foreground: #191726;
+  --color-diff-added: #a3be8c;
+  --color-diff-added-foreground: #191726;
+  --color-diff-removed: #eb6f92;
+  --color-diff-removed-foreground: #ffffff;
+  --color-git-none: var(--color-foreground);
+  --color-git-modified: #f6c177;
+  --color-git-added: #a3be8c;
+  --color-git-deleted: #eb6f92;
+  --color-git-renamed: #c4a7e7;
+  --color-git-untracked: #a3be8c;
+  --color-git-ignored: var(--color-foreground-subtlest);
+  --color-git-descendant: #f6c177;
+  --color-toast: #191726fa;
+  --color-tooltip: #191726fa;
+  --color-tooltip-foreground: #eae8ff;
+  --color-tooltip-tag: #3a3457;
+  --color-tooltip-tag-foreground: #cdcbe0;
+  --color-tag: #3a3457;
+  --color-file-node: rgba(101, 177, 205, 0.16);
+  --color-file-node-hover: rgba(101, 177, 205, 0.24);
+  --color-file-node-foreground: #8fc6dc;
+  --color-skill-node: rgba(196, 167, 231, 0.16);
+  --color-skill-node-hover: rgba(196, 167, 231, 0.24);
+  --color-skill-node-foreground: #ccb1ed;
+  --color-command-node: rgba(177, 172, 222, 0.14);
+  --color-command-node-hover: rgba(177, 172, 222, 0.22);
+  --color-command-node-foreground: #cdcbe0;
+  --color-subagent-node: rgba(163, 190, 140, 0.16);
+  --color-subagent-node-hover: rgba(163, 190, 140, 0.24);
+  --color-subagent-node-foreground: #b1d196;
+  --color-session-node: rgba(156, 207, 216, 0.16);
+  --color-session-node-hover: rgba(156, 207, 216, 0.24);
+  --color-session-node-foreground: #a6dae3;
+  --color-plugin-node: rgba(246, 193, 119, 0.16);
+  --color-plugin-node-hover: rgba(246, 193, 119, 0.24);
+  --color-plugin-node-foreground: #f9cb8c;
+  --color-plugin-paid-plan-badge: #4a3a57;
+  --color-plugin-paid-plan-badge-foreground: #e4d7f7;
+}
+
+/*
+ * 浏览器环境没有桌面壁纸或原生窗口材质可透出，半透明背景会与页面白底混成浅灰紫，
+ * 因此这里把该主题的背景类 token 覆盖为纯色 —— Web 端用纯色呈现。
+ * 桌面端由 Electron 的 vibrancy / acrylic / 透明窗口提供底层，不设置
+ * data-zcode-browser-theme-surface，不受此覆盖影响，保持透明。
+ */
+html[data-zcode-browser-theme-surface].theme-zai-dusk {
+  --color-background: #232136;
+  --color-background-win-alt: #2d2a45;
+  --color-sidebar: #1f1d2e;
+  --color-header: #232136;
+  --color-panel: #232136;
+  --color-tab: #232136;
+  --color-tab-active: #2a2740;
+  --color-card: #2a2740;
+  --color-popover: #2a2740;
+  --color-popover-header: #232136;
+  --color-input: #2a2740;
+  --color-menu: #2a2740;
+  --color-toast: #191726;
+  --color-tooltip: #191726;
+}
+
+/*
  * 之前只有 task 列表单独定制了滚动条，其他面板、下拉列表、代码区仍然保留系统默认样式，
  * 同一套界面里会出现粗细、圆角和轨道背景都不一致的问题。这里把这套透明轨道 + 圆角 thumb
  * 提升成全局原生滚动条样式，让 desktop/web、明暗主题下的视觉表现保持统一。

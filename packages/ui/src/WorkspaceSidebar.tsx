@@ -728,6 +728,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
         value === "dark" ||
         value === "zai-light" ||
         value === "zai-dark" ||
+        value === "zai-dusk" ||
         value === "system"
       ) {
         setTheme(value);

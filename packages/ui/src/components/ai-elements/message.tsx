@@ -849,7 +849,7 @@ function resolveMessageCodeTheme(
       : codePreviewSettings.lightTheme;
   }
 
-  return theme === "dark" || theme === "zai-dark"
+  return theme === "dark" || theme === "zai-dark" || theme === "zai-dusk"
     ? codePreviewSettings.darkTheme
     : codePreviewSettings.lightTheme;
 }

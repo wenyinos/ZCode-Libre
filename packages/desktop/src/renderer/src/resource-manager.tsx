@@ -19,13 +19,13 @@ declare global {
   }
 }
 
-type Theme = "light" | "dark" | "zai-light" | "zai-dark" | "system";
+type Theme = "light" | "dark" | "zai-light" | "zai-dark" | "zai-dusk" | "system";
 
 function resolveTheme(theme: Theme): "light" | "dark" {
   if (theme === "system") {
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
-  return theme === "dark" || theme === "zai-dark" ? "dark" : "light";
+  return theme === "dark" || theme === "zai-dark" || theme === "zai-dusk" ? "dark" : "light";
 }
 
 function applyResourceManagerTheme(): void {
@@ -44,6 +44,7 @@ function applyResourceManagerTheme(): void {
   document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
   document.documentElement.classList.toggle("theme-zai-light", appliedTheme === "zai-light");
   document.documentElement.classList.toggle("theme-zai-dark", appliedTheme === "zai-dark");
+  document.documentElement.classList.toggle("theme-zai-dusk", appliedTheme === "zai-dusk");
 }
 
 applyResourceManagerTheme();
