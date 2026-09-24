@@ -111,6 +111,33 @@ expectContains(
   "设置页的厂商服务开关应引用策略模块作为默认值",
 );
 
+// 反馈入口必须逐处门禁：漏掉任何一处，关闭状态下仍会露出一个注定失败的按钮，
+// 而它提交的目标是厂商工单系统。
+for (const path of [
+  "packages/ui/src/WorkspaceHelpMenuButton.tsx",
+  "packages/ui/src/ChatErrorBanner.tsx",
+  "packages/ui/src/quickpick/quickPickCommands.ts",
+]) {
+  expectContains(
+    path,
+    "LIBRE_VENDOR_SERVICES.feedback",
+    "反馈入口应受策略门禁，否则默认关闭状态下仍会暴露厂商反馈入口",
+  );
+}
+
+// 社群入口只认本分支自有地址，不再接受厂商远端下发的 community_urls。
+// 只断言门禁存在：上游的远端优先分支按设计保留在开关之后，默认走不到。
+expectContains(
+  "packages/shared/src/remoteAppConfig.ts",
+  "LIBRE_COMMUNITY_URL",
+  "社群入口应固定指向本分支自有入口，避免被厂商远端配置覆盖",
+);
+expectContains(
+  "packages/shared/src/remoteAppConfig.ts",
+  "LIBRE_VENDOR_SERVICES.vendorCommunityLinks",
+  "社群入口解析缺少分支策略门禁，厂商远端配置会重新生效",
+);
+
 // 官方账号登录默认关闭，且保留显式开启的逃生舱。
 // 实现可以写死 false，也可以引用策略常量；两种都表示默认关闭，但绝不能是 enabled: true。
 for (const path of [

@@ -32,7 +32,16 @@ export const LIBRE_VENDOR_SERVICES = {
    * 而本分支的桌面产物未做代码签名，应用内自动安装也会持续触发系统安全拦截。
    */
   selfHostedReleaseUpdates: true,
+  /**
+   * 社群入口：官方远端下发的 community_urls 指向厂商社群（飞书群 / 官方 Discord），
+   * 本分支用户进去既拿不到对应支持，也会把本分支问题带进上游渠道。
+   * 关闭后统一走 LIBRE_COMMUNITY_URL。属实现策略，不暴露给用户设置。
+   */
+  vendorCommunityLinks: false,
 } as const;
+
+/** 本分支自有社群入口：GitHub Discussions。 */
+export const LIBRE_COMMUNITY_URL = "https://github.com/wenyinos/ZCode-Libre/discussions";
 
 /** 带用户开关的厂商服务。selfHostedReleaseUpdates 属实现策略，不暴露给用户。 */
 export type VendorServiceId =

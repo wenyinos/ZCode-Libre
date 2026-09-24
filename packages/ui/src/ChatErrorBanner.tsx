@@ -6,6 +6,7 @@ import { CodingPlanEntryButton } from "@/settings/CodingPlanEntryButton.js";
  */
 import { useState } from "react";
 import {
+  LIBRE_VENDOR_SERVICES,
   MEDIA_BUDGET_CURRENT_ATTACHMENT_TOO_LARGE_ERROR_CODE,
   MEDIA_BUDGET_CURRENT_IMAGE_TOO_LARGE_ERROR_CODE,
   MEDIA_BUDGET_CURRENT_VIDEO_TOO_LARGE_ERROR_CODE,
@@ -287,8 +288,9 @@ export function ChatErrorBanner({
         ) : null}
 
         {/* 错误横幅本身就是异常态，不能再经过 Radix Tooltip 的 Popper/Slot 状态链。
-            这里改成普通 Button，避免无可用模型等错误触发横幅时发生 Maximum update depth 循环。 */}
-        {!modelConfigMissing ? (
+            这里改成普通 Button，避免无可用模型等错误触发横幅时发生 Maximum update depth 循环。
+            ZCode-Libre：反馈工单提交给厂商系统，默认关闭时连入口一起隐藏，避免留下点了没反应的按钮。 */}
+        {!modelConfigMissing && LIBRE_VENDOR_SERVICES.feedback ? (
           <Button
             type="button"
             variant="outline"

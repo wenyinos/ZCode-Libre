@@ -1,3 +1,4 @@
+import { LIBRE_COMMUNITY_URL, LIBRE_VENDOR_SERVICES } from "./libre-features.js";
 import type { Locale } from "./protocol.js";
 
 interface RemoteAppConfigLike {
@@ -71,6 +72,13 @@ export function getCommunityUrlFromConfigs(
 ): string | undefined {
   const remoteUrls = getCommunityUrlsFromConfig(remoteConfig);
   const localUrls = getCommunityUrlsFromConfig(localConfig);
+
+  // ZCode-Libre：社群入口不再走厂商配置。远端下发的是官方社群，本分支用户进去既拿不到
+  // 对应支持，也会把本分支问题带进上游渠道；内置配置里的同名字段同样作废，统一返回本分支
+  // 自有入口，保证桌面与 Web 一致。
+  if (!LIBRE_VENDOR_SERVICES.vendorCommunityLinks) {
+    return LIBRE_COMMUNITY_URL;
+  }
 
   // 社群渠道具有语言边界。只允许远端覆盖同语言的内置入口，
   // 对应语言缺失时保持隐藏，避免中文和英文用户被导向错误渠道。

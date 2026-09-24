@@ -1,3 +1,5 @@
+import { LIBRE_VENDOR_SERVICES } from "@zcode/shared";
+
 export type QuickPickCommandIcon =
   | "book"
   | "browser"
@@ -229,24 +231,28 @@ export function createQuickPickCommands({
     },
   ];
 
-  commands.push({
-    id: "feedback",
-    sectionId: "app",
-    titleId: "quickPick.command.feedback",
-    icon: "feedback",
-    keywords: [
-      "feedback",
-      "issue",
-      "support",
-      "tickets",
-      "问题上报",
-      "问题反馈",
-      "反馈",
-      "我的反馈",
-      "工单",
-    ],
-    run: handlers.openFeedback,
-  });
+  // ZCode-Libre：反馈工单提交给厂商系统，默认关闭时连命令一起隐藏，
+  // 否则用户能从命令面板调出一个注定失败的入口。与帮助菜单的口径一致。
+  if (LIBRE_VENDOR_SERVICES.feedback) {
+    commands.push({
+      id: "feedback",
+      sectionId: "app",
+      titleId: "quickPick.command.feedback",
+      icon: "feedback",
+      keywords: [
+        "feedback",
+        "issue",
+        "support",
+        "tickets",
+        "问题上报",
+        "问题反馈",
+        "反馈",
+        "我的反馈",
+        "工单",
+      ],
+      run: handlers.openFeedback,
+    });
+  }
 
   if (canOpenCommunity) {
     commands.push({
