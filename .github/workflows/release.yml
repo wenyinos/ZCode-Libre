@@ -69,9 +69,9 @@ jobs:
             packages/desktop/dist/*.zip
             packages/desktop/dist/*.exe
 
-  # Linux 按包格式拆分：deb 在 Debian、rpm 在 Fedora、pacman 在 Arch 容器内构建，
-  # 各自使用发行版原生的打包后端（dpkg-deb / rpmbuild / bsdtar），
-  # 而不是在单一发行版上补装异构后端——工具版本与元数据默认值都会更贴合目标发行版。
+  # Linux 按包格式拆分：deb 在 Debian、rpm 在 Fedora 容器内构建，
+  # 各自使用发行版原生的打包后端（dpkg-deb / rpmbuild），
+  # 而不是在单一发行版上补装异构后端——工具版本与元数据默认值更贴合目标发行版。
   build-linux:
     name: Build ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
@@ -84,8 +84,6 @@ jobs:
           - { name: Linux-deb-arm64, os: ubuntu-24.04-arm, container: "debian:12", pkg: deb, arch: arm64 }
           - { name: Linux-rpm-x64, os: ubuntu-latest, container: "fedora:latest", pkg: rpm, arch: x64 }
           - { name: Linux-rpm-arm64, os: ubuntu-24.04-arm, container: "fedora:latest", pkg: rpm, arch: arm64 }
-          - { name: Linux-pacman-x64, os: ubuntu-latest, container: "archlinux:base-devel", pkg: pacman, arch: x64 }
-          - { name: Linux-pacman-arm64, os: ubuntu-24.04-arm, container: "archlinux:base-devel", pkg: pacman, arch: arm64 }
     steps:
       # 容器里没有 Node，也未必有所需格式的打包后端，先按发行版补齐。
       - name: 安装基础工具与打包后端
@@ -100,8 +98,6 @@ jobs:
               ca-certificates curl git xz-utils dpkg-dev build-essential python3
           elif command -v dnf >/dev/null 2>&1; then
             dnf install -y curl git xz tar which rpm-build gcc-c++ make python3
-          elif command -v pacman >/dev/null 2>&1; then
-            pacman -Sy --noconfirm curl git xz tar libarchive base-devel python
           fi
 
       - uses: actions/checkout@v4
@@ -141,7 +137,6 @@ jobs:
           path: |
             packages/desktop/dist/*.deb
             packages/desktop/dist/*.rpm
-            packages/desktop/dist/*.pkg.tar.zst
 
   publish:
     name: Publish release
@@ -194,7 +189,6 @@ jobs:
             |---|---|
             | Debian / Ubuntu | `.deb`（`sudo apt install ./<file>.deb`） |
             | Fedora / RHEL / openSUSE | `.rpm`（`sudo dnf install ./<file>.rpm`） |
-            | Arch Linux | `.pkg.tar.zst`（`sudo pacman -U <file>`） |
 
             架构按文件名后缀区分：`x86_64`/`amd64` 为 64 位 x86，`aarch64`/`arm64` 为 ARM64。
 

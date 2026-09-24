@@ -236,7 +236,7 @@ const PACKAGING_PRUNE_PATTERNS = [
   "!**/SECURITY*",
 ];
 
-const LINUX_PACKAGE_TARGETS = ["deb", "rpm", "pacman"];
+const LINUX_PACKAGE_TARGETS = ["deb", "rpm"];
 
 /**
  * Linux 包格式：默认全出；CI 通过 ZCODE_LINUX_TARGET 限定为单个格式。
@@ -713,8 +713,8 @@ export default {
     artifactName: buildDesktopArtifactName("win"),
   },
   linux: {
-    // ZCode-Libre：不产出 AppImage。桌面端以系统包分发（deb / rpm / pacman），
-    // 免安装的单文件形态不在发行范围内。
+    // ZCode-Libre：不产出 AppImage，也不产出 pacman 包（Arch 官方仓库只有 x86_64，
+    // 拿不到 arm64 基础镜像）。桌面端以 deb / rpm 两种系统包分发。
     // CI 按包格式拆 job，用 ZCODE_LINUX_TARGET 让每个 job 只产出对应格式，
     // 从而让 deb / rpm / pacman 各自在目标发行版容器内构建。
     target: resolveLinuxPackageTargets(),
