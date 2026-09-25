@@ -157,6 +157,10 @@ for (const [path, reason] of [
     "packages/ui/src/WelcomeScreen.tsx",
     "登录面板应受策略门禁，否则可能被切到没有可用渠道的官方登录视图",
   ],
+  [
+    "packages/ui/src/Root.tsx",
+    "账号菜单的「登录」入口应受策略门禁，否则默认关闭时仍会露出官方账号入口",
+  ],
 ]) {
   expectContains(path, "LIBRE_VENDOR_SERVICES.officialAccountLogin", reason);
 }

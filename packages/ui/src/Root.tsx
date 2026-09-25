@@ -4,6 +4,7 @@ import { LucideProvider, RefreshCw } from "lucide-react";
 import {
   APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL,
   DesktopCommandIds,
+  LIBRE_VENDOR_SERVICES,
   appRuntimePreferencesChangedBroadcastPayloadSchema,
   type RemoteTarget,
 } from "@zcode/shared";
@@ -959,7 +960,7 @@ function RootInner({
     onCreateTask: handleCreateTask,
     onOpenWorkspace: handleOpenWorkspace,
     allowOpenWorkspace,
-    onLogin: !user ? handleOpenLoginEntry : undefined,
+    onLogin: !user && LIBRE_VENDOR_SERVICES.officialAccountLogin ? handleOpenLoginEntry : undefined,
     onLogout: user ? handleLogout : undefined,
     user,
   };
@@ -1057,7 +1058,9 @@ function RootInner({
             allowRemoteWorkspace={allowRemoteWorkspace}
             handleBackFromSettings={handleBackFromSettings}
             handleLogout={user ? handleLogout : undefined}
-            onLogin={!user ? handleOpenLoginEntry : undefined}
+            onLogin={
+              !user && LIBRE_VENDOR_SERVICES.officialAccountLogin ? handleOpenLoginEntry : undefined
+            }
             user={user}
             reconnectingRemoteWorkspaceKeys={reconnectingRemoteWorkspaceKeys}
             remoteWorkspaceErrorByWorkspaceKey={remoteWorkspaceErrorByWorkspaceKey}
