@@ -1,0 +1,61 @@
+name: CI
+
+# 本分支的定位建立在「默认关闭 + 品牌不变」这些不变量上，而它们以前只在本地手动跑。
+# 这里把守卫放进 CI：任何一个 PR 或 push 让不变量失效，立刻变红。
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: 类型检查、Lint 与分支不变量
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 是上游审计要用的：浅克隆看不到历史，也就不出「哪些上游提交还没合」。
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      # 上游历史只用于「哪些提交还没合」的审计，取不到不算失败。
+      # --no-tags 是必须的：上游与本仓库共用 v3.14.x 这类 tag 名但指向不同提交，
+      # 带 tags 抓取会让本地 tag 撞名，之后按 tag 做的比对会算错。
+      - name: 取上游历史
+        continue-on-error: true
+        run: |
+          git remote add upstream https://github.com/zai-org/ZCode.git 2>/dev/null || true
+          git fetch --no-tags upstream main
+
+      - name: 类型检查
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      # 遥测、厂商服务、登录门禁、更新源、社群入口、rpm 无 build-id、紫夜 Linux 纯色。
+      - name: 分支不变量（默认关闭项）
+        run: pnpm check:defaults
+
+      # 只做展示：上游有未合入的提交是常态，不该让本仓库的 CI 变红。
+      # 需要提醒时由 upstream-watch 工作流开 issue，不在这里失败。
+      - name: 上游未合入提交（仅展示）
+        continue-on-error: true
+        run: pnpm audit:upstream
