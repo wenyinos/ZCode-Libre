@@ -1,8 +1,9 @@
+/* eslint-disable max-lines -- 各厂商端点集中一处便于与参考实现逐条对照；拆文件要把解析辅助函数复制多份。 */
 /**
  * 各厂商的额度查询实现。
  *
- * endpoint 与响应字段路径参考 DeepSeekBalanceMonitor 的实测结果，只收录「一次 GET 即可拿到」
- * 的厂商；需要多步查询或依赖历史数据的厂商（如 Command Code、OpenCode Go）未纳入。
+ * endpoint 与响应字段路径参考 DeepSeekBalanceMonitor 的实测结果。Command Code 需要先取组织
+ * id 再查额度，OpenCode Go 只回百分比，两者都多一次请求或多一步换算，已在各自实现处注明。
  *
  * 所有解析都按「拿不到就报错」处理：字段缺失、信封 code 非 0、金额无法解析都会返回可读错误，
  * 而不是把 0 当成余额展示。
@@ -21,7 +22,11 @@ export interface VendorBalanceQueryResult {
   error?: string;
 }
 
-/** 从 provider 的 baseUrl 识别厂商；识别不出时返回 null，该 provider 不展示额度。 */
+/**
+ * 从 provider 的 baseUrl 识别厂商；识别不出时返回 null，该 provider 不展示额度。
+ *
+ * 只有 opencode.ai 需要看路径：Go 与 Zen 两个产品线共用这个域名，用量接口只在 Go 上。
+ */
 export function resolveBalanceVendor(
   baseUrl: string | null | undefined,
 ): ProviderBalanceVendorId | null {
@@ -30,8 +35,11 @@ export function resolveBalanceVendor(
     return null;
   }
   let host: string;
+  let pathname: string;
   try {
-    host = new URL(trimmed).hostname.toLowerCase();
+    const parsed = new URL(trimmed);
+    host = parsed.hostname.toLowerCase();
+    pathname = parsed.pathname.toLowerCase();
   } catch {
     return null;
   }
@@ -43,6 +51,8 @@ export function resolveBalanceVendor(
   if (host.endsWith("minimaxi.com")) return "minimax-cn";
   if (host.endsWith("minimax.io")) return "minimax-global";
   if (host.endsWith("openrouter.ai")) return "openrouter";
+  if (host.endsWith("opencode.ai")) return pathname.startsWith("/zen/go") ? "opencode-go" : null;
+  if (host.endsWith("commandcode.ai")) return "commandcode";
   return null;
 }
 
@@ -325,6 +335,149 @@ async function queryOpenRouter(
   };
 }
 
+/**
+ * OpenCode Go 订阅用量。
+ *
+ * 接口只回百分比和重置时间，没有金额字段：官方文档把三个池描述成额度金额，但响应里给不到，
+ * 这里就按接口实际有的字段展示百分比，不拿文档数字反推金额。
+ */
+async function queryOpenCodeGo(
+  apiKey: string,
+  fetchImpl: typeof fetch,
+): Promise<VendorBalanceQueryResult> {
+  const result = await requestJson(
+    "https://opencode.ai/zen/go/v1/usage",
+    apiKey,
+    { method: "GET" },
+    fetchImpl,
+  );
+  if (!result.ok) {
+    return { error: result.error };
+  }
+  const usage = readRecord(result.body.usage);
+  if (!usage) {
+    return { error: "invalid-response" };
+  }
+  const now = Date.now();
+  const windows: ProviderBalanceWindow[] = [];
+  const entries = [
+    ["5h", usage.rolling],
+    ["weekly", usage.weekly],
+    ["monthly", usage.monthly],
+  ] as const;
+  for (const [name, raw] of entries) {
+    const window = readRecord(raw);
+    const percent = window ? readAmount(window.percent) : null;
+    if (percent === null) {
+      continue;
+    }
+    const resetInSec = readResetInSeconds(window?.resetsAt, now);
+    windows.push({
+      name,
+      usedPercent: clampPercent(percent),
+      ...(resetInSec !== undefined ? { resetInSec } : {}),
+    });
+  }
+  return windows.length > 0 ? { windows } : { error: "invalid-response" };
+}
+
+/**
+ * Command Code 计划额度：先查组织 id，再查 credits。
+ *
+ * 月度池不是接口字段：接口给的是 5h/weekly 的 used/cap 与剩余月度积分，
+ * 月度总额度按 (5h cap, weekly cap) 这组唯一键查档位表反推
+ * （档位来自官方用量说明，每个套餐的这对 cap 都不重复）。
+ * 未知套餐（含纯充值账户）不展示月度，避免把猜出来的数字当成事实。
+ */
+const COMMAND_CODE_MONTHLY_POOLS: ReadonlyArray<readonly [number, number, number]> = [
+  [3, 6, 10], // Go
+  [14, 35, 70], // GOAT
+  [16, 40, 80], // Pro
+  [45, 90, 150], // Max 10x
+  [90, 180, 300], // Max 20x
+  [12, 24, 40], // Team Pro
+];
+
+function readCommandCodeMonthlyCap(fiveHourCap: number, weeklyCap: number): number | null {
+  const fiveHour = Math.round(fiveHourCap);
+  const weekly = Math.round(weeklyCap);
+  const matched = COMMAND_CODE_MONTHLY_POOLS.find(
+    ([fiveHourKey, weeklyKey]) => fiveHourKey === fiveHour && weeklyKey === weekly,
+  );
+  return matched ? matched[2] : null;
+}
+
+async function queryCommandCode(
+  apiKey: string,
+  fetchImpl: typeof fetch,
+): Promise<VendorBalanceQueryResult> {
+  const apiBase = "https://api.commandcode.ai";
+  // whoami 只为拿组织 id。账号没有组织时该接口会失败，此时退回不带 orgId 的查询。
+  let orgQuery = "";
+  const whoami = await requestJson(`${apiBase}/alpha/whoami`, apiKey, { method: "GET" }, fetchImpl);
+  if (whoami.ok) {
+    const org = readRecord(whoami.body.org);
+    const orgId = org && typeof org.id === "string" ? org.id.trim() : "";
+    if (orgId) {
+      orgQuery = `?orgId=${encodeURIComponent(orgId)}`;
+    }
+  }
+
+  const result = await requestJson(
+    `${apiBase}/alpha/billing/credits${orgQuery}`,
+    apiKey,
+    { method: "GET" },
+    fetchImpl,
+  );
+  if (!result.ok) {
+    return { error: result.error };
+  }
+  const limits = readRecord(result.body.windowLimits);
+  if (!limits) {
+    return { error: "invalid-response" };
+  }
+  const credits = readRecord(result.body.credits);
+  const now = Date.now();
+  const windows: ProviderBalanceWindow[] = [];
+  let fiveHourCap: number | null = null;
+  let weeklyCap: number | null = null;
+  const entries = [
+    ["5h", limits.fiveHour],
+    ["weekly", limits.weekly],
+  ] as const;
+  for (const [name, raw] of entries) {
+    const window = readRecord(raw);
+    const used = window ? readAmount(window.used) : null;
+    const cap = window ? readAmount(window.cap) : null;
+    if (used === null || cap === null || cap <= 0) {
+      continue;
+    }
+    if (name === "5h") {
+      fiveHourCap = cap;
+    } else {
+      weeklyCap = cap;
+    }
+    const resetInSec = readResetInSeconds(window?.resetAt, now);
+    windows.push({
+      name,
+      usedPercent: clampPercent((Math.max(0, used) / cap) * 100),
+      ...(resetInSec !== undefined ? { resetInSec } : {}),
+    });
+  }
+
+  const monthlyCredits = credits ? readAmount(credits.monthlyCredits) : null;
+  if (fiveHourCap !== null && weeklyCap !== null && monthlyCredits !== null) {
+    const monthlyCap = readCommandCodeMonthlyCap(fiveHourCap, weeklyCap);
+    if (monthlyCap !== null && monthlyCap > 0) {
+      windows.push({
+        name: "monthly",
+        usedPercent: clampPercent(((monthlyCap - monthlyCredits) / monthlyCap) * 100),
+      });
+    }
+  }
+  return windows.length > 0 ? { windows } : { error: "invalid-response" };
+}
+
 export async function queryVendorBalance(
   vendor: ProviderBalanceVendorId,
   apiKey: string,
@@ -349,5 +502,9 @@ export async function queryVendorBalance(
       return await queryMiniMax(key, vendor, fetchImpl);
     case "openrouter":
       return await queryOpenRouter(key, fetchImpl);
+    case "opencode-go":
+      return await queryOpenCodeGo(key, fetchImpl);
+    case "commandcode":
+      return await queryCommandCode(key, fetchImpl);
   }
 }

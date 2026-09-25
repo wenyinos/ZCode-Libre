@@ -15,7 +15,9 @@ export type ProviderBalanceVendorId =
   | "kimi-global"
   | "minimax-cn"
   | "minimax-global"
-  | "openrouter";
+  | "openrouter"
+  | "opencode-go"
+  | "commandcode";
 
 /** payg 为按量付费余额，package 为套餐额度窗口。 */
 export type ProviderBalanceKind = "payg" | "package";

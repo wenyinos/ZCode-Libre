@@ -37,6 +37,8 @@ export const PROVIDER_BALANCE_VENDOR_LABELS: Record<ProviderBalanceVendorId, str
   "minimax-cn": "MiniMax (CN)",
   "minimax-global": "MiniMax (Global)",
   openrouter: "OpenRouter",
+  "opencode-go": "OpenCode Go",
+  commandcode: "Command Code",
 };
 
 interface ResolvedBalanceSource {
@@ -94,7 +96,7 @@ export async function resolveBalanceSources(
     if (!apiKey) {
       continue;
     }
-    const vendor = resolveBalanceVendor(rule.config.api?.baseUrl);
+    const vendor = resolveBalanceVendorForRule(rule);
     if (!vendor) {
       continue;
     }
@@ -106,6 +108,24 @@ export async function resolveBalanceSources(
     });
   }
   return sources;
+}
+
+/**
+ * 识别一条 provider 规则对应的厂商。
+ *
+ * 模板型 provider（如内置的 opencode-go-*）规则里没有 baseUrl——地址在内置模板里，
+ * 个人配置只记 templateId。这类只能靠模板 id 前缀识别；其余仍按 baseUrl 主机名判定。
+ */
+function resolveBalanceVendorForRule(rule: {
+  templateId?: string | null;
+  config: { api?: { baseUrl?: string | null } | null };
+}): ProviderBalanceVendorId | null {
+  const templateId = rule.templateId?.trim().toLowerCase() ?? "";
+  // opencode-go-chat / -messages / -responses 三条模板同属 Go 产品线，共用同一个用量接口。
+  if (templateId.startsWith("opencode-go")) {
+    return "opencode-go";
+  }
+  return resolveBalanceVendor(rule.config.api?.baseUrl);
 }
 
 export function createProviderBalanceService(
