@@ -19,7 +19,11 @@ git remote add upstream https://github.com/zai-org/ZCode
 ## 同步流程
 
 ```bash
-git fetch upstream
+# --no-tags 是必须的：上游与本分支用同一套 v3.14.x tag 名，但指向不同提交。
+# 带 tags 抓取会让上游的同名 tag 与本地已有 tag 撞名（git 不会覆盖已存在的 tag），
+# 于是本地 v3.14.3 可能指向上游的 29628c9 而不是本分支的发布提交，
+# 之后按 tag 生成 changelog、比对发布基线都会算错。
+git fetch upstream --no-tags
 
 # 1) 先审计：列出上游待合入提交，并标出动了本分支偏离文件的那些
 pnpm audit:upstream               # 加 --strict 可在有高危提交时以退出码 1 结束

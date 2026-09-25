@@ -188,7 +188,28 @@ jobs:
     if: always() && (startsWith(github.ref, 'refs/tags/v') || inputs.tag != '')
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 是生成的 changelog 要用的：默认的浅克隆只有最后一次提交，
+      # 既列不出本次改动，也判不了哪些提交来自上游。
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 上游 git 历史只用于判断「这条提交是不是从上游来的」，因此：
+      #  - 必须 --no-tags：上游与本仓库共用 v3.14.x 这类 tag 名但指向不同提交，
+      #    带上 tags 会让本地 tag 撞名，进而把 changelog 的基准算错；
+      #  - 拿不到上游不算失败：此时脚本会退化成单栏并写明原因，而不是猜。
+      - name: 取上游历史用于改动分类
+        continue-on-error: true
+        run: |
+          git remote add upstream https://github.com/zai-org/ZCode.git 2>/dev/null || true
+          git fetch --no-tags upstream main
+
+      - name: 生成发布说明
+        run: |
+          node scripts/generate-release-notes.mjs \
+            --to HEAD \
+            --template .github/release-body-template.md \
+            --out release-body.md
 
       # 复用模式：直接取指定运行的 artifacts，不重新构建，也不经过本地。
       - name: 下载已有产物
@@ -217,6 +238,10 @@ jobs:
           sha256sum * | grep -v 'checksums.txt' > checksums.txt
           cat checksums.txt
 
+      # 说明正文由 scripts/generate-release-notes.mjs 生成：它按「提交是否在上游 main 的
+      # 可达范围内」把改动分成「本仓库新增」与「上游合并」两栏，模板在
+      # .github/release-body-template.md。generate_release_notes 仍开着，用于追加
+      # GitHub 自己的 Full Changelog 提交列表。
       - name: 发布
         uses: softprops/action-gh-release@v2
         with:
@@ -225,38 +250,4 @@ jobs:
           draft: false
           generate_release_notes: true
           files: artifacts/*
-          body: |
-            ## 下载 / Downloads
-
-            未签名构建，首次打开会被系统安全提示拦截；用下方 `checksums.txt` 核对 SHA256。
-            Unsigned builds — the first launch is blocked by Gatekeeper / SmartScreen. Verify against `checksums.txt`.
-
-            **macOS**（Apple Silicon / arm64）
-
-            下载 `.dmg`，把 ZCode-Libre 拖入「应用程序」。首次打开若被拦截：
-            `sudo xattr -rd com.apple.quarantine /Applications/ZCode-Libre.app`
-
-            **Windows**（x64）
-
-            下载 `.exe`，SmartScreen 提示时选「更多信息」→「仍要运行」。
-
-            **Linux**（x64 与 arm64 均可用）
-
-            按发行版选择系统包：包在对应发行版容器内构建，使用该发行版原生的打包后端。
-
-            | 发行版 / Distro | 包格式 |
-            |---|---|
-            | Debian / Ubuntu | `.deb`（`sudo apt install ./<file>.deb`） |
-            | Fedora / RHEL / openSUSE | `.rpm`（`sudo dnf install ./<file>.rpm`） |
-
-            架构按文件名后缀区分：`x86_64`/`amd64` 为 64 位 x86，`aarch64`/`arm64` 为 ARM64。
-
-            安装后从应用菜单启动；走终端时用完整路径 `/opt/ZCode-Libre/zcode-libre`
-            （包不提供 `/usr/bin` 入口）。本分支与官方 ZCode 共用 `.zcode` 数据根，
-            但使用独立的界面偏好目录，因此两者可以同时安装、同时运行。
-
-            ## 关于这个版本 / About this build
-
-            - 遥测与厂商服务默认关闭，模型用你自己的 API Key 接入。
-            - 应用内更新只检测本仓库的 Release 并引导下载，不会自动安装，也不会被换回官方版本。
-            - 与上游的完整差异见 [UPSTREAM.md](https://github.com/wenyinos/ZCode-Libre/blob/main/UPSTREAM.md)。
+          body_path: release-body.md
