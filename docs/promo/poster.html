@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>ZCode-Libre 介绍海报</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        width: 1200px;
+        height: 1600px;
+        overflow: hidden;
+        font-family:
+          "Noto Sans CJK SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+        /* 光晕直接用背景径向渐变：不再用模糊圆形，避免露出可见的圆边。 */
+        background:
+          radial-gradient(760px 760px at 6% 4%, rgba(94, 234, 212, 0.15), transparent 68%),
+          radial-gradient(980px 980px at 100% 100%, rgba(99, 102, 241, 0.22), transparent 70%),
+          #0e0d16;
+        color: #eae8ff;
+        padding: 92px 88px 78px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 26px;
+      }
+      .logo {
+        width: 104px;
+        height: 104px;
+        flex: none;
+      }
+      .name {
+        font-size: 60px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        line-height: 1.05;
+      }
+      .kind {
+        margin-top: 8px;
+        font-size: 23px;
+        color: #a8a3c9;
+        letter-spacing: 1.5px;
+      }
+
+      .headline {
+        margin-top: 86px;
+        font-size: 76px;
+        font-weight: 700;
+        line-height: 1.24;
+        letter-spacing: 1px;
+      }
+      .headline em {
+        font-style: normal;
+        background: linear-gradient(96deg, #5eead4 0%, #38bdf8 46%, #8b8cf7 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .sub {
+        margin-top: 30px;
+        font-size: 27px;
+        line-height: 1.72;
+        color: #b9b5d6;
+        max-width: 950px;
+      }
+
+      .rule {
+        margin: 64px 0 56px;
+        height: 2px;
+        width: 100%;
+        background: linear-gradient(
+          90deg,
+          rgba(94, 234, 212, 0.55),
+          rgba(99, 102, 241, 0.25) 55%,
+          transparent
+        );
+      }
+
+      .points {
+        display: flex;
+        flex-direction: column;
+        gap: 38px;
+      }
+      .point {
+        display: flex;
+        align-items: flex-start;
+        gap: 20px;
+      }
+      .dot {
+        margin-top: 12px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex: none;
+        background: linear-gradient(135deg, #5eead4, #6366f1);
+      }
+      .point b {
+        display: block;
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: 0.4px;
+      }
+      .point span {
+        display: block;
+        margin-top: 8px;
+        font-size: 22px;
+        line-height: 1.55;
+        color: #9c98bd;
+      }
+
+      /* 引文卡片：填住要点与页脚之间的空间，也给版面一个重心 */
+      .quote {
+        margin-top: 60px;
+        padding: 30px 34px;
+        border-radius: 18px;
+        border: 1px solid rgba(196, 167, 231, 0.16);
+        border-left: 3px solid rgba(94, 234, 212, 0.55);
+        background: rgba(255, 255, 255, 0.028);
+      }
+      .quote p {
+        margin: 0;
+        font-size: 27px;
+        line-height: 1.6;
+        color: #dcd8f2;
+      }
+      .quote cite {
+        display: block;
+        margin-top: 14px;
+        font-style: normal;
+        font-size: 20px;
+        letter-spacing: 1.2px;
+        color: #8b86ab;
+      }
+
+      .foot {
+        margin-top: auto;
+        padding-top: 46px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 40px;
+      }
+      .platforms {
+        font-size: 22px;
+        color: #8f8bb0;
+        letter-spacing: 0.6px;
+      }
+      .platforms strong {
+        color: #cfcbe8;
+        font-weight: 600;
+      }
+      .platforms em {
+        font-style: normal;
+        color: #6f6b8c;
+      }
+      /* 社交平台通常不给挂外链，这里只写仓库路径，够别人搜到就行 */
+      .repo {
+        margin-bottom: 12px;
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: 0.4px;
+        background: linear-gradient(96deg, #5eead4 0%, #38bdf8 50%, #8b8cf7 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .repo-label {
+        margin-bottom: 10px;
+        font-size: 19px;
+        letter-spacing: 1.6px;
+        color: #7d799c;
+      }
+      .license {
+        text-align: right;
+        font-size: 20px;
+        color: #7d799c;
+        letter-spacing: 0.6px;
+        line-height: 1.65;
+      }
+      .license b {
+        color: #cfcbe8;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="brand">
+      <svg
+        class="logo"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 256 256"
+        fill="none"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id="pSurface" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#1C2129" />
+            <stop offset="1" stop-color="#0A0C10" />
+          </linearGradient>
+          <linearGradient id="pMark" x1="0" y1="0" x2="0.85" y2="1">
+            <stop offset="0" stop-color="#5EEAD4" />
+            <stop offset="0.45" stop-color="#38BDF8" />
+            <stop offset="1" stop-color="#6366F1" />
+          </linearGradient>
+          <linearGradient id="pRim" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#5EEAD4" stop-opacity="0.7" />
+            <stop offset="0.5" stop-color="#38BDF8" stop-opacity="0.25" />
+            <stop offset="1" stop-color="#6366F1" stop-opacity="0.55" />
+          </linearGradient>
+          <mask
+            id="pNotch"
+            maskUnits="userSpaceOnUse"
+            maskContentUnits="userSpaceOnUse"
+            x="0"
+            y="0"
+            width="256"
+            height="256"
+          >
+            <rect x="0" y="0" width="256" height="256" fill="#fff" />
+            <path d="M164.56 118.86L138.97 155.42L134.09 122.52Z" fill="#000" />
+          </mask>
+        </defs>
+        <circle cx="128" cy="128" r="128" fill="url(#pSurface)" />
+        <circle cx="128" cy="128" r="126" fill="none" stroke="url(#pRim)" stroke-width="2.5" />
+        <g mask="url(#pNotch)">
+          <g transform="translate(50 61.578125) scale(0.609375)" fill="url(#pMark)">
+            <path
+              d="M134.4 0.130152L116.48 25.6022C113.665 29.5699 109.054 32.0019 104.064 32.0019H6.3999V0C6.3999 0.130149 134.4 0.130152 134.4 0.130152Z"
+            />
+            <path d="M256 0.130127L102.401 217.732H0L153.599 0.130127H256Z" />
+            <path
+              d="M121.601 217.732L139.65 192.134C142.465 188.166 147.076 185.734 152.067 185.734H249.604V217.736H121.601V217.732Z"
+            />
+          </g>
+        </g>
+      </svg>
+      <div>
+        <div class="name">ZCode-Libre</div>
+        <div class="kind">基于 ZCode 的社区分支</div>
+      </div>
+    </div>
+
+    <div class="headline">
+      数据跟官方共用，<br />
+      <em>发行渠道各自独立</em>
+    </div>
+    <div class="sub">
+      对话记录、模型设置和凭据都在原来的位置，不用迁移也不用重新登录；界面偏好各存各的，所以两个版本能同时装、同时开。
+    </div>
+
+    <div class="rule"></div>
+
+    <div class="points">
+      <div class="point">
+        <div class="dot"></div>
+        <div>
+          <b>遥测与厂商服务默认关闭</b>
+          <span>账号登录、会话分享、反馈工单、插件市场远端源，各项在设置里都有开关</span>
+        </div>
+      </div>
+      <div class="point">
+        <div class="dot"></div>
+        <div>
+          <b>模型只走你自己的 API Key</b>
+          <span>凭据直连模型服务，不经过任何账号体系</span>
+        </div>
+      </div>
+      <div class="point">
+        <div class="dot"></div>
+        <div>
+          <b>更新只做检测</b>
+          <span>查到新版只给下载页，装不装由你决定，不会被换回官方版本</span>
+        </div>
+      </div>
+      <div class="point">
+        <div class="dot"></div>
+        <div>
+          <b>额外的界面定制</b>
+          <span>「紫夜」主题在 macOS 与 Windows 下半透明；常用 coding plan 额度直接显示</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="quote">
+      <p>不收集就是不收集，没有「匿名统计」这类折中。</p>
+      <cite>关于默认值</cite>
+    </div>
+
+    <div class="foot">
+      <div>
+        <div class="repo-label">项目地址</div>
+        <div class="repo">wenyinos/ZCode-Libre</div>
+        <div class="platforms">
+          <strong>macOS</strong> · <strong>Windows</strong> · <strong>Linux</strong>
+          <em>（deb / rpm）</em>
+        </div>
+      </div>
+      <div class="license">
+        上游授权 <b>Apache-2.0</b><br />
+        与智谱官方无关的第三方分支
+      </div>
+    </div>
+  </body>
+</html>

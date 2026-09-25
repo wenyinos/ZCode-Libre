@@ -16,6 +16,14 @@ ZCode-Libre is an AI coding workspace with desktop, browser, and terminal interf
 
 ZCode-Libre is a community fork of [ZCode](https://github.com/zai-org/ZCode), following the same pattern as Chrome → Chromium and VS Code → VSCodium: it keeps the upstream feature set and full commit history while shipping under its own product identity and release channel, so it can be audited, distributed, and localized independently.
 
+<div align="center">
+  <a href="docs/promo/intro-poster.png">
+    <img src="docs/promo/intro-poster-preview.png" alt="ZCode-Libre project overview" width="520" />
+  </a>
+  <br />
+  <a href="https://wenyinos.github.io/ZCode-Libre/">wenyinos.github.io/ZCode-Libre</a>
+</div>
+
 ## Differences from upstream
 
 | Area            | Upstream ZCode          | ZCode-Libre                              |

@@ -16,6 +16,14 @@ ZCode-Libre 是 AI 编程工作台，提供桌面应用、浏览器界面和终�
 
 ZCode-Libre 是 [ZCode](https://github.com/zai-org/ZCode) 的社区分支，遵循 Chrome → Chromium、VS Code → VSCodium 的分支模式：保留上游的完整功能与代码历史，另行使用独立的品牌身份与发行渠道，便于独立审计、独立分发和本地化定制。
 
+<div align="center">
+  <a href="docs/promo/intro-poster.png">
+    <img src="docs/promo/intro-poster-preview.png" alt="ZCode-Libre 项目介绍" width="520" />
+  </a>
+  <br />
+  <a href="https://wenyinos.github.io/ZCode-Libre/">wenyinos.github.io/ZCode-Libre</a>
+</div>
+
 ## 与上游的区别
 
 | 维度       | 上游 ZCode           | ZCode-Libre                            |
