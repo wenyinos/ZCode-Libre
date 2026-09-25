@@ -1,0 +1,93 @@
+name: Upstream watch
+
+# 「跟随上游」是本分支的定位之一，但不能靠人想起来 git fetch upstream。
+# 每天查一次上游 main：有新提交就开一个 issue（已开着就更新正文），不碰代码、不发版。
+on:
+  schedule:
+    # UTC 02:00，北京时间上午 10 点。
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: upstream-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    name: 检查上游是否前进
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 审计脚本只用 node 内置模块与 git，不需要装依赖，因此这里不跑 pnpm。
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # --no-tags：上游与本仓库共用 v3.14.x 这类 tag 名但指向不同提交，
+      # 带 tags 抓取会让本地 tag 撞名，之后按 tag 的比对会算错。
+      - name: 取上游历史
+        run: |
+          git remote add upstream https://github.com/zai-org/ZCode.git 2>/dev/null || true
+          git fetch --no-tags upstream main
+
+      - name: 统计未合入的上游提交
+        id: count
+        run: echo "count=$(git rev-list --count HEAD..upstream/main)" >> "$GITHUB_OUTPUT"
+
+      - name: 生成审计报告
+        if: steps.count.outputs.count != '0'
+        run: |
+          {
+            echo "上游 main 有 ${{ steps.count.outputs.count }} 个提交尚未合入。"
+            echo
+            echo '```'
+            node scripts/audit-upstream-sync.mjs
+            echo '```'
+            echo
+            echo '合并流程见 [UPSTREAM.md](https://github.com/${{ github.repository }}/blob/main/UPSTREAM.md)：'
+            echo '`git fetch upstream --no-tags` → `pnpm audit:upstream` → `git merge upstream/main` → 品牌名检查 → `pnpm check:defaults`。'
+            echo
+            echo '本 issue 由 upstream-watch 工作流每天更新，合入后会自动关闭。'
+          } > issue-body.md
+          cat issue-body.md
+
+      - name: 开 issue 或更新已有 issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          count="${{ steps.count.outputs.count }}"
+          label="upstream-sync"
+          gh label create "$label" --repo "${{ github.repository }}" \
+            --description "上游有新提交待评估" --color "0E8A16" 2>/dev/null || true
+
+          existing=$(gh issue list --repo "${{ github.repository }}" \
+            --label "$label" --state open --json number --jq '.[0].number')
+
+          if [ "$count" = "0" ]; then
+            # 合入后自动收尾，避免 issue 越攒越多。
+            if [ -n "$existing" ]; then
+              gh issue comment "$existing" --repo "${{ github.repository }}" \
+                --body "上游提交已全部合入，关闭本 issue。"
+              gh issue close "$existing" --repo "${{ github.repository }}"
+            else
+              echo "上游无新提交。"
+            fi
+            exit 0
+          fi
+
+          title="上游有未合入的提交（${count} 个）"
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --repo "${{ github.repository }}" \
+              --title "$title" --body-file issue-body.md
+            echo "已更新 issue #$existing"
+          else
+            gh issue create --repo "${{ github.repository }}" \
+              --title "$title" --label "$label" --body-file issue-body.md
+          fi
