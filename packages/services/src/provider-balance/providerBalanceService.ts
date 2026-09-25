@@ -39,6 +39,8 @@ export const PROVIDER_BALANCE_VENDOR_LABELS: Record<ProviderBalanceVendorId, str
   openrouter: "OpenRouter",
   "opencode-go": "OpenCode Go",
   commandcode: "Command Code",
+  "stepfun-cn": "StepFun (CN)",
+  "stepfun-global": "StepFun (Global)",
 };
 
 interface ResolvedBalanceSource {

@@ -53,6 +53,8 @@ export function resolveBalanceVendor(
   if (host.endsWith("openrouter.ai")) return "openrouter";
   if (host.endsWith("opencode.ai")) return pathname.startsWith("/zen/go") ? "opencode-go" : null;
   if (host.endsWith("commandcode.ai")) return "commandcode";
+  if (host.endsWith("stepfun.com")) return "stepfun-cn";
+  if (host.endsWith("stepfun.ai")) return "stepfun-global";
   return null;
 }
 
@@ -254,32 +256,32 @@ async function queryKimi(
   };
 }
 
-/** MiniMax Token Plan；接口给的是剩余百分比，这里统一换算成已用。 */
-async function queryMiniMax(
-  apiKey: string,
-  vendor: Extract<ProviderBalanceVendorId, "minimax-cn" | "minimax-global">,
-  fetchImpl: typeof fetch,
-): Promise<VendorBalanceQueryResult> {
-  const origin = vendor === "minimax-cn" ? "https://www.minimaxi.com" : "https://www.minimax.io";
-  const result = await requestJson(
-    `${origin}/v1/token_plan/remains`,
-    apiKey,
-    { method: "GET" },
-    fetchImpl,
-  );
-  if (!result.ok) {
-    return { error: result.error };
-  }
-  const data = readRecord(result.body.data);
-  const remains = (data ? readArray(data.model_remains) : null) ?? readArray(result.body.model_remains);
+/**
+ * MiniMax 计划额度。
+ *
+ * Token Plan 与 Coding Plan 是两条独立产品线：路径不同，响应结构相同（参考实现也共用同一个解析）。
+ * 同一把密钥只会属于其中一个套餐，而 provider 配置里分辨不出是哪种，因此先按 Token Plan 查，
+ * 未命中再按 Coding Plan 查，不让用户另外声明套餐类型。
+ * 接口给的是剩余百分比，这里统一换算成已用。
+ */
+const MINIMAX_PLAN_PATHS = [
+  "/v1/token_plan/remains",
+  "/v1/api/openplatform/coding_plan/remains",
+] as const;
+
+function readMiniMaxWindows(body: Record<string, unknown>): ProviderBalanceWindow[] | null {
+  const data = readRecord(body.data);
+  const remains = (data ? readArray(data.model_remains) : null) ?? readArray(body.model_remains);
   if (!remains || remains.length === 0) {
-    return { error: "invalid-response" };
+    return null;
   }
   // 有 general 条目时优先它，否则取第一条。
-  const entries = remains.map(readRecord).filter((item): item is Record<string, unknown> => item !== null);
+  const entries = remains
+    .map(readRecord)
+    .filter((item): item is Record<string, unknown> => item !== null);
   const chosen = entries.find((item) => item.model_name === "general") ?? entries[0];
   if (!chosen) {
-    return { error: "invalid-response" };
+    return null;
   }
   const now = Date.now();
   const windows: ProviderBalanceWindow[] = [];
@@ -301,7 +303,60 @@ async function queryMiniMax(
       ...(resetInSec !== undefined ? { resetInSec } : {}),
     });
   }
-  return windows.length > 0 ? { windows } : { error: "invalid-response" };
+  return windows.length > 0 ? windows : null;
+}
+
+async function queryMiniMax(
+  apiKey: string,
+  vendor: Extract<ProviderBalanceVendorId, "minimax-cn" | "minimax-global">,
+  fetchImpl: typeof fetch,
+): Promise<VendorBalanceQueryResult> {
+  const origin = vendor === "minimax-cn" ? "https://www.minimaxi.com" : "https://www.minimax.io";
+  let lastError = "invalid-response";
+  for (const path of MINIMAX_PLAN_PATHS) {
+    const result = await requestJson(`${origin}${path}`, apiKey, { method: "GET" }, fetchImpl);
+    if (!result.ok) {
+      lastError = result.error;
+      continue;
+    }
+    const windows = readMiniMaxWindows(result.body);
+    if (windows) {
+      return { windows };
+    }
+  }
+  return { error: lastError };
+}
+
+/** StepFun 账户余额（按量付费）。Step Plan 订阅官方没有公开配额接口，所以只能显示余额。 */
+async function queryStepFun(
+  apiKey: string,
+  vendor: Extract<ProviderBalanceVendorId, "stepfun-cn" | "stepfun-global">,
+  fetchImpl: typeof fetch,
+): Promise<VendorBalanceQueryResult> {
+  const url =
+    vendor === "stepfun-cn"
+      ? "https://api.stepfun.com/v1/accounts"
+      : "https://api.stepfun.ai/v1/accounts";
+  const result = await requestJson(url, apiKey, { method: "GET" }, fetchImpl);
+  if (!result.ok) {
+    return { error: result.error };
+  }
+  const total = readAmount(result.body.balance);
+  if (total === null) {
+    return { error: "invalid-response" };
+  }
+  const granted = readAmount(result.body.total_voucher_balance);
+  const toppedUp = readAmount(result.body.total_cash_balance);
+  return {
+    balances: [
+      {
+        currency: vendor === "stepfun-cn" ? "CNY" : "USD",
+        total,
+        ...(granted !== null ? { granted } : {}),
+        ...(toppedUp !== null ? { toppedUp } : {}),
+      },
+    ],
+  };
 }
 
 /** OpenRouter 账户余额；需要 Management Key，普通推理 Key 会被拒。 */
@@ -506,5 +561,8 @@ export async function queryVendorBalance(
       return await queryOpenCodeGo(key, fetchImpl);
     case "commandcode":
       return await queryCommandCode(key, fetchImpl);
+    case "stepfun-cn":
+    case "stepfun-global":
+      return await queryStepFun(key, vendor, fetchImpl);
   }
 }

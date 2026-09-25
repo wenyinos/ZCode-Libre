@@ -17,7 +17,9 @@ export type ProviderBalanceVendorId =
   | "minimax-global"
   | "openrouter"
   | "opencode-go"
-  | "commandcode";
+  | "commandcode"
+  | "stepfun-cn"
+  | "stepfun-global";
 
 /** payg 为按量付费余额，package 为套餐额度窗口。 */
 export type ProviderBalanceKind = "payg" | "package";
