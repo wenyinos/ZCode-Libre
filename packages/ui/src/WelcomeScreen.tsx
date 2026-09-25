@@ -9,6 +9,7 @@ import { Loader2Icon, LoaderIcon, TriangleAlertIcon } from "lucide-react";
 import {
   type OAuthProviderMeta,
   BIGMODEL_PROVIDER_ID,
+  LIBRE_VENDOR_SERVICES,
   TID_LOGIN_USE_API_KEY_BUTTON,
   TID_OAUTH_CANCEL,
   TID_OAUTH_ERROR,
@@ -246,7 +247,10 @@ function LoginPanel({ active, onComplete }: LoginPanelProps) {
   ]);
 
   const resetApiKeyForm = useCallback(() => {
-    setLoginMode("providers");
+    // ZCode-Libre：官方账号登录默认关闭时登录面板只保留 API Key 接入。
+    // 渠道列表在服务端已按 enabled 过滤成空，这里再兜一层，避免任何路径把面板
+    // 切到「没有可用登录提供方」的空状态。
+    setLoginMode(LIBRE_VENDOR_SERVICES.officialAccountLogin ? "providers" : "apiKey");
   }, []);
 
   useEffect(() => {

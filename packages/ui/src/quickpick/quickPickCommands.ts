@@ -283,7 +283,9 @@ export function createQuickPickCommands({
       keywords: ["disconnect", "logout", "sign out", "断开连接", "登出"],
       run: handlers.logout,
     });
-  } else if (!isLoggedIn && handlers.login) {
+  } else if (!isLoggedIn && handlers.login && LIBRE_VENDOR_SERVICES.officialAccountLogin) {
+    // ZCode-Libre：官方账号登录默认关闭，服务端渠道列表为空，这条命令点开只会落到
+    // 「没有可用登录提供方」的空页面。连入口一起隐藏，模型改从设置里填 API Key 接入。
     commands.push({
       id: "login",
       sectionId: "app",

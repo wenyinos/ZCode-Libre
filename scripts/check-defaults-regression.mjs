@@ -146,6 +146,21 @@ expectContains(
   "桌面 Linux 的纯色回退丢失，紫夜主题会重新变成拿不到透明的半透明配色",
 );
 
+// 官方账号登录默认关闭：渠道列表在服务端被过滤成空，UI 侧还留着入口的话，
+// 点开只会落到「没有可用登录提供方」的空页面，模型改用 API Key 接入。
+for (const [path, reason] of [
+  [
+    "packages/ui/src/quickpick/quickPickCommands.ts",
+    "命令面板的「登录」命令应受策略门禁，否则默认关闭时会露出一个打不开的空页面",
+  ],
+  [
+    "packages/ui/src/WelcomeScreen.tsx",
+    "登录面板应受策略门禁，否则可能被切到没有可用渠道的官方登录视图",
+  ],
+]) {
+  expectContains(path, "LIBRE_VENDOR_SERVICES.officialAccountLogin", reason);
+}
+
 // 官方账号登录默认关闭，且保留显式开启的逃生舱。
 // 实现可以写死 false，也可以引用策略常量；两种都表示默认关闭，但绝不能是 enabled: true。
 for (const path of [
