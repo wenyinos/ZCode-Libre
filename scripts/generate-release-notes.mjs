@@ -88,11 +88,32 @@ function readUpstreamShas() {
 const upstreamShas = readUpstreamShas();
 
 // 合并提交本身只是记账（「把上游合进来」），真正的内容改动都在各自提交里，因此不列。
-const commits = gitLines(["log", "--no-merges", "--reverse", "--format=%H%x09%s", range]).map(
-  (line) => {
-    const [sha, ...subjectParts] = line.split("\t");
-    return { sha, subject: subjectParts.join("\t") };
-  },
+// 作者与提交信息一起取出来，用于下面识别被上游改写过的提交。
+const commits = gitLines([
+  "log",
+  "--no-merges",
+  "--reverse",
+  "--format=%H%x09%an%x09%s",
+  range,
+]).map((line) => {
+  const [sha, author, ...subjectParts] = line.split("\t");
+  return { sha, author, subject: subjectParts.join("\t") };
+});
+
+/**
+ * 上游会 force-push 改写已推送的提交（实测：v3.14.3 那个提交被 amend，328c1a0 → 29628c9）。
+ * 本分支留的是改写前的副本，它的 sha 不在上游 main 的可达范围内，因此要额外识别：
+ *
+ *  - 副本与上游当前版本是同一处改动，两栏都列会让人以为改了两遍，所以只在
+ *    「上游当前版本没有出现在本次区间」时才需要单独列出；出现了就跳过副本。
+ *  - 判据用作者 + 提交信息。区间内上游提交的作者与信息与副本完全一致时即为同一处改动。
+ *    残余边界情况：只有副本、没有当前版本落在区间内时，副本仍会被算成本分支改动。
+ *    这需要上游再改一次历史才会出现，届时人工过目即可，不值得为此拉全量上游日志。
+ */
+const upstreamInRangeFingerprints = new Set(
+  commits
+    .filter((commit) => upstreamShas?.has(commit.sha))
+    .map((commit) => `${commit.author}\t${commit.subject}`),
 );
 
 const forkCommits = [];
@@ -100,9 +121,12 @@ const upstreamCommits = [];
 for (const commit of commits) {
   if (upstreamShas?.has(commit.sha)) {
     upstreamCommits.push(commit);
-  } else {
-    forkCommits.push(commit);
+    continue;
   }
+  if (upstreamInRangeFingerprints.has(`${commit.author}\t${commit.subject}`)) {
+    continue;
+  }
+  forkCommits.push(commit);
 }
 
 function renderSection(title, items, emptyText) {
