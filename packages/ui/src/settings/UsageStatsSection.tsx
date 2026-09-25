@@ -3,9 +3,8 @@ import {
   CodingPlanUsagePanel,
   type CodingPlanUsageSource,
 } from "@/settings/usage-stats/CodingPlanUsagePanel.js";
-import { ProviderBalancePanel } from "@/settings/usage-stats/ProviderBalancePanel.js";
 
-export type UsageStatsSectionTab = "app" | "balance" | "codingPlan" | `codingPlan:${string}`;
+export type UsageStatsSectionTab = "app" | "codingPlan" | `codingPlan:${string}`;
 
 export function UsageStatsSection({
   activeTab,
@@ -24,11 +23,7 @@ export function UsageStatsSection({
     return <AppUsagePanel />;
   }
 
-  // 额度来自用户自己的 API Key，与登录态和 coding plan 订阅无关，独立成一个页签。
-  if (activeTab === "balance") {
-    return <ProviderBalancePanel />;
-  }
-
+  // 套餐额度已独立成「个人套餐」分区：这里的页签只留上游原有的应用用量与套餐权益。
   return (
     <CodingPlanUsagePanel
       loadingSources={providerSourcesLoading}

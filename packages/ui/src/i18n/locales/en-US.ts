@@ -2350,6 +2350,7 @@ const enUS: Record<string, string> = {
   "settings.usageTitle": "Usage stats",
   "settings.usageDescription":
     "Review rough activity and model usage aggregated from local sessions.",
+  "settings.personalPlan.title": "Personal plan",
   "resourceManager.storage.summaryTotal": "Total used by ZCode-Libre",
   "resourceManager.storage.scanning": "Calculating…",
   "resourceManager.storage.lastScanned": "Last calculated {time}",
@@ -3441,7 +3442,6 @@ const enUS: Record<string, string> = {
   "settings.vendorServices.telemetry": "Telemetry",
   "settings.vendorServices.telemetry.description": "Enable with ZCODE_TELEMETRY_ENABLED=1; intended for self-hosted deployments.",
   "settings.vendorServices.off": "Off",
-  "settings.usage.tab.balance": "Model balance",
   "settings.usage.balance.title": "Model balance",
   "settings.usage.balance.description": "Balances are queried directly with your configured API keys; providers without one are hidden.",
   "settings.usage.balance.empty": "No provider with a queryable balance yet. Add an API key under Model Providers to see it here.",

@@ -58,6 +58,7 @@ import { ModelProviderSection } from "@/settings/ModelProviderSection.js";
 import { useCodingPlanUpgradeDialog } from "@/settings/CodingPlanUpgradeDialogProvider.js";
 import { useEnterpriseCodingPlanProducts } from "@/settings/model-provider-section/useEnterpriseCodingPlanProducts.js";
 import { UsageStatsSection, type UsageStatsSectionTab } from "@/settings/UsageStatsSection.js";
+import { ProviderBalancePanel } from "@/settings/usage-stats/ProviderBalancePanel.js";
 import { VendorServicesSection } from "@/settings/VendorServicesSection.js";
 import {
   buildCodingPlanUsageSources,
@@ -149,10 +150,6 @@ function SettingsUsageProviderTabs({
     {
       id: "app" as const,
       label: intl.formatMessage({ id: "settings.usage.tab.appUsage" }),
-    },
-    {
-      id: "balance" as const,
-      label: intl.formatMessage({ id: "settings.usage.tab.balance" }),
     },
     ...codingPlanSources.map((source, index) => ({
       id: createSettingsUsageCodingPlanTabId(source.id),
@@ -1888,6 +1885,8 @@ export function SettingsPage({
                             workspaceIdentity={activeWorkspaceIdentity}
                             isDesktop={isDesktop}
                           />
+                        ) : activeSection === "personalPlan" ? (
+                          <ProviderBalancePanel />
                         ) : activeSection === "usage" ? (
                           <UsageStatsSection
                             activeTab={usageActiveTab}

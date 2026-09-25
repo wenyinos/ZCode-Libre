@@ -10,6 +10,7 @@ import {
   Sparkles,
   Sun,
   BarChart3,
+  Wallet,
   Terminal,
   AlarmClock,
   Anchor,
@@ -164,6 +165,14 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     id: "usage",
     icon: BarChart3,
     titleId: "settings.usageTitle",
+    groupId: "dataAndStats",
+  },
+  {
+    // ZCode-Libre：套餐额度独立成一个分区。放在「使用统计」里当页签时既不好找，
+    // 又跟上游那个依赖官方账号的套餐页签同名混在一起。
+    id: "personalPlan",
+    icon: Wallet,
+    titleId: "settings.personalPlan.title",
     groupId: "dataAndStats",
   },
 ];
