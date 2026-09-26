@@ -50,14 +50,20 @@ jobs:
             --base-url "https://github.com/${{ github.repository }}/releases/latest/download" \
             --tarball-url "https://github.com/${{ github.repository }}/releases/latest/download/zcode-${VERSION}.tar.gz"
 
+      # 整理到扁平目录再上传：upload-artifact 会以「第一个通配符之前的公共前缀」为根
+      # 保留子目录（这里会保留 releases/<version>/），而 publish 的 `artifacts/*` 不会
+      # 递归子目录，会把包静默漏掉——v3.14.7 首次发布就是这样丢了 tar.gz。
+      - name: 整理产物到扁平目录
+        run: |
+          mkdir -p dist/cli-assets
+          cp dist/zcode/releases/*/*.tar.gz dist/zcode/releases/*/sha256.txt \
+            dist/zcode/latest.json dist/zcode/install.sh dist/cli-assets/
+          ls -la dist/cli-assets
+
       # 产物交给 release.yml 的 publish 统一发布；这里同时留档，便于失败时从 Run 取回。
       - name: 收集产物
         uses: actions/upload-artifact@v4
         with:
           name: CLI-zcode
           if-no-files-found: error
-          path: |
-            dist/zcode/releases/*/*.tar.gz
-            dist/zcode/releases/*/sha256.txt
-            dist/zcode/latest.json
-            dist/zcode/install.sh
+          path: dist/cli-assets/*

@@ -244,6 +244,14 @@ jobs:
       - name: 生成校验和
         run: |
           cd artifacts
+          # 子目录会被 sha256sum 报错，又让 artifacts/* 漏掉其内容——必须显式拦下，
+          # 否则发布会静默少文件（v3.14.7 首次发布就丢了 CLI 的 tar.gz）。
+          dirs="$(find . -mindepth 1 -type d)"
+          if [ -n "$dirs" ]; then
+            echo "::error::artifacts 中存在子目录，发布会被静默漏掉："
+            echo "$dirs"
+            exit 1
+          fi
           sha256sum * | grep -v 'checksums.txt' > checksums.txt
           cat checksums.txt
 
