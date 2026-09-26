@@ -4,9 +4,9 @@ name: Release CLI
 # 产物覆盖 macOS arm64 与 Linux x64/arm64 三个平台，版本号与根 package.json 对齐，
 # 与桌面产物并存于同一 tag 的 Release。
 #
-# 与 release.yml 的关系：两者都用 .github/release-body-template.md 生成发布说明
-# （模板里已含命令行版安装说明），内容一致，谁后完成谁的版本生效；
-# 建议先跑本流程、再跑桌面流程，让 GitHub 自动追加的 Full Changelog 由最后一步生成。
+# 只管构建与上传资产，不写发布说明：说明正文（.github/release-body-template.md，
+# 已含命令行版安装段落）由桌面流程统一生成，两边都写会互相覆盖。
+# 因此正常发布顺序是先跑 release.yml（创建 Release 与完整说明），再跑本流程补资产。
 on:
   workflow_dispatch:
     inputs:
@@ -30,10 +30,7 @@ jobs:
     name: Build CLI (TUI + Web)
     runs-on: ubuntu-latest
     steps:
-      # fetch-depth: 0 是发布说明要用的：默认浅克隆列不出本次改动，也判不了哪些提交来自上游。
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
@@ -44,20 +41,6 @@ jobs:
 
       - name: 安装依赖
         run: pnpm install --frozen-lockfile
-
-      # 上游历史只用于发布说明的来源分栏；拿不到不算失败。
-      - name: 取上游历史用于改动分类
-        continue-on-error: true
-        run: |
-          git remote add upstream https://github.com/zai-org/ZCode.git 2>/dev/null || true
-          git fetch --no-tags upstream main
-
-      - name: 生成发布说明
-        run: |
-          node scripts/generate-release-notes.mjs \
-            --to HEAD \
-            --template .github/release-body-template.md \
-            --out release-body.md
 
       # 在 Linux runner 上就能打出 macOS/Linux 通用包：pnpm 的 supportedArchitectures
       # 会安装所有平台的可选依赖，node-pty prebuild 随包携带；包内原生件只覆盖这三个
@@ -89,6 +72,7 @@ jobs:
             dist/zcode/install.sh
 
       # tag 留空时只构建不发；有 tag 时把 CLI 资产发到该 tag 的 Release。
+      # 不传 body/generate_release_notes：说明正文由桌面流程生成，这里只加资产。
       - name: 发布
         if: inputs.tag != '' || startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
@@ -96,10 +80,8 @@ jobs:
           tag_name: ${{ inputs.tag || github.ref_name }}
           name: ${{ inputs.tag || github.ref_name }}
           draft: false
-          generate_release_notes: true
           files: |
             dist/zcode/releases/*/*.tar.gz
             dist/zcode/releases/*/sha256.txt
             dist/zcode/latest.json
             dist/zcode/install.sh
-          body_path: release-body.md
