@@ -158,6 +158,12 @@ async function buildOutputs(skipBuild) {
   }
 
   run("pnpm", ["--filter", "@zcode/cli...", "build"]);
+  // TUI 运行时资产（stageTuiRuntime → sea-tui-assets）会读取 workspace 包的 dist，
+  // 而 @zcode/tui 的依赖闭包里有不在 @zcode/cli 依赖树里的仓库根包：
+  // @zcode/model-option-map（有 build 脚本，但不在 @zcode/cli 的依赖里）与
+  // @zcode/shared（没有 build 脚本，dist 由 tsc 项目引用生成）。
+  // 干净仓库（CI）必须补上这一步，否则会报 "Missing @zcode/shared dist files"。
+  run("pnpm", ["exec", "tsc", "-b", "packages/shared", "packages/model-option-map"]);
   await rm(resolve(root, "packages", "server", "dist"), {
     force: true,
     recursive: true,
