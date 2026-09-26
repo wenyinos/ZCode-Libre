@@ -35,9 +35,13 @@ ZCode-Libre is a community fork of [ZCode](https://github.com/zai-org/ZCode), fo
 | Sessions & settings | —                   | Shared with upstream                     |
 | UI preferences  | `ZCode` data directory  | `ZCode-Libre` data directory (separate)  |
 
-**Sessions and settings are shared with upstream.** Session history, model settings, and credentials live in the `.zcode` data root (`~/.zcode/cli/db/db.sqlite`, `~/.zcode/v2/setting.json`), so the two are fully interchangeable: installing this fork reads the official client's conversations and configuration directly — no data migration or re-login.
+**Sessions and settings are shared with upstream.** Session history, model settings, and your model provider credentials live in the `.zcode` data root (`~/.zcode/cli/db/db.sqlite`, `~/.zcode/v2/setting.json`), so the two are fully interchangeable: installing this fork reads the official client's conversations and configuration directly — no data migration or re-login. (The one exception is official account credentials — see the next point.)
 
 **UI preferences are independent.** The Electron user data directory is `ZCode-Libre`, so theme, locale, panel layout, and the sign-in state of the embedded browser and Coding Plan webviews stay separate. The two clients can therefore **run at the same time**, and they never share Electron caches across diverging versions.
+
+**Official accounts and subscriptions are not used.** This fork offers no official account sign-in, and it does not read the account credentials the official client leaves in the shared data root — login tokens and account-scoped keys are treated as absent, so the fork reports you as signed out even if you signed in through the official client.
+
+This is not a missing feature but an honest boundary: the upstream open-source release itself states that it does not promise the official product's full feature set or promotional policies (see [NOTICE.md](NOTICE.md)). Inheriting the official client's sign-in would get you neither the plan nor the promotions you would expect there, and the login token expires — refreshing it needs a re-login this fork cannot offer, so you would be left with "it worked for a while, then stopped, and I cannot fix it". Add **your own API key** under Model Providers instead.
 
 For the upstream sync workflow and the full list of divergences, see [UPSTREAM.md](UPSTREAM.md).
 
