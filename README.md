@@ -61,10 +61,6 @@ ZCode-Libre 是 [ZCode](https://github.com/zai-org/ZCode) 的社区分支，遵�
 
 ## 遥测与厂商服务
 
-以下标识**有意保持与上游一致**，因为它们是跨端契约而非品牌展示位，改动会破坏与既有服务端、协议和用户项目的兼容性：`zcode://` 协议 scheme、`@zcode/*` 包 scope、`ZCODE_*` 环境变量前缀、`.zcode` 数据根目录（含用户项目里的 `.zcode/config.json`、`.zcode/agents`）、`zcode` CLI 命令名。
-
-## 遥测与厂商服务
-
 本分支默认关闭遥测与依赖厂商后端的服务。改动走**默认关闭、不删代码**的路线，以便跟随上游同步；开关集中登记在 [UPSTREAM.md](UPSTREAM.md)。
 
 | 项目 | 默认 | 开启方式 |
