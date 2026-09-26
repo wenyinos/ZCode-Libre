@@ -47,6 +47,18 @@ For the upstream sync workflow and the full list of divergences, see [UPSTREAM.m
 
 The following identifiers are **intentionally kept identical to upstream** because they are cross-platform contracts rather than brand surfaces; changing them would break compatibility with existing servers, protocols, and user projects: the `zcode://` protocol scheme, the `@zcode/*` package scope, the `ZCODE_*` environment variable prefix, the `.zcode` data root (including `.zcode/config.json`, `.zcode/agents` in user projects), and the `zcode` CLI command name.
 
+## Running alongside the official client
+
+Both clients share the `.zcode` data root, and the applications themselves can run at the same time. The concurrency semantics of that shared data are worth knowing up front:
+
+**Different sessions in parallel — supported.** The database runs in WAL mode, write transactions retry on lock contention (up to an hour, with the wait shown in the UI), and scheduled automations use an atomic single-flight claim so they never run twice. **Running different sessions from both clients at once is normal use and will not corrupt the database.**
+
+**The same session — drive it from one side only.** There is no cross-client session mutex, and one code path actively misreads the other side's live run: when a client sees an active run on a session while having no turn of its own, it treats the marker as debris from an earlier crash — settling the run's elapsed time and flipping the goal from active to paused. The other client's timing is cut short without any warning on its side. Drive a given session from one client; open different sessions if you want to work in parallel.
+
+**Do not edit settings from both sides at once.** `setting.json` and `provider_config.json` are written atomically (so files never end up half-written), but there is no cross-process file lock — concurrent edits lose one of the updates (last writer wins). Finish on one side, let it hit disk, then edit on the other.
+
+**Upgrade both sides together.** Whichever updates first migrates the shared database to a newer structure; the older client usually keeps working, but a structural migration can make it fail. This fork has not touched the storage layer, so as long as both sides are on the same version line there is no issue.
+
 ## Telemetry and vendor services
 
 Telemetry and services backed by the vendor backend are **off by default**. The changes follow a "default off, keep the code" approach so upstream can still be merged cleanly; every switch is registered in [UPSTREAM.md](UPSTREAM.md).

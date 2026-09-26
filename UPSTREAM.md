@@ -81,6 +81,14 @@ pnpm lint
 
 两侧同时运行时，`.zcode` 层的 SQLite 会话库仍是共用的；代码已有写锁与重试提示（"等待其他 ZCode 或 CLI 进程"），不会静默损坏，但不宜高频交替写入。
 
+**共用的边界（2026-09-26 逐层核实，未改行为，只在 README 写明）**：
+
+- **不同会话并行是安全的**：库跑在 WAL（实测 `journal_mode = wal`，且第二个进程 0ms 就能拿到写锁，说明运行时锁只在事务内短暂持有）；`tasksDatabase/startup.ts` 的 `acquire()` 有 1 小时等锁上限并上报 `waiting_for_lock`；自动化任务用原子 single-flight 认领（`automationRepo.ts` 的 `running 0→1` + `claimed_at` 过期回收僵尸认领）。
+- **同一个会话没有跨客户端互斥**。`session_target` 的 `active_input_id` / `active_run_started_at` / `active_run_last_seen_at` 看着像锁，实际只是目标计时：`startSessionTargetRun` 是**无条件覆盖**（SQL 里没有 `active_run_started_at is null` 之类条件），心跳失败（标记被抢）只记 debug 日志。更要紧的是 `session-facade.ts` 的 `readTargetWithInterruptedRunRecovery`：它把"本进程没有活跃轮次 + 会话上有活跃标记"判定为**上次崩溃的残留**，进而调 `recoverInterruptedSessionTargetRun` 清空标记、按 last_seen 结算 `time_used_seconds`、把 goal 状态由 `active` 改 `paused`。两个客户端同时开同一会话时，后读的那个会把前一个正在跑的运行结清，而前者无感知（心跳静默失效）。
+- **设置文件的写入没有跨进程锁**：`setting.json`（`settingService.ts`）与 `provider_config.json`（`file-config.adapter.ts`）只做原子替换，两边同时改会丢更新。对照：`credentials.json`、bots 的 config/state、provider provisioning 状态都用了 `withFileLock`。
+- **迁移没有前向兼容守卫**（没有"遇到不认识的迁移就拒绝启动"）。先升级的一侧会把共享库迁到新结构，旧版本客户端遇到结构性迁移可能报错。当前两边版本线一致，且本分支未动存储层，所以暂时无风险。
+- 相关死代码：`TaskListItem` 的 `isMobileActive`（「手机正在操作此任务」）唯一调用点硬编码 `false` —— 属于开源版被砍掉的手机网页远控那套 UI，不是可用功能。
+
 若要改回与官方共用 `userData`，把 `runtimeUserDataPath` 的目录名改回上游命名（`ZCode` / `ZCode Dev` / `ZCode Preview`）即可，`.zcode` 数据根不受影响。
 
 ### 3. 用户可见文案
