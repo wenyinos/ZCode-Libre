@@ -14,7 +14,9 @@ import { installScriptSource } from "./zcode-distribution/installer.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const defaultOutDir = resolve(root, "dist", "zcode");
-const defaultBaseUrl = (await loadEndpointEnv()).ZCODE_DIST_BASE_URL?.trim() || "";
+const endpointEnv = await loadEndpointEnv();
+const defaultBaseUrl = endpointEnv.ZCODE_DIST_BASE_URL?.trim() || "";
+const defaultTarballUrl = endpointEnv.ZCODE_DIST_TARBALL_URL?.trim() || "";
 const packageDirName = "zcode";
 const usage = `Usage:
   pnpm build:zcode
@@ -22,12 +24,15 @@ const usage = `Usage:
   node scripts/build-zcode.mjs --version 3.3.3-dev.1
   node scripts/build-zcode.mjs --out-dir dist/zcode
   node scripts/build-zcode.mjs --base-url http://host/zcode/deps/zcode/
+  node scripts/build-zcode.mjs --tarball-url https://host/zcode/zcode-3.14.7.tar.gz
 
 Options:
   --skip-build        Reuse existing web/server/agent build outputs.
   --version <text>    Release version. Defaults to root package.json version.
   --out-dir <path>    Output directory. Defaults to dist/zcode.
   --base-url <url>    Default install.sh download base URL.
+  --tarball-url <url> Full tarball URL written to latest.json (tar.gz 资产不在
+                      <base-url>/releases/<version>/ 布局下时使用，例如 GitHub Release)。
   --help, -h          Show this help.
 `;
 
@@ -54,6 +59,7 @@ function parseArgs(argv) {
     help: false,
     outDir: defaultOutDir,
     skipBuild: false,
+    tarballUrl: defaultTarballUrl,
     version: undefined,
   };
 
@@ -85,6 +91,12 @@ function parseArgs(argv) {
     if (arg === "--base-url" || arg.startsWith("--base-url=")) {
       const { nextIndex, value } = readArgValue(argv, arg, index);
       options.baseUrl = value.endsWith("/") ? value : `${value}/`;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--tarball-url" || arg.startsWith("--tarball-url=")) {
+      const { nextIndex, value } = readArgValue(argv, arg, index);
+      options.tarballUrl = value;
       index = nextIndex;
       continue;
     }
@@ -279,6 +291,9 @@ async function main() {
         name: "zcode",
         sha256,
         tarball: tarballName,
+        // 扁平资产布局（如 GitHub Release）下的完整下载地址；缺省时 install.sh
+        // 回落到 <baseUrl>/releases/<version>/<tarball>。
+        ...(options.tarballUrl ? { tarballUrl: options.tarballUrl } : {}),
         version,
       },
       null,

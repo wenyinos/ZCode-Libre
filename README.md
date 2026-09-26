@@ -97,6 +97,7 @@ ZCode-Libre 是 [ZCode](https://github.com/zai-org/ZCode) 的社区分支，遵�
 
 ## 更新
 
+- 2026-09-26：新增命令行版独立发行（TUI + Web，覆盖 macOS arm64 与 Linux x64/arm64），与桌面版同一版本号发布。
 - 2026-09-24：建立 ZCode-Libre 品牌分支。独立应用标识、独立数据目录、全新圆形标志，并同步上游 v3.14.3 源码。
 
 ## 初始化
@@ -162,6 +163,24 @@ ZCODE_SERVER_WORKSPACE=/path/to/project pnpm dev:web
 Agent 源码修改后，执行 `pnpm --filter @zcode/cli... build` 并重启服务。需要验证完整发行包时，按下方“命令行版”打包章节解压运行。
 
 ### ZCode-Libre 命令行版
+
+命令行版与桌面版**同一版本号、独立发布**，覆盖 macOS（arm64）与 Linux（x64 / arm64），需要 Node.js 24（版本以 [mise.toml](mise.toml) 为准）。
+
+从 [Releases](https://github.com/wenyinos/ZCode-Libre/releases) 下载 `zcode-<版本>.tar.gz`（约 80 MB），在本机安装，**全程不需要联网**：
+
+```bash
+# 方式一：解压即用，不写系统目录
+tar -xzf zcode-3.14.7.tar.gz
+node zcode/bin/zcode.mjs        # 终端界面（TUI）
+node zcode/bin/zcode.mjs --web  # Web 界面
+
+# 方式二：安装到用户目录并生成 zcode 命令（install.sh 在同一下载页）
+sh install.sh --tarball ./zcode-3.14.7.tar.gz
+zcode        # 终端界面（TUI）
+zcode --web  # Web 界面
+```
+
+方式二会把运行包安装到 `~/.zcode/runtime`，在 `~/.local/bin` 写入 `zcode` 命令；安装目录与命令目录可用 `ZCODE_DIST_HOME`、`ZCODE_DIST_BIN_DIR` 覆盖。它和桌面版共用 `.zcode` 数据根，同时运行时的边界见上文「和官方客户端同时运行时」。
 
 命令行发行包包含 TUI、Web 和 Agent，统一使用 `zcode` 启动：无参数进入 TUI；第一个参数为 `--web` 时启动 Web；其他参数交给现有 Agent CLI 处理。两种模式都在本机运行，无需 Electron。
 

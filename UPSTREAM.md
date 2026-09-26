@@ -244,6 +244,22 @@ pnpm lint
 
 同步注意：上游若调整 provider 配置的文件结构或 `decodeProviderConfigFile` 的返回形状，需同步 `resolveBalanceSources`；上游新增服务时，`IServiceAccessor` 与 `RemoteServiceAccess` 都要补齐字段，否则类型检查会报缺属性。
 
+### 13. 命令行版独立发行（TUI + Web）
+
+与桌面版同一版本号、独立发布，覆盖 macOS arm64 与 Linux x64/arm64 三个平台。复用上游已有的 `pnpm build:zcode` 产物（tar.gz 内含 web/、server/、agent/、TUI 运行时与 node_modules；`bin/zcode.mjs` 是无参数→TUI、`--web`→Web、其余参数交给 Agent 的三态入口），只做了三处改动：
+
+| 文件 | 改动 |
+| --- | --- |
+| `scripts/zcode-distribution/assets.mjs` | 新增 `cliReleaseTargets`（darwin-arm64 / linux-x64 / linux-arm64）：TUI 运行时资产与 node-pty prebuild 只打包这三个平台的原生件；上游的 SEA 目标矩阵（6 平台）保持不动 |
+| `scripts/zcode-distribution/installer.mjs` | install.sh 支持 `--tarball <本地包>` 离线安装（国内网络不便下载时的推荐方式，解压在安装目录内完成、不落 /tmp），在线安装降为备选；三平台之外提前失败并提示 Node 主版本；在线下载优先用 `latest.json` 的 `tarballUrl`（GitHub Release 的资产是扁平地址，与自建 CDN 的 `releases/<version>/` 布局不同），缺省时回落旧拼法 |
+| `scripts/build-zcode.mjs` | 新增 `--tarball-url`（也可经 `ZCODE_DIST_TARBALL_URL` 提供），写入 `latest.json` |
+
+发布链路由**独立**的 `.github/workflows/release-cli.yml` 负责，不与桌面 Release 混在一起：在 Linux runner 上即可打出 macOS/Linux 通用包（pnpm `supportedArchitectures` 会安装各平台可选依赖、node-pty prebuild 随包携带），必须传 `ZCODE_ENV=production`，否则内置 provider 配置会取测试环境。产物 `zcode-<版本>.tar.gz` 与 `sha256.txt`、`latest.json`、`install.sh` 一起发布；版本号取根 `package.json`，与桌面版对齐。
+
+CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是上游自己的版本号，不随本分支版本线变化。
+
+同步注意：上游若调整 `stageTuiRuntime`、node-pty prebuild 处理或 `install.sh` 模板，需保留「只覆盖三个平台」与「`tarballUrl` 优先」这两条。
+
 ## 有意保持与上游一致
 
 以下标识**不要改名**，它们是跨端契约，改动会破坏与既有服务端、协议及用户既有项目的兼容性：

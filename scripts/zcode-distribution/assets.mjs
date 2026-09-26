@@ -1,11 +1,10 @@
-import { chmod, cp, mkdir, readFile, rm, stat } from "node:fs/promises";
+import { chmod, cp, mkdir, readFile, readdir, rm, stat } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, relative, resolve, sep } from "node:path";
 import {
   collectSeaTuiAssets,
   seaTuiAssetPrefix,
 } from "../../apps/zcode-cli/packages/cli/scripts/sea-tui-assets.mjs";
-import { supportedTargets } from "../../apps/zcode-cli/packages/cli/scripts/sea-targets.mjs";
 const root = resolve(import.meta.dirname, "../..");
 const readJson = async (file) => JSON.parse(await readFile(file, "utf8"));
 
@@ -29,11 +28,15 @@ const runtimePackageNames = [
   "node-forge",
 ];
 
+// ZCode-Libre：命令行版只发行 macOS arm64 与 Linux x64/arm64 三个平台，因此包里
+// 也只带这三个平台的原生件（上游的 SEA 目标矩阵保持不动，那是另一条发行链路）。
+const cliReleaseTargets = ["darwin-arm64", "linux-x64", "linux-arm64"];
+
 export async function stageTuiRuntime(packageRoot) {
   const stagingDirectory = resolve(packageRoot, "../tui-staging");
   const copied = new Map();
   try {
-    for (const target of supportedTargets) {
+    for (const target of cliReleaseTargets) {
       const { assets, manifest } = await collectSeaTuiAssets({
         root: resolve(root, "apps/zcode-cli"),
         stagingDirectory,
@@ -57,9 +60,9 @@ export async function stageTuiRuntime(packageRoot) {
     await rm(stagingDirectory, { recursive: true, force: true });
   }
 }
+// 与 cliReleaseTargets 对齐，只带这三个平台的原生件。
 const lydellNodePtyPackages = [
   "@lydell/node-pty-darwin-arm64",
-  "@lydell/node-pty-darwin-x64",
   "@lydell/node-pty-linux-arm64",
   "@lydell/node-pty-linux-x64",
 ];
@@ -197,12 +200,23 @@ export async function patchNodePtyPrebuilds(packageRoot) {
     });
   }
 
-  for (const helper of [
-    resolve(nodePtyPrebuildRoot, "darwin-arm64", "spawn-helper"),
-    resolve(nodePtyPrebuildRoot, "darwin-x64", "spawn-helper"),
-  ]) {
+  for (const helper of [resolve(nodePtyPrebuildRoot, "darwin-arm64", "spawn-helper")]) {
     if (await pathExists(helper)) {
       await chmod(helper, 0o755);
+    }
+  }
+
+  // node-pty 主包自带多平台 prebuild；不属于发行平台的目录直接删掉，
+  // 避免包里夹带 Windows 与 Intel Mac 的二进制。
+  const prebuildStat = await stat(nodePtyPrebuildRoot).catch(() => null);
+  if (prebuildStat?.isDirectory()) {
+    for (const entry of await readdir(nodePtyPrebuildRoot)) {
+      if (!cliReleaseTargets.includes(entry)) {
+        await rm(resolve(nodePtyPrebuildRoot, entry), {
+          force: true,
+          recursive: true,
+        });
+      }
     }
   }
 }

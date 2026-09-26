@@ -97,6 +97,7 @@ Use the **standard API** template in Settings → Model Providers when you want 
 
 ## Updates
 
+- 2026-09-26: Added a standalone CLI distribution (TUI + Web, covering macOS arm64 and Linux x64/arm64), released under the same version number as the desktop build.
 - 2026-09-24: Established the ZCode-Libre brand fork: independent application identity, independent data directory, a new circular mark, and a sync of the upstream v3.14.3 source.
 
 ## Setup
@@ -238,6 +239,25 @@ sudo xattr -rd com.apple.quarantine /Applications/ZCode-Libre.app
 ```
 
 ### Command-line distribution
+
+The CLI ships **independently but under the same version number as the desktop build**, covering macOS (arm64) and Linux (x64 / arm64), and requires Node.js 24 (pinned by `mise.toml`).
+
+Download `zcode-<version>.tar.gz` (~80 MB) from [Releases](https://github.com/wenyinos/ZCode-Libre/releases) and install it locally — **no network access needed**:
+
+```bash
+# Option 1: extract and run, nothing written outside the directory
+tar -xzf zcode-3.14.7.tar.gz
+node zcode/bin/zcode.mjs        # TUI
+node zcode/bin/zcode.mjs --web  # Web UI
+
+# Option 2: install into your home directory and get the zcode command
+# (install.sh is on the same release page)
+sh install.sh --tarball ./zcode-3.14.7.tar.gz
+zcode        # TUI
+zcode --web  # Web UI
+```
+
+Option 2 installs into `~/.zcode/runtime` and writes a `zcode` command into `~/.local/bin` (`ZCODE_DIST_HOME` / `ZCODE_DIST_BIN_DIR` override these locations). It shares the `.zcode` data root with the desktop build, so the concurrency boundaries above apply.
 
 The build entry point is `pnpm build:zcode`. The script builds the CLI/TUI, backend, and Web in sequence, collects the TUI's native libraries, workers, and runtime dependencies, and assembles the distribution package; running the package still requires Node.js, with the version pinned by `mise.toml`.
 
