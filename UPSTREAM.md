@@ -144,7 +144,7 @@ pnpm lint
 | `packages/desktop/src/main/appCrashCaptureBootstrap.ts` | `initializeCrashCapture(logger, true)` 的硬编码 `true` 改为按实际遥测状态取值，遥测关闭时走纯本地 crashReporter（不上传） |
 | `apps/zcode-cli/packages/telemetry/src/bootstrap.ts` | `isExplicitlyDisabled` 反转为 `isExplicitlyEnabled`：模型遥测由"未设置即启用"改为"必须显式启用" |
 
-注意 `index.ts` 那处：上游把采样器注册放在总开关之外，其中 `desktopZCodeDataSizeTelemetry` 的 report 回调直接调用 `armsRum.sendCustom` 且没有初始化守卫，是本分支必须覆盖的点。上游若调整该块结构，同步时需重新确认所有 `register*` 调用都在开关内。
+注意 `index.ts` 那处：上游把采样器注册放在总开关之外，其中 `desktopZCodeDataSizeTelemetry` 的 report 回调直接调用 `armsRum.sendCustom` 且没有初始化守卫，是本分支必须覆盖的点。这 9 个 `configure*` / `register*` 装配调用由 `pnpm check:defaults` 用语法树逐个判断是否落在总开关块内（不依赖缩进），上游若调整该块结构，脚本会报出逃逸的调用与行号。
 
 **厂商服务（运行期，统一引用策略模块）**
 
@@ -158,6 +158,8 @@ pnpm lint
 | `packages/ui/src/settings/CodingPlanUpgradeDialogProvider.tsx` | `openCodingPlanUpgrade` 统一守卫处早退 |
 
 **刻意没有改的**：`DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS` 里是 browser-use、documents、pdf、spreadsheets 等**内置能力插件**，清空会让用户失去全部本地功能，因此保留；`computer-use` 本就默认关闭。官方 MCP 需要 z.ai 账号凭据，登录屏蔽后已自然失效，无需额外改动。
+
+这些默认值由 `pnpm check:defaults` 逐项断言：脚本用语法树读出 `LIBRE_VENDOR_SERVICES` 的字面量值逐一比对，只查键名存在的话，把 false 改回 true 也能"通过"。新增策略项必须在脚本里登记期望值，否则检查失败——避免新开关悄悄逃过「默认关闭」的约束。
 
 ### 8. 屏蔽官方账号登录，改用 API Key
 

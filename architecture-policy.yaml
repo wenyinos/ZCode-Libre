@@ -1,6 +1,13 @@
 version: 1
 
 # 存量模块先标记为 legacy；新模块或完成迁移的模块设置 managed: true。
+#
+# global.managedOnly 让检查只覆盖受管模块，这是有意取舍而非遗漏：上游带来的约
+# 87 万行 TS/TSX 直接纳入会产生大量存量违例，而违例指纹带行数等细节，跟随上游
+# 同步时文件一变动就会变成「新增违例」让 CI 变红，与「便于同步上游」的分支目标
+# 相冲突。代价是行数上限、循环依赖、深层导入这些约束目前只对 storage 生效。
+# 需要扩大受管范围的模块：改 managed: true，跑 pnpm architecture:check 评估，
+# 用 pnpm architecture:baseline:update 冻结已审定的存量违例，再登记到 UPSTREAM.md。
 modules:
   - id: rpc
     roots: [packages/rpc/src]
