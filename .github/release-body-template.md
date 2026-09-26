@@ -30,16 +30,16 @@ Unsigned builds — the first launch is blocked by Gatekeeper / SmartScreen. Ver
 **命令行版 / CLI**（macOS arm64、Linux x64/arm64）
 
 与桌面版同版本号的独立发行包，含终端界面（TUI）与 Web 界面，需要 Node.js 24。
-下载本页的 `zcode-<版本>.tar.gz` 后在本机安装，**全程不需要联网**：
+下载本页的 `ZCode-Libre-CLI-<版本>.tar.gz` 后在本机安装，**全程不需要联网**：
 
 ```bash
 # 解压即用
-tar -xzf zcode-*.tar.gz
+tar -xzf ZCode-Libre-CLI-*.tar.gz
 node zcode/bin/zcode.mjs        # 终端界面（TUI）
 node zcode/bin/zcode.mjs --web  # Web 界面
 
 # 或安装到 ~/.zcode/runtime 并生成 zcode 命令（install.sh 在本页）
-sh install.sh --tarball ./zcode-*.tar.gz
+sh install.sh --tarball ./ZCode-Libre-CLI-*.tar.gz
 zcode        # 终端界面（TUI）
 zcode --web  # Web 界面
 ```

@@ -424,14 +424,14 @@
         <section>
           <h2 data-zh>命令行版（TUI + Web）</h2>
           <h2 data-en hidden>CLI (TUI + Web)</h2>
-          <p class="section-note" data-zh>与桌面版同版本号、独立发行，覆盖 macOS arm64 与 Linux x64 / arm64，需要 Node.js 24。从 <a href="https://github.com/wenyinos/ZCode-Libre/releases">Releases</a> 下载 <code>zcode-&lt;版本&gt;.tar.gz</code> 后在本机安装，全程不需要联网：</p>
-          <p class="section-note" data-en hidden>Released independently under the same version as the desktop build, covering macOS arm64 and Linux x64/arm64; Node.js 24 required. Download <code>zcode-&lt;version&gt;.tar.gz</code> from <a href="https://github.com/wenyinos/ZCode-Libre/releases">Releases</a> and install it locally — no network needed:</p>
-          <pre><code>tar -xzf zcode-*.tar.gz
+          <p class="section-note" data-zh>与桌面版同版本号、独立发行，覆盖 macOS arm64 与 Linux x64 / arm64，需要 Node.js 24。从 <a href="https://github.com/wenyinos/ZCode-Libre/releases">Releases</a> 下载 <code>ZCode-Libre-CLI-&lt;版本&gt;.tar.gz</code> 后在本机安装，全程不需要联网：</p>
+          <p class="section-note" data-en hidden>Released independently under the same version as the desktop build, covering macOS arm64 and Linux x64/arm64; Node.js 24 required. Download <code>ZCode-Libre-CLI-&lt;version&gt;.tar.gz</code> from <a href="https://github.com/wenyinos/ZCode-Libre/releases">Releases</a> and install it locally — no network needed:</p>
+          <pre><code>tar -xzf ZCode-Libre-CLI-*.tar.gz
 node zcode/bin/zcode.mjs        # TUI
 node zcode/bin/zcode.mjs --web  # Web UI
 
 # 安装到 ~/.zcode/runtime 并生成 zcode 命令 / install and get the zcode command
-sh install.sh --tarball ./zcode-*.tar.gz
+sh install.sh --tarball ./ZCode-Libre-CLI-*.tar.gz
 zcode        # TUI
 zcode --web  # Web UI</code></pre>
         </section>

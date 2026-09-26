@@ -166,16 +166,16 @@ Agent 源码修改后，执行 `pnpm --filter @zcode/cli... build` 并重启服�
 
 命令行版与桌面版**同一版本号、独立发布**，覆盖 macOS（arm64）与 Linux（x64 / arm64），需要 Node.js 24（版本以 [mise.toml](mise.toml) 为准）。
 
-从 [Releases](https://github.com/wenyinos/ZCode-Libre/releases) 下载 `zcode-<版本>.tar.gz`（约 80 MB），在本机安装，**全程不需要联网**：
+从 [Releases](https://github.com/wenyinos/ZCode-Libre/releases) 下载 `ZCode-Libre-CLI-<版本>.tar.gz`（约 60 MB），在本机安装，**全程不需要联网**：
 
 ```bash
 # 方式一：解压即用，不写系统目录
-tar -xzf zcode-3.14.7.tar.gz
+tar -xzf ZCode-Libre-CLI-3.14.7.tar.gz
 node zcode/bin/zcode.mjs        # 终端界面（TUI）
 node zcode/bin/zcode.mjs --web  # Web 界面
 
 # 方式二：安装到用户目录并生成 zcode 命令（install.sh 在同一下载页）
-sh install.sh --tarball ./zcode-3.14.7.tar.gz
+sh install.sh --tarball ./ZCode-Libre-CLI-3.14.7.tar.gz
 zcode        # 终端界面（TUI）
 zcode --web  # Web 界面
 ```
@@ -277,7 +277,7 @@ pnpm build:zcode --help
 
 默认版本取根目录 `package.json`，输出目录为 `dist/zcode/`：
 
-- `releases/<version>/zcode-<version>.tar.gz`：运行包。
+- `releases/<version>/ZCode-Libre-CLI-<version>.tar.gz`：运行包。
 - `releases/<version>/sha256.txt`：校验摘要。
 - `latest.json`、`install.sh`：版本索引和安装脚本。
 

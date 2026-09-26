@@ -48,7 +48,7 @@ jobs:
           VERSION="$(node -p "require('./package.json').version")"
           pnpm build:zcode \
             --base-url "https://github.com/${{ github.repository }}/releases/latest/download" \
-            --tarball-url "https://github.com/${{ github.repository }}/releases/latest/download/zcode-${VERSION}.tar.gz"
+            --tarball-url "https://github.com/${{ github.repository }}/releases/latest/download/ZCode-Libre-CLI-${VERSION}.tar.gz"
 
       # 整理到扁平目录再上传：upload-artifact 会以「第一个通配符之前的公共前缀」为根
       # 保留子目录（这里会保留 releases/<version>/），而 publish 的 `artifacts/*` 不会

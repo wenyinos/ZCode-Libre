@@ -242,17 +242,17 @@ sudo xattr -rd com.apple.quarantine /Applications/ZCode-Libre.app
 
 The CLI ships **independently but under the same version number as the desktop build**, covering macOS (arm64) and Linux (x64 / arm64), and requires Node.js 24 (pinned by `mise.toml`).
 
-Download `zcode-<version>.tar.gz` (~80 MB) from [Releases](https://github.com/wenyinos/ZCode-Libre/releases) and install it locally — **no network access needed**:
+Download `ZCode-Libre-CLI-<version>.tar.gz` (~60 MB) from [Releases](https://github.com/wenyinos/ZCode-Libre/releases) and install it locally — **no network access needed**:
 
 ```bash
 # Option 1: extract and run, nothing written outside the directory
-tar -xzf zcode-3.14.7.tar.gz
+tar -xzf ZCode-Libre-CLI-3.14.7.tar.gz
 node zcode/bin/zcode.mjs        # TUI
 node zcode/bin/zcode.mjs --web  # Web UI
 
 # Option 2: install into your home directory and get the zcode command
 # (install.sh is on the same release page)
-sh install.sh --tarball ./zcode-3.14.7.tar.gz
+sh install.sh --tarball ./ZCode-Libre-CLI-3.14.7.tar.gz
 zcode        # TUI
 zcode --web  # Web UI
 ```
@@ -278,7 +278,7 @@ pnpm build:zcode --help
 
 The default version comes from the root `package.json`, and the output directory is `dist/zcode/`:
 
-- `releases/<version>/zcode-<version>.tar.gz`: the runtime package.
+- `releases/<version>/ZCode-Libre-CLI-<version>.tar.gz`: the runtime package.
 - `releases/<version>/sha256.txt`: checksum digests.
 - `latest.json`, `install.sh`: version index and install script.
 

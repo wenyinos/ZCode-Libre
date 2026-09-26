@@ -24,7 +24,7 @@ const usage = `Usage:
   node scripts/build-zcode.mjs --version 3.3.3-dev.1
   node scripts/build-zcode.mjs --out-dir dist/zcode
   node scripts/build-zcode.mjs --base-url http://host/zcode/deps/zcode/
-  node scripts/build-zcode.mjs --tarball-url https://host/zcode/zcode-3.14.7.tar.gz
+  node scripts/build-zcode.mjs --tarball-url https://host/ZCode-Libre-CLI-3.14.7.tar.gz
 
 Options:
   --skip-build        Reuse existing web/server/agent build outputs.
@@ -270,7 +270,9 @@ async function main() {
   const packageParent = workDir;
   const packageRoot = resolve(packageParent, packageDirName);
   const releaseDir = resolve(outDir, "releases", version);
-  const tarballName = `${packageDirName}-${version}.tar.gz`;
+  // 与桌面产物同一命名规范（ZCode-Libre-<版本>-<平台>.<ext>）：命令行版是一个
+  // 覆盖 macOS arm64 与 Linux x64/arm64 的通用包，因此不带平台后缀。
+  const tarballName = `ZCode-Libre-CLI-${version}.tar.gz`;
 
   await rm(workDir, {
     force: true,
