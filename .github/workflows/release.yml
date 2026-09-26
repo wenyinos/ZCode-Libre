@@ -180,9 +180,18 @@ jobs:
             packages/desktop/dist/*.deb
             packages/desktop/dist/*.rpm
 
+  # 命令行版（TUI + Web）：构建逻辑在独立的 release-cli.yml（可复用 workflow）里，
+  # 产物与桌面一起由下方 publish 发布，推一次 tag 就完成全部发布。
+  # 在 Linux runner 上即可打出 macOS/Linux 通用包，不需要 mac runner。
+  cli:
+    name: Build CLI (TUI + Web)
+    # 复用已有产物时跳过构建。
+    if: inputs.reuse_run_id == ''
+    uses: ./.github/workflows/release-cli.yml
+
   publish:
     name: Publish release
-    needs: [build, build-linux]
+    needs: [build, build-linux, cli]
     # 只有打了 v* tag、或手动填了 tag 时才发布；否则 Runs 里只留构建产物。
     # always() 让复用模式（构建被跳过）下仍会运行。
     if: always() && (startsWith(github.ref, 'refs/tags/v') || inputs.tag != '')
