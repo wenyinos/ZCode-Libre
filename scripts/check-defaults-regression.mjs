@@ -70,12 +70,96 @@ expectContains(
   "遥测总开关应读运行时环境变量，保持默认关闭、可显式开启",
 );
 
-// 总开关块内的调用缩进为 4 空格；逃逸到块外的会退回 2 空格缩进。
-expectNoLineMatching(
-  "packages/desktop/src/main/index.ts",
-  /^ {2}(configureDesktop\w*Telemetry|registerDesktop\w+|registerRendererHeapSampleIpc)\s*\(/,
-  "遥测采样器/注册调用逃逸在 ZCODE_TELEMETRY_ENABLED 块之外，会在端点为空的部署里常驻",
-);
+// 遥测装配调用必须落在总开关块内。这里用语法树判断，不依赖缩进：
+// 缩进启发式在调用被移进其它嵌套块、或格式化风格变化时会漏报。
+
+const TELEMETRY_BOOTSTRAP_PATH = "packages/desktop/src/main/index.ts";
+
+/** 已知的遥测装配调用：既要求存在，也要求落在总开关块内。 */
+const TELEMETRY_BOOTSTRAP_CALLS = [
+  "configureDesktopStabilityTelemetry",
+  "configureDesktopResourceTelemetry",
+  "configureDesktopNetworkTelemetry",
+  "configureDesktopMcpTelemetry",
+  "registerDesktopStabilityMonitors",
+  "registerDesktopResourceTelemetry",
+  "registerRendererHeapSampleIpc",
+  "registerDesktopZCodeDataSizeTelemetry",
+  "registerDesktopNetworkTelemetry",
+];
+
+/** 与已知清单同一命名族：上游新增的采样器/注册调用会命中这里。 */
+const TELEMETRY_BOOTSTRAP_CALL_PATTERN =
+  /^(?:configureDesktop\w*Telemetry|registerDesktop\w+|registerRendererHeapSampleIpc)$/;
+
+/**
+ * 收集遥测装配调用及其位置。found 是出现过的匹配调用名，
+ * escaped 是逃逸在总开关块之外的调用位置描述。
+ */
+function inspectTelemetryBootstrapCalls(relativePath) {
+  const content = read(relativePath);
+  if (content === null) return null;
+  const sourceFile = ts.createSourceFile(relativePath, content, ts.ScriptTarget.Latest, true);
+
+  // 总开关块取 if 的 then 分支范围；排除 if (!ZCODE_TELEMETRY_ENABLED) 这种反义写法，
+  // 它的 then 分支是「关闭时」逻辑，不是保护范围。
+  const enabledBlocks = [];
+  const findBlocks = (node) => {
+    if (ts.isIfStatement(node)) {
+      const condition = node.expression.getText(sourceFile).trim();
+      if (condition.includes("ZCODE_TELEMETRY_ENABLED") && !condition.startsWith("!")) {
+        enabledBlocks.push(node.thenStatement);
+      }
+    }
+    ts.forEachChild(node, findBlocks);
+  };
+  findBlocks(sourceFile);
+
+  const insideEnabledBlock = (node) =>
+    enabledBlocks.some((block) => node.pos >= block.pos && node.end <= block.end);
+
+  const found = new Set();
+  const escaped = [];
+  const visitCalls = (node) => {
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      const name = ts.isIdentifier(callee)
+        ? callee.text
+        : ts.isPropertyAccessExpression(callee)
+          ? callee.name.text
+          : null;
+      if (name !== null && TELEMETRY_BOOTSTRAP_CALL_PATTERN.test(name)) {
+        found.add(name);
+        if (!insideEnabledBlock(node)) {
+          const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+          escaped.push(`${relativePath}:${line + 1}: ${name}(...)`);
+        }
+      }
+    }
+    ts.forEachChild(node, visitCalls);
+  };
+  visitCalls(sourceFile);
+
+  return { found, escaped };
+}
+
+{
+  const result = inspectTelemetryBootstrapCalls(TELEMETRY_BOOTSTRAP_PATH);
+  if (result !== null) {
+    for (const location of result.escaped) {
+      failures.push(
+        `${location} —— 遥测采样器/注册调用逃逸在 ZCODE_TELEMETRY_ENABLED 块之外，会在端点为空的部署里常驻`,
+      );
+    }
+    for (const name of TELEMETRY_BOOTSTRAP_CALLS) {
+      if (!result.found.has(name)) {
+        failures.push(
+          `${TELEMETRY_BOOTSTRAP_PATH}: 未找到 ${name} 的调用 —— 遥测装配被改写或改名，请同步更新本脚本与 UPSTREAM.md`,
+        );
+      }
+    }
+  }
+}
 
 expectAbsent(
   "packages/desktop/src/main/appCrashCaptureBootstrap.ts",
