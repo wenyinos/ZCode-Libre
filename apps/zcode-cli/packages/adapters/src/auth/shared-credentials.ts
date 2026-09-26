@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { atomicWritePrivateTextFile, backupCorruptFile, withFileLock } from "@zcode/shared/node";
+import { LIBRE_VENDOR_SERVICES, isOfficialAccountCredentialKey } from "@zcode/shared";
 import { createZCodeCredentialCipher, type ZCodeCredentialCipher } from "./credential-cipher.js";
 
 const ZCODE_DATA_BASE_DIR_ENV_KEY = "ZCODE_DATA_BASE_DIR";
@@ -165,8 +166,15 @@ export function createSharedZCodeCredentialStore(
     },
 
     async load(key: string): Promise<string | null> {
+      const validatedKey = validateCredentialKey(key);
+      // ZCode-Libre：官方账号派生凭据一律当作不存在，理由见 libre-features.ts
+      // 的 officialAccountCredentials。拦截放在存储层，是为了让所有消费者
+      // （Coding Plan 可用性、账号 provider、反馈）都拿不到，而不是逐处打补丁。
+      if (!LIBRE_VENDOR_SERVICES.officialAccountCredentials && isOfficialAccountCredentialKey(validatedKey)) {
+        return null;
+      }
       const rawCredentials = await readRawCredentialRecord(filePath);
-      const rawValue = rawCredentials[validateCredentialKey(key)];
+      const rawValue = rawCredentials[validatedKey];
       if (rawValue === undefined) {
         return null;
       }
@@ -178,6 +186,12 @@ export function createSharedZCodeCredentialStore(
       const rawCredentials = await readRawCredentialRecord(filePath);
       return Object.fromEntries(
         validatedKeys.map((key) => {
+          if (
+            !LIBRE_VENDOR_SERVICES.officialAccountCredentials &&
+            isOfficialAccountCredentialKey(key)
+          ) {
+            return [key, null];
+          }
           const rawValue = rawCredentials[key];
           return [key, rawValue === undefined ? null : cipher.decrypt(rawValue)];
         }),

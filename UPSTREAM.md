@@ -162,6 +162,20 @@ pnpm lint
 
 模型接入路径未改动：`config/provider/zcode-builtin.json` 的 `zai-standard-api`（`https://api.z.ai/api/paas/v4`）与 `bigmodel-standard-api`（`https://open.bigmodel.cn/api/paas/v4`）是纯 API Key 直连。注意 `zai-api` / `bigmodel-api`（`zhipu-coding-plan-api-key` + anthropic 端点）会被 `official-coding-plan-gateway.ts` 改写到 zcode.z.ai 网关做权益校验，**不是直连**；如需完全绕开厂商网关，应引导用户使用 standard 模板。
 
+### 8b. 官方账号派生凭据在存储层就被拒绝读取
+
+只关登录入口不够：官方客户端登录后会把登录 JWT、OAuth token 与账号级密钥写进**共享的** `.zcode`，而 Coding Plan 可用性与账号 provider 这两条链路是直读凭据库的（`codingPlanProviderAvailability.ts` 的 `loadZaiProviderConnectionZcodeJwtToken`、`bigmodelStartPlanZcodeJwt.ts`），不经过 OAuth 服务。结果是本分支会"借"官方登录态跑套餐，而这是错的：上游开源版自己声明「不承诺提供官方产品的全部功能及活动政策」（`NOTICE.md`），用户拿不到在官方客户端里预期的东西；且 JWT 到期需重新登录刷新，本分支登录入口关着，会出现"能用一阵子、然后失效且无法自助恢复"。
+
+| 文件 | 改动 |
+| --- | --- |
+| `packages/shared/src/libre-features.ts` | 策略项 `officialAccountCredentials: false` + `isOfficialAccountCredentialKey()`，判定三类键：`zcodejwttoken`、`oauth:` 前缀、`account-provider:` 前缀 |
+| `packages/services/src/credential/credentialService.ts` | `load()` 命中上述键时直接返回 null |
+| `apps/zcode-cli/packages/adapters/src/auth/shared-credentials.ts` | `load()` 与 `loadMany()` 同样返回 null |
+
+拦截放在**存储层**而不是各消费点：这样上游新增读取方也自动被覆盖，不会漏。**注意前缀不要写成包含匹配**——MCP 的 OAuth 键是 `mcp:oauth:<hash>`，用 includes("oauth:") 会误伤 MCP。
+
+不影响的键：用户自己填的 provider apiKey（存在 provider 配置里，不在凭据库）、`bot:*`、`web-remote-control:*`。要恢复官方登录能力，把 `officialAccountCredentials` 置为 true 即可。
+
 ### 9. UI 应用品牌位
 
 `packages/ui/src/assets/brand/zcode-libre-mark.svg`（新增，透明底 + 渐变 Z，方形画布）替换三处**应用品牌位**：`App.tsx` 的 `appLogoUrl`、`WindowsTopLeftLogo.tsx`、`WorkspaceSidebar/WorkspaceSidebarCollapsedRail.tsx`（消费点 `DesktopTopOverlay.tsx`）。

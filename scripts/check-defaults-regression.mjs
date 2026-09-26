@@ -165,6 +165,27 @@ for (const [path, reason] of [
   expectContains(path, "LIBRE_VENDOR_SERVICES.officialAccountLogin", reason);
 }
 
+// 官方账号派生凭据必须在存储层就被挡住。只关登录入口不够：官方客户端把登录 JWT
+// 与账号级 api-key 写进共享的 .zcode，不拦存储层的话本分支仍会借官方登录态跑套餐，
+// 而开源版不承诺官方产品的功能与活动政策，且 JWT 到期这里无法自助刷新。
+expectContains(
+  "packages/shared/src/libre-features.ts",
+  "officialAccountCredentials",
+  "缺少官方账号派生凭据的策略项，存储层门禁会失去依据",
+);
+for (const [path, reason] of [
+  [
+    "packages/services/src/credential/credentialService.ts",
+    "Services 侧凭据存储未拦截官方账号派生凭据",
+  ],
+  [
+    "apps/zcode-cli/packages/adapters/src/auth/shared-credentials.ts",
+    "CLI 侧凭据存储未拦截官方账号派生凭据",
+  ],
+]) {
+  expectContains(path, "isOfficialAccountCredentialKey", reason);
+}
+
 // 官方账号登录默认关闭，且保留显式开启的逃生舱。
 // 实现可以写死 false，也可以引用策略常量；两种都表示默认关闭，但绝不能是 enabled: true。
 for (const path of [

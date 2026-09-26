@@ -2,10 +2,12 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { atomicWritePrivateTextFile, backupCorruptFile, withFileLock } from "@zcode/shared/node";
 import {
+  LIBRE_VENDOR_SERVICES,
   credentialKeySchema,
   credentialRecordSchema,
   credentialValueSchema,
   formatZodError,
+  isOfficialAccountCredentialKey,
 } from "@zcode/shared";
 import type { ICredentialService } from "./credential.js";
 import {
@@ -92,6 +94,13 @@ export function createCredentialService(
   return {
     async load(key: string): Promise<string | null> {
       const validatedKey = credentialKeySchema.parse(key);
+      // ZCode-Libre：官方账号派生凭据一律当作不存在。官方客户端把登录 JWT 与账号级
+      // 凭据写进共享的 .zcode，若不拦，本分支会借官方登录态跑套餐——而开源版不承诺
+      // 官方产品的功能与活动政策，且 JWT 到期这里无法自助刷新，只会让用户困惑。
+      // 详见 libre-features.ts 的 officialAccountCredentials。
+      if (!LIBRE_VENDOR_SERVICES.officialAccountCredentials && isOfficialAccountCredentialKey(validatedKey)) {
+        return null;
+      }
       const creds = await readAll();
       const rawValue = creds[validatedKey];
       if (rawValue === undefined) {

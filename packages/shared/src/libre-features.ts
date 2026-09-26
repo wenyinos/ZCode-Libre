@@ -38,10 +38,39 @@ export const LIBRE_VENDOR_SERVICES = {
    * 关闭后统一走 LIBRE_COMMUNITY_URL。属实现策略，不暴露给用户设置。
    */
   vendorCommunityLinks: false,
+  /**
+   * 官方账号派生凭据：官方客户端登录后写进共享 `.zcode` 的登录 JWT、OAuth token
+   * 与账号级 api-key。本分支一并拒绝读取。
+   *
+   * 原因不是"少给功能"，而是这些凭据在本分支里注定半途而废：
+   * 1) 官方开源版本身声明「不承诺提供官方产品的全部功能及活动政策」（NOTICE.md），
+   *    用户借官方登录态进来，却拿不到自己在官方客户端里预期的那套套餐与活动；
+   * 2) 登录 JWT 到期需要重新登录刷新，而本分支的登录入口是关的，会出现
+   *    "能用一阵子、然后突然失效且无法自助恢复"的状态，比一开始就不能用更让人困惑。
+   *
+   * 用户要接入模型，请在「模型服务商」里填自己的 API Key。
+   * 属实现策略，不暴露给用户设置。
+   */
+  officialAccountCredentials: false,
 } as const;
 
 /** 本分支自有社群入口：GitHub Discussions。 */
 export const LIBRE_COMMUNITY_URL = "https://github.com/wenyinos/ZCode-Libre/discussions";
+
+/**
+ * 是否为官方账号派生凭据。
+ *
+ * 三类键都属于官方客户端登录的产物：登录 JWT、OAuth token 与用户信息、账号级凭据。
+ * 注意 MCP 的 OAuth 键前缀是 `mcp:oauth:`，与这里的 `oauth:` 不冲突，不要写成包含匹配。
+ */
+export function isOfficialAccountCredentialKey(key: string): boolean {
+  const normalized = key.trim();
+  return (
+    normalized === "zcodejwttoken" ||
+    normalized.startsWith("oauth:") ||
+    normalized.startsWith("account-provider:")
+  );
+}
 
 /** 带用户开关的厂商服务。selfHostedReleaseUpdates 属实现策略，不暴露给用户。 */
 export type VendorServiceId =
