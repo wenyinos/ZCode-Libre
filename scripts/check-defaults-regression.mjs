@@ -12,6 +12,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const failures = [];
@@ -93,17 +94,101 @@ expectAbsent(
   "CLI 模型遥测又回到「未设置即启用」的语义",
 );
 
-// ── 厂商服务：策略存在且默认关闭 ────────────────────────────────────────────
+// ── 厂商服务：策略默认值必须逐项断言 ────────────────────────────────────────
+//
+// 只断言「键名存在」守不住这条不变量：把 false 改成 true 同样能通过，而「厂商服务与
+// 官方账号派生凭据默认关闭」正是本分支的核心行为。这里用语法树读出对象字面量的字面量
+// 值逐项比对，并把未登记的新增策略项视为失败——否则新增的开关会悄悄逃过约束。
 
 const libfFeaturesPath = "packages/shared/src/libre-features.ts";
-for (const key of [
-  "officialAccountLogin",
-  "conversationShare",
-  "feedback",
-  "codingPlanPurchase",
-  "pluginMarketplaceRemoteSource",
-]) {
-  expectContains(libfFeaturesPath, key, "策略项缺失，对应的厂商服务会失去默认关闭的约束");
+
+/** 期望的默认值；键集合同时是「已登记」的边界，新增策略项必须出现在这里。 */
+const LIBRE_VENDOR_SERVICE_DEFAULTS = {
+  officialAccountLogin: false,
+  conversationShare: false,
+  feedback: false,
+  codingPlanPurchase: false,
+  pluginMarketplaceRemoteSource: false,
+  selfHostedReleaseUpdates: true,
+  vendorCommunityLinks: false,
+  officialAccountCredentials: false,
+};
+
+/** 剥掉 `as const` / 括号等包装，取到真正的表达式。 */
+function unwrapExpression(node) {
+  let current = node;
+  while (
+    current !== undefined &&
+    (ts.isAsExpression(current) ||
+      ts.isSatisfiesExpression(current) ||
+      ts.isParenthesizedExpression(current) ||
+      ts.isTypeAssertionExpression(current))
+  ) {
+    current = current.expression;
+  }
+  return current;
+}
+
+/** 读出对象字面量各属性的字面量值；布尔按布尔返回，其余取源码文本。 */
+function readObjectLiteralValues(sourceText, variableName) {
+  const sourceFile = ts.createSourceFile(variableName, sourceText, ts.ScriptTarget.Latest, true);
+  let literal = null;
+  const findLiteral = (node) => {
+    if (
+      literal === null &&
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === variableName
+    ) {
+      const initializer = unwrapExpression(node.initializer);
+      if (initializer !== undefined && ts.isObjectLiteralExpression(initializer)) {
+        literal = initializer;
+      }
+    }
+    ts.forEachChild(node, findLiteral);
+  };
+  findLiteral(sourceFile);
+  if (literal === null) return null;
+  const values = new Map();
+  for (const property of literal.properties) {
+    if (!ts.isPropertyAssignment(property)) continue;
+    const key = property.name.getText(sourceFile);
+    const initializer = property.initializer;
+    if (initializer.kind === ts.SyntaxKind.TrueKeyword) values.set(key, true);
+    else if (initializer.kind === ts.SyntaxKind.FalseKeyword) values.set(key, false);
+    else values.set(key, initializer.getText(sourceFile));
+  }
+  return values;
+}
+
+{
+  const content = read(libfFeaturesPath);
+  if (content !== null) {
+    const defaults = readObjectLiteralValues(content, "LIBRE_VENDOR_SERVICES");
+    if (defaults === null) {
+      failures.push(
+        `${libfFeaturesPath}: 找不到 LIBRE_VENDOR_SERVICES 对象字面量 —— 策略总表被改写或改名，请同步更新本脚本与 UPSTREAM.md`,
+      );
+    } else {
+      for (const [key, expected] of Object.entries(LIBRE_VENDOR_SERVICE_DEFAULTS)) {
+        const actual = defaults.get(key);
+        if (!defaults.has(key)) {
+          failures.push(`${libfFeaturesPath}: 缺少策略项 ${key} —— 对应的服务或凭据门禁会失去依据`);
+        } else if (actual !== expected) {
+          failures.push(
+            `${libfFeaturesPath}: ${key} 的默认值是 ${String(actual)}，本分支要求 ${String(expected)} ——「默认关闭」是分支核心行为，不要改回`,
+          );
+        }
+      }
+      for (const key of defaults.keys()) {
+        if (!Object.hasOwn(LIBRE_VENDOR_SERVICE_DEFAULTS, key)) {
+          failures.push(
+            `${libfFeaturesPath}: 新增策略项 ${key} 未登记 —— 请在 check-defaults-regression.mjs 里声明它的期望默认值`,
+          );
+        }
+      }
+    }
+  }
 }
 expectContains(
   "packages/ui/src/settings/VendorServicesSection.tsx",
@@ -168,11 +253,7 @@ for (const [path, reason] of [
 // 官方账号派生凭据必须在存储层就被挡住。只关登录入口不够：官方客户端把登录 JWT
 // 与账号级 api-key 写进共享的 .zcode，不拦存储层的话本分支仍会借官方登录态跑套餐，
 // 而开源版不承诺官方产品的功能与活动政策，且 JWT 到期这里无法自助刷新。
-expectContains(
-  "packages/shared/src/libre-features.ts",
-  "officialAccountCredentials",
-  "缺少官方账号派生凭据的策略项，存储层门禁会失去依据",
-);
+// 策略项本身的存在与默认值由上面的 LIBRE_VENDOR_SERVICE_DEFAULTS 断言覆盖。
 for (const [path, reason] of [
   [
     "packages/services/src/credential/credentialService.ts",
