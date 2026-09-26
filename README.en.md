@@ -18,7 +18,7 @@ ZCode-Libre is a community fork of [ZCode](https://github.com/zai-org/ZCode), fo
 
 <div align="center">
   <a href="docs/promo/intro-poster.png">
-    <img src="docs/promo/intro-poster-preview.png" alt="ZCode-Libre project overview" width="520" />
+    <img src="docs/promo/intro-poster-preview.png" alt="ZCode-Libre project overview: desktop and CLI" width="520" />
   </a>
   <br />
   <a href="https://wenyinos.github.io/ZCode-Libre/">wenyinos.github.io/ZCode-Libre</a>

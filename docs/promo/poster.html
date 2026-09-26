@@ -53,8 +53,8 @@
       }
 
       .headline {
-        margin-top: 86px;
-        font-size: 76px;
+        margin-top: 64px;
+        font-size: 66px;
         font-weight: 700;
         line-height: 1.24;
         letter-spacing: 1px;
@@ -67,15 +67,15 @@
         color: transparent;
       }
       .sub {
-        margin-top: 30px;
-        font-size: 27px;
+        margin-top: 24px;
+        font-size: 26px;
         line-height: 1.72;
         color: #b9b5d6;
         max-width: 950px;
       }
 
       .rule {
-        margin: 64px 0 56px;
+        margin: 44px 0 40px;
         height: 2px;
         width: 100%;
         background: linear-gradient(
@@ -89,7 +89,7 @@
       .points {
         display: flex;
         flex-direction: column;
-        gap: 38px;
+        gap: 26px;
       }
       .point {
         display: flex;
@@ -106,22 +106,22 @@
       }
       .point b {
         display: block;
-        font-size: 30px;
+        font-size: 28px;
         font-weight: 600;
         letter-spacing: 0.4px;
       }
       .point span {
         display: block;
-        margin-top: 8px;
-        font-size: 22px;
+        margin-top: 7px;
+        font-size: 20px;
         line-height: 1.55;
         color: #9c98bd;
       }
 
       /* 引文卡片：填住要点与页脚之间的空间，也给版面一个重心 */
       .quote {
-        margin-top: 60px;
-        padding: 30px 34px;
+        margin-top: 38px;
+        padding: 26px 32px;
         border-radius: 18px;
         border: 1px solid rgba(196, 167, 231, 0.16);
         border-left: 3px solid rgba(94, 234, 212, 0.55);
@@ -129,7 +129,7 @@
       }
       .quote p {
         margin: 0;
-        font-size: 27px;
+        font-size: 26px;
         line-height: 1.6;
         color: #dcd8f2;
       }
@@ -144,16 +144,19 @@
 
       .foot {
         margin-top: auto;
-        padding-top: 46px;
+        padding-top: 32px;
         display: flex;
         align-items: flex-end;
         justify-content: space-between;
         gap: 40px;
       }
       .platforms {
-        font-size: 22px;
+        font-size: 21px;
         color: #8f8bb0;
         letter-spacing: 0.6px;
+      }
+      .platforms + .platforms {
+        margin-top: 8px;
       }
       .platforms strong {
         color: #cfcbe8;
@@ -278,6 +281,13 @@
       <div class="point">
         <div class="dot"></div>
         <div>
+          <b>命令行版独立发行</b>
+          <span>TUI + Web 一套包，覆盖 macOS arm64 与 Linux x64 / arm64；下载本地安装包，离线也能装</span>
+        </div>
+      </div>
+      <div class="point">
+        <div class="dot"></div>
+        <div>
           <b>更新只做检测</b>
           <span>查到新版只给下载页，装不装由你决定，不会被换回官方版本</span>
         </div>
@@ -301,8 +311,12 @@
         <div class="repo-label">项目地址</div>
         <div class="repo">wenyinos/ZCode-Libre</div>
         <div class="platforms">
-          <strong>macOS</strong> · <strong>Windows</strong> · <strong>Linux</strong>
+          桌面 <strong>macOS</strong> · <strong>Windows</strong> · <strong>Linux</strong>
           <em>（deb / rpm）</em>
+        </div>
+        <div class="platforms">
+          命令行 <strong>macOS arm64</strong> · <strong>Linux x64 / arm64</strong>
+          <em>（TUI + Web）</em>
         </div>
       </div>
       <div class="license">

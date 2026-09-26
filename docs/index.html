@@ -319,11 +319,12 @@
           <h1 data-zh>ZCode 的<em>社区分支</em>，只做该做的改动</h1>
           <h1 data-en hidden>An independent <em>community fork</em> of ZCode</h1>
           <p class="lead" data-zh>
-            保留完整功能与上游可同步性；遥测与厂商服务默认关闭，模型用你自己的 API Key 直接接入，会话与设置仍与官方客户端共用同一份数据。
+            保留完整功能与上游可同步性；遥测与厂商服务默认关闭，模型用你自己的 API Key 直接接入，会话与设置仍与官方客户端共用同一份数据；另提供独立的命令行版（TUI + Web）。
           </p>
           <p class="lead" data-en hidden>
             Full upstream feature set, kept in sync. Telemetry and vendor services are off by default,
             models connect with your own API key, and sessions stay shared with the official client.
+            A standalone CLI (TUI + Web) is released alongside the desktop build.
           </p>
           <div class="cta">
             <a class="btn btn-primary" href="https://github.com/wenyinos/ZCode-Libre/releases">
@@ -379,6 +380,11 @@
               <p data-zh>检测本仓库的 Release 并引导你前往下载，不在应用内下载或安装——避免被装回官方版本。</p>
               <p data-en hidden>Detects a newer release and sends you to the download page. Nothing is installed in-app, so you can never be silently switched back to upstream.</p>
             </div>
+            <div class="card">
+              <h3><span class="dot"></span><span data-zh>命令行版独立发行</span><span data-en hidden>Standalone CLI</span></h3>
+              <p data-zh>与桌面版同版本号的 TUI + Web 独立发行包，覆盖 macOS arm64 与 Linux x64 / arm64；下载安装包后离线即可安装。</p>
+              <p data-en hidden>A TUI + Web bundle released alongside the desktop build under the same version, covering macOS arm64 and Linux x64/arm64. Install offline from a downloaded tarball.</p>
+            </div>
           </div>
         </section>
 
@@ -413,6 +419,21 @@
               <td data-en hidden>The <code>zcode://</code> scheme, <code>@zcode/*</code> scopes, <code>ZCODE_*</code> variables and the <code>.zcode</code> directory intentionally match upstream.</td>
             </tr>
           </table>
+        </section>
+
+        <section>
+          <h2 data-zh>命令行版（TUI + Web）</h2>
+          <h2 data-en hidden>CLI (TUI + Web)</h2>
+          <p class="section-note" data-zh>与桌面版同版本号、独立发行，覆盖 macOS arm64 与 Linux x64 / arm64，需要 Node.js 24。从 <a href="https://github.com/wenyinos/ZCode-Libre/releases">Releases</a> 下载 <code>zcode-&lt;版本&gt;.tar.gz</code> 后在本机安装，全程不需要联网：</p>
+          <p class="section-note" data-en hidden>Released independently under the same version as the desktop build, covering macOS arm64 and Linux x64/arm64; Node.js 24 required. Download <code>zcode-&lt;version&gt;.tar.gz</code> from <a href="https://github.com/wenyinos/ZCode-Libre/releases">Releases</a> and install it locally — no network needed:</p>
+          <pre><code>tar -xzf zcode-*.tar.gz
+node zcode/bin/zcode.mjs        # TUI
+node zcode/bin/zcode.mjs --web  # Web UI
+
+# 安装到 ~/.zcode/runtime 并生成 zcode 命令 / install and get the zcode command
+sh install.sh --tarball ./zcode-*.tar.gz
+zcode        # TUI
+zcode --web  # Web UI</code></pre>
         </section>
 
         <section>

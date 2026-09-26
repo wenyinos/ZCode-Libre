@@ -18,7 +18,7 @@ ZCode-Libre 是 [ZCode](https://github.com/zai-org/ZCode) 的社区分支，遵�
 
 <div align="center">
   <a href="docs/promo/intro-poster.png">
-    <img src="docs/promo/intro-poster-preview.png" alt="ZCode-Libre 项目介绍" width="520" />
+    <img src="docs/promo/intro-poster-preview.png" alt="ZCode-Libre 项目介绍：桌面版与命令行版" width="520" />
   </a>
   <br />
   <a href="https://wenyinos.github.io/ZCode-Libre/">wenyinos.github.io/ZCode-Libre</a>
