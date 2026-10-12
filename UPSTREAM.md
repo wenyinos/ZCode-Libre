@@ -124,8 +124,10 @@ pnpm lint
 | `public/logo/zcode-libre.svg` | 唯一源文件：圆形底 + 青蓝渐变三段式 Z |
 | `scripts/generate-logo-assets.py` | 由源文件生成全部位图 |
 | `public/logo/icons/`、`public/icon_512@2x.png`、`packages/desktop/build/`、`packages/web/public/favicon.ico` | 生成产物，不要手改 |
+| `packages/web/index.html` 内联 32×32 | 必须与 `public/logo/icons/32x32.png` 字节一致；`packages/web/public/favicon.ico` 必须与 `packages/desktop/build/icon.ico` 一致（上游 v3.15.1 的 `webRemoteControlBootstrapShell` 静态断言锁死这三处同源） |
+| `packages/ui/src/assets/provider-icons/model-provider-zai-app.png` | **保持上游官方 Z.AI 图形**：上游把它与自家 App 图标做成同一份字节，本分支重新设计了带几何缺口的 App 图标后两者必须解耦，供应商标志不能画成分支自己的图标 |
 
-上游若替换图标源，按本分支标志重新生成，不要并入上游的 `icon.png` / `icon.icns` / `icon.ico` / `icons/`。
+上游若替换图标源，按本分支标志重新生成，不要并入上游的 `icon.png` / `icon.icns` / `icon.ico` / `icons/`。改标志（如 5f038f71 加几何缺口）时容易只重生成 `public/logo/icons/` 与 `packages/desktop/build/`，漏掉 web 的两处；漏了不会编译报错，只会在浏览器标签和网页 favicon 上继续显示旧标志。
 
 ### 6. 本分支新增文件
 
@@ -168,7 +170,7 @@ pnpm lint
 | 文件 | 改动 |
 | --- | --- |
 | `packages/ui/src/root/useProviderAvailabilityLoginEntryGuard.ts` | 门禁由 `!providerFamilyDomain \|\| (!user && !hasUsableProvider)` 改为 `!user && !hasUsableProvider`。**这是本分支最关键的一处产品行为修正**：上游在未设置 provider family domain 时无条件弹登录页，导致只用 API Key 的用户每次启动都被拦截 |
-| `packages/ui/src/WelcomeScreen.tsx` | 登录页默认 `loginMode` 改为 `apiKey`；无可用 OAuth 渠道时不传 `onCancel` |
+| `packages/ui/src/WelcomeScreen.tsx` | 登录页 `loginMode` 初始值取 `LIBRE_VENDOR_SERVICES.officialAccountLogin ? "providers" : "apiKey"`（与 `resetApiKeyForm` 同一判据，策略关闭时默认 API Key 表单）；失败态由 `status === "error" \|\| oauthError` 的告警块独占，不给 apiKey 表单加同一门禁；无可用 OAuth 渠道时不传 `onCancel` |
 | `packages/ui/src/login/LoginApiKeyForm.tsx` | `onCancel` 改为可选，未传时不渲染返回按钮 |
 | `packages/ui/src/i18n/locales/*` | `login.oauth.noProviders` 由"服务不可用，请稍后重试"改为引导使用 API Key；`login.description` 由"连接账号"改为"配置模型服务" |
 
@@ -215,6 +217,8 @@ pnpm lint
 
 同步注意：上游若新增主题枚举点（新的主题入口或独立窗口），需一并列出 `zai-dusk`。**凡是直接比较主题名来判断深浅色的代码都必须显式包含该值**；走 `resolveTheme()` 的无需改动。`openWorkspacePageThemeHero` 与 `codingPlanEmbeddedWebview` 用的是 `resolveTheme`，已自动兜底。
 
+另一类隐性枚举点在上游的静态断言里：`packages/ui/test/interactionThemeTokens.test.ts` 与 `packages/ui/test/modelTrajectoryPaneParts.test.ts` 直接数 `styles.css` 里每个主题 token 的出现次数，本分支多一套主题后这些计数从 4 变 5。上游新增同类"按主题数覆盖面"的测试时，改断言而不是少写一套色板。
+
 ### 11. 应用内更新：检测自有 Release，不下载不安装
 
 上游的更新清单来自厂商 manifest（`/api/v1/releases/electron/manifest`），给出的是官方 ZCode 版本；在应用内下载安装会把官方版本装回本分支，覆盖品牌与默认关闭设置，且本分支桌面产物未做代码签名，自动安装也会持续触发系统拦截。因此本分支的更新链路只做**检测**，由用户前往 Release 页面自行下载。
@@ -230,7 +234,7 @@ pnpm lint
 
 同步注意：
 - 上游若改动 `initAutoUpdater` 的自动检查/轮询结构，需确认跳过分支仍在轮询启动之前，否则会重新向厂商发请求。
-- `checkForUpdateMenuClick` 的分流必须留在 `canUseAutoUpdaterInCurrentRuntime()` 之后、各 `menuState` 分支之前。
+- `checkForUpdateMenuClick` 的分流必须留在 `canUseAutoUpdaterInCurrentRuntime()` 之后、上游 v3.15.1 新增的 `autoUpdaterDisabledForProductFlavor` 闸**之后**（产品禁用更新时 Libre 同样只能 dev-skipped，不得向任何远端发请求）、各 `menuState` 分支之前。分流位置由 `pnpm check:defaults` 静态断言。
 - 该功能只在打包态生效（开发态走 `dev-skipped`），验证需要实际打包产物。
 
 ### 12. 新增功能：模型额度显示
@@ -290,6 +294,10 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 6. `packages/ui/src/root/useProviderAvailabilityLoginEntryGuard.ts` 的 `shouldOpenLoginEntry` —— 上游若把 `providerFamilyDomain` 重新加回判定，只用 API Key 的用户会再次被强制弹登录页。这是本分支最容易被上游改回的一处行为修正。
 7. `packages/shared/src/plugin-marketplaces.ts` —— 只改了 `DEFAULT_PLUGIN_MARKETPLACES`；若上游改动 `DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS`（内置插件默认集合），正常并入即可，勿为"关闭厂商服务"而清空它。
 8. `packages/services/src/oauth/providers/*ProviderConfig.ts` 的 `enabled` 默认值、`feedbackHttpClient.ts` 的 `request()` 早退、`node.ts` 的会话分享分支 —— 上游若重构这些入口，需确认策略判断仍在唯一收口点。
+9. 上游新增/重写的测试 —— 这些文件不冲突但会失败，`pnpm verify:pre-push` 会拦住推送。失败原因只有三类，按类处理：
+   - **品牌口径**：断言写死了上游文案、应用名、`appId`、`.desktop` 文件名、User-Agent 等 → 改断言为分支值（`pnpm test:unit` 里 `about`、`desktopProductIdentity`、`zcodeSourceHeaders`、各 i18n 快照都属这类）。
+   - **策略开关**：上游用例锁的是厂商服务开启时的行为 → 在该测试文件里 mock 策略，别改生产默认值。经包入口读开关的用 `vi.mock("@zcode/shared", importOriginal)` 覆盖 `LIBRE_VENDOR_SERVICES`；走运行期快照的用 `setVendorServiceSettingsSnapshot()`；若生产代码用**相对路径**直接 import `./libre-features.js`（如 `remoteAppConfig`、`communityUrl`、`helpAppConfig`），包入口 mock 拦不住，必须 mock 解析后的相对路径。
+   - **同源资产与枚举数**：主题覆盖数、`styles.css` token 计数、内联图标字节一致 —— 按分支实际补齐（多一套主题、重新生成图标），不要放宽断言。
 
 ## 同步后自检
 
@@ -301,6 +309,7 @@ grep -rn "initializeCrashCapture(logger, true)" packages/desktop/src/   # 无残
 grep -n "providerFamilyDomain ||" packages/ui/src/root/useProviderAvailabilityLoginEntryGuard.ts  # 门禁未被改回
 git diff upstream/main --stat | tail -1                # 偏离规模是否符合预期
 pnpm typecheck && pnpm lint
+pnpm run test:unit:affected                            # 推送钩子用的就是这条；全量核对再跑 pnpm test:unit
 ```
 
 关键行为抽查（改动涉及产品路径，建议实机确认）：
