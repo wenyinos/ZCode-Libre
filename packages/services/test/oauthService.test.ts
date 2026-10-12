@@ -40,6 +40,8 @@ const TEST_DESKTOP_OAUTH_LOGIN_REDIRECT_URI = buildDesktopOAuthLoginRedirectUri(
 
 // Windows 机器上设置了 ZAI_TEST_OAUTH_ORIGIN 等环境变量，会覆盖测试预期的 test 端点值
 // 过滤掉这些可能污染测试的环境变量
+// ZCode-Libre：本分支官方账号登录默认关闭（LIBRE_VENDOR_SERVICES.officialAccountLogin），
+// 这些用例验证的是上游的 OAuth 语义本身，因此注入显式开启的环境变量，与设置页开关注解耦。
 const OAUTH_ENV_KEYS_TO_OMIT = new Set([
   "ZCODE_ENV",
   "ZCODE_ENDPOINT_ORIGIN",
@@ -62,6 +64,8 @@ const OAUTH_ENV_KEYS_TO_OMIT = new Set([
 const cleanProcessEnv = Object.fromEntries(
   Object.entries(process.env).filter(([key]) => !OAUTH_ENV_KEYS_TO_OMIT.has(key)),
 ) as Record<string, string | undefined>;
+cleanProcessEnv.ZAI_OAUTH_ENABLED = "1";
+cleanProcessEnv.BIGMODEL_OAUTH_ENABLED = "1";
 
 const credentialStore = new Map<string, string>();
 
@@ -1049,7 +1053,7 @@ describe("oauthService", () => {
   it("uses production bigmodel.cn to build BigModel authorize URL when ZCODE_ENV=production", async () => {
     const service = createBigModelService({
       env: {
-        ...process.env,
+        ...cleanProcessEnv,
         BIGMODEL_OAUTH_APP_SECRET: "unit-test-secret",
         ZCODE_ENV: "production",
       },
@@ -1251,7 +1255,7 @@ describe("oauthService", () => {
     const service = createBigModelService({
       apiClient: createMockApiClient(fetchMock),
       env: {
-        ...process.env,
+        ...cleanProcessEnv,
         BIGMODEL_OAUTH_APP_SECRET: "unit-test-secret",
         ZCODE_BASE_URL: "https://zcode.z.ai",
       },
@@ -1288,7 +1292,7 @@ describe("oauthService", () => {
     const service = createBigModelService({
       apiClient: createMockApiClient(fetchMock),
       env: {
-        ...process.env,
+        ...cleanProcessEnv,
         BIGMODEL_OAUTH_APP_SECRET: "unit-test-secret",
         ZAI_BUSINESS_BASE_URL: "https://api.z.ai",
       },
@@ -1983,7 +1987,7 @@ describe("oauthService", () => {
     const service = createBigModelService({
       apiClient: createMockApiClient(fetchMock),
       env: {
-        ...process.env,
+        ...cleanProcessEnv,
         BIGMODEL_OAUTH_APP_SECRET: "unit-test-secret",
         ZCODE_BASE_URL: "https://zcode.z.ai",
       },
@@ -2351,7 +2355,10 @@ describe("oauthService", () => {
     const fetchMock = vi.fn<typeof fetch>();
     const service = createBigModelService({
       apiClient: createMockApiClient(fetchMock),
-      env: {} as NodeJS.ProcessEnv,
+      env: {
+        ZAI_OAUTH_ENABLED: "1",
+        BIGMODEL_OAUTH_ENABLED: "1",
+      } as NodeJS.ProcessEnv,
     });
     const { state } = await service.startOAuth(BIGMODEL_PROVIDER_ID);
 

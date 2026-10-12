@@ -1,6 +1,17 @@
 import { mkdtemp, readFile, rm, access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, basename } from "node:path";
+// ZCode-Libre：反馈默认关闭（request 统一截断）；这个文件验证的是脱敏边界本身，
+// mock 设置快照为开启，与分支默认值解耦（同 feedbackHttpClient.test.ts）。
+vi.mock("@zcode/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@zcode/shared")>();
+  return {
+    ...actual,
+    // isVendorServiceEnabled 读进程内快照（不是每次调 getVendorServiceSettingsSnapshot），
+    // 这里直接替换判定函数为开启。
+    isVendorServiceEnabled: () => true,
+  };
+});
 import { createFeedbackService } from "../src/feedback/feedbackService.js";
 import type { IOAuthService } from "../src/oauth/oauth.js";
 import { getFeedbackAttachmentDir, setDataBaseDir } from "../src/paths.js";

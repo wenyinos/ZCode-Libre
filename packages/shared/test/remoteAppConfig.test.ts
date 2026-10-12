@@ -1,10 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   getCommunityUrlFromConfig,
   getCommunityUrlFromConfigs,
   getFeedbackUrlFromConfig,
   getForceUpdateMinimalVersionFromConfig,
 } from "../src/remoteAppConfig.js";
+
+// ZCode-Libre：社群入口默认统一指向自有 Discussions；这个文件验证远端/内置配置的
+// 解析与回退语义，mock 策略模块为开启，与分支默认值解耦。
+vi.mock("../src/libre-features.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/libre-features.js")>();
+  return {
+    ...actual,
+    LIBRE_VENDOR_SERVICES: { ...actual.LIBRE_VENDOR_SERVICES, vendorCommunityLinks: true },
+  };
+});
 
 describe("remoteAppConfig", () => {
   it("读取 feedback_url", () => {

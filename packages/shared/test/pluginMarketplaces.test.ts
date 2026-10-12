@@ -1,5 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_PLUGIN_MARKETPLACES, isPublicStoreMarketplaceId } from "../src/index.js";
+
+// ZCode-Libre：默认不播种任何远端市场源；这个文件验证的是开关开启时的完整市场集合，
+// 因此 mock 策略模块为开启，与分支默认值解耦（默认关闭行为由 check:defaults 断言）。
+vi.mock("../src/libre-features.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/libre-features.js")>();
+  return {
+    ...actual,
+    LIBRE_VENDOR_SERVICES: { ...actual.LIBRE_VENDOR_SERVICES, pluginMarketplaceRemoteSource: true },
+  };
+});
 
 describe("DEFAULT_PLUGIN_MARKETPLACES", () => {
   it("includes the official CDN marketplace and the Claude official marketplace", () => {

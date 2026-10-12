@@ -5,12 +5,15 @@ import { withPinnedNodePath } from "../../../scripts/mise-toolchain-env.mjs";
 
 describe("mise toolchain child environment", () => {
   it("puts the launcher Node directory first without duplicating it", () => {
-    const nodeDirectory = dirname(process.execPath);
+    // 用固定假路径构造：宿主 Node 若装在 /usr/bin，nodeDirectory 会与常规 PATH 项撞名，
+    // 去重逻辑会把它们一并过滤，让断言依赖宿主安装布局。固定 nodeExecutablePath 隔离。
+    const nodeExecutablePath = "/nix/store/zcode-node/bin/node";
+    const nodeDirectory = dirname(nodeExecutablePath);
     const originalPath = ["/opt/homebrew/bin", nodeDirectory, "/usr/bin", nodeDirectory].join(
       delimiter,
     );
 
-    const result = withPinnedNodePath({ PATH: originalPath, KEEP_ME: "yes" }, process.execPath);
+    const result = withPinnedNodePath({ PATH: originalPath, KEEP_ME: "yes" }, nodeExecutablePath);
 
     expect(result.PATH?.split(delimiter)).toEqual([nodeDirectory, "/opt/homebrew/bin", "/usr/bin"]);
     expect(result.KEEP_ME).toBe("yes");

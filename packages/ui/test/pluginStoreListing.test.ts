@@ -107,7 +107,7 @@ describe("pluginStoreListing", () => {
 
   it("formats marketplace slugs as display names", () => {
     expect(formatCanonicalMarketplaceName("zcode-plugins-official", "en-US")).toBe(
-      "ZCode Plugins Official",
+      "ZCode-Libre Plugins Official",
     );
     expect(formatCanonicalMarketplaceName("claude-plugins-official", "en-US")).toBe(
       "Claude Plugins Official",
@@ -454,7 +454,7 @@ describe("pluginStoreListing", () => {
     });
     expect(item).toBeDefined();
     expect(resolveItemDisplayName(item!, "en-US")).toBe("Cloudbase Skills");
-    expect(formatCanonicalPluginName("zcode-guide", "en-US")).toBe("ZCode Guide");
+    expect(formatCanonicalPluginName("zcode-guide", "en-US")).toBe("ZCode-Libre Guide");
     expect(formatCanonicalPluginName("aws-mcp-server", "en-US")).toBe("AWS MCP Server");
     expect(formatCanonicalPluginName("AWS_mCp_tools", "en-US")).toBe("AWS MCP Tools");
   });

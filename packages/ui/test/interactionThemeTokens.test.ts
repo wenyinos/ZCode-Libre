@@ -13,8 +13,9 @@ describe("blocking interaction theme tokens", () => {
       "--color-interaction-confirmation-foreground",
     ];
 
+    // ZCode-Libre 增加紫夜（zai-dusk）主题，覆盖数从上游 4 个变为 5 个。
     for (const token of tokens) {
-      expect(styles.match(new RegExp(`${token}:`, "g"))).toHaveLength(4);
+      expect(styles.match(new RegExp(`${token}:`, "g"))).toHaveLength(5);
     }
     expect(styles).toContain("--color-interaction-ask-fill: rgba(70, 191, 114, 0.2);");
     expect(styles).toContain("--color-interaction-ask-fill: rgba(70, 191, 114, 0.24);");

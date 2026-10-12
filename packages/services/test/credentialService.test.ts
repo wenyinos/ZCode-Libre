@@ -5,6 +5,16 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ICredentialService } from "../src/credential/credential.js";
 
+// ZCode-Libre：官方账号派生凭据（oauth: 等）默认在存储层拒绝读取；这个文件验证的是
+// 凭据加密与迁移机制本身，因此 mock 开关为开启，让 oauth: 键照常读写。
+vi.mock("@zcode/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@zcode/shared")>();
+  return {
+    ...actual,
+    LIBRE_VENDOR_SERVICES: { ...actual.LIBRE_VENDOR_SERVICES, officialAccountCredentials: true },
+  };
+});
+
 const originalHome = process.env.HOME;
 const tempHomes: string[] = [];
 

@@ -84,6 +84,6 @@ describe("applyTheme", () => {
     });
 
     expect(() => applyTheme("zai-dark")).not.toThrow();
-    expect(toggle).toHaveBeenCalledTimes(3);
+    expect(toggle).toHaveBeenCalledTimes(4);
   });
 });

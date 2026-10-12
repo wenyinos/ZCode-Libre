@@ -1,6 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
 import { resolveWebCommunityUrl, resolveWebHelpConfig } from "../src/communityUrl.js";
 
+// ZCode-Libre：社群入口默认统一指向自有 Discussions（vendorCommunityLinks=false，
+// resolveCommunityUrlFromConfig 直接返回 LIBRE_COMMUNITY_URL）；这个文件验证的是远端/
+// 内置配置的解析与回退语义本身，因此 mock 开关为开启，与分支默认值解耦。
+// mock 的是解析后的真身文件：remoteAppConfig.ts 以相对路径导入 libre-features，
+// mock 包索引 @zcode/shared 拦不到这条内部导入链。
+vi.mock("../../shared/src/libre-features.js", async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import("../../shared/src/libre-features.js")
+  >();
+  return {
+    ...actual,
+    LIBRE_VENDOR_SERVICES: { ...actual.LIBRE_VENDOR_SERVICES, vendorCommunityLinks: true },
+  };
+});
+
 const LOCAL_CONFIG = {
   community_urls: {
     "zh-CN": "https://local.example.com/feishu",

@@ -10,13 +10,12 @@ describe("electron-builder Linux 打包目标", () => {
     expect(desktopBuilderConfig.detectUpdateChannel).toBe(false);
   });
 
-  it("Linux 同时产出 AppImage、deb、rpm 与 pacman 安装包", () => {
+  it("Linux 只产出 deb 与 rpm 系统安装包", () => {
+    // ZCode-Libre：不产出 AppImage，也不产出 pacman 包（Arch 官方仓库只有 x86_64，
+    // arm64 无处安装），deb/rpm 在各发行版容器内构建，见 electron-builder.config.js。
     const targets = desktopBuilderConfig.linux?.target ?? [];
 
-    expect(targets).toContain("AppImage");
-    expect(targets).toContain("deb");
-    expect(targets).toContain("rpm");
-    expect(targets).toContain("pacman");
+    expect(targets).toEqual(["deb", "rpm"]);
   });
 
   it("rpm 与 deb 的 packageName 按 flavor 拆分且保持一致", () => {

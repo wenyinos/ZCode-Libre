@@ -4,6 +4,16 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingPlanFunnelContext } from "@/lib/codingPlanFunnelTelemetry.js";
 
+// ZCode-Libre：套餐购买默认关闭（openCodingPlanUpgrade 统一守卫早退）；这个文件验证的是
+// 升级弹窗的打开/观察协议本身，因此 mock 开关为开启，与分支默认值解耦。
+vi.mock("@zcode/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@zcode/shared")>();
+  return {
+    ...actual,
+    LIBRE_VENDOR_SERVICES: { ...actual.LIBRE_VENDOR_SERVICES, codingPlanPurchase: true },
+  };
+});
+
 const h = vi.hoisted(() => ({
   entryPlanList: "coding_plan__personal_lite,start_plan__start",
   status: "ready" as "ready" | "loading" | "error",

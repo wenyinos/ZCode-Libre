@@ -493,7 +493,8 @@ describe("ModelTrajectoryPaneParts", () => {
       "--color-trajectory-tool-call",
       "--color-trajectory-tool-result",
     ]) {
-      expect(stylesSource.match(new RegExp(`${token}:`, "g"))).toHaveLength(4);
+      // 本分支多一套紫夜（zai-dusk）主题，轨迹色板从 4 套变 5 套。
+      expect(stylesSource.match(new RegExp(`${token}:`, "g"))).toHaveLength(5);
     }
     expect(stylesSource.match(/--color-trajectory-assistant: #0f766e/g)).toHaveLength(2);
     expect(stylesSource.match(/--color-trajectory-assistant: #2dd4bf/g)).toHaveLength(2);

@@ -16,7 +16,7 @@ describe("browserControlMainBridge", () => {
     const [descriptor] = await bridge.list();
     expect(descriptor).toMatchObject({
       type: "iab",
-      name: "ZCode In-app Browser",
+      name: "ZCode-Libre In-app Browser",
       generation: expect.any(Number),
       capabilities: {
         browser: [expect.objectContaining({ id: "visibility" })],

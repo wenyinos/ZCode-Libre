@@ -23,7 +23,7 @@ describe("OpenRouter attribution headers", () => {
       withOpenRouterAttributionHeaders({ "X-Title": "Z Code@cli" }, "https://openrouter.ai/api/v1"),
     ).toEqual({
       "X-Title": "Z Code@cli",
-      "X-OpenRouter-Title": "ZCode",
+      "X-OpenRouter-Title": "ZCode-Libre",
       "X-OpenRouter-Categories": "programming-app",
     });
     expect(

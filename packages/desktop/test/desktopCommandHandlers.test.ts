@@ -2,6 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { join } from "node:path";
 import { DesktopCommandIds } from "@zcode/shared";
 
+// ZCode-Libre：社群入口默认统一指向自有 Discussions；这个文件验证命令路由与社群
+// URL 的语言边界语义，mock 策略模块为开启，与分支默认值解耦。
+vi.mock("../../shared/src/libre-features.js", async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import("../../shared/src/libre-features.js")
+  >();
+  return {
+    ...actual,
+    LIBRE_VENDOR_SERVICES: { ...actual.LIBRE_VENDOR_SERVICES, vendorCommunityLinks: true },
+  };
+});
+
 const appMock = {
   isPackaged: false,
   getAppPath: vi.fn(() => "/Applications/ZCode.app/Contents/Resources/app.asar"),

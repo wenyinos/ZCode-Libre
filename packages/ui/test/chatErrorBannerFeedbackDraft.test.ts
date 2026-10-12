@@ -7,6 +7,16 @@ import { useFeedbackStore } from "@/feedback/feedbackStore.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
 import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
 
+// ZCode-Libre：反馈入口默认由供应商服务策略关闭；本用例验证反馈草稿链路，
+// 需要按钮存在，因此把策略打开，与分支默认值解耦。
+vi.mock("@zcode/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@zcode/shared")>();
+  return {
+    ...actual,
+    LIBRE_VENDOR_SERVICES: { ...actual.LIBRE_VENDOR_SERVICES, feedback: true },
+  };
+});
+
 const buttonMock = vi.hoisted(() => ({
   props: [] as Array<Record<string, unknown>>,
 }));

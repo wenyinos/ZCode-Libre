@@ -1,10 +1,25 @@
 import { describe, expect, it, vi } from "vitest";
 import enUS from "@/i18n/locales/en-US.js";
 import zhCN from "@/i18n/locales/zh-CN.js";
+
 import {
   createQuickPickCommands,
   QUICK_PICK_SECTION_ORDER,
 } from "@/quickpick/quickPickCommands.js";
+
+// ZCode-Libre：反馈与官方账号登录由供应商服务策略关闭，quickPick 会跳过这两条命令。
+// 本用例锁定上游稳定分节顺序，因此显式打开策略开关，与分支默认值解耦。
+vi.mock("@zcode/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@zcode/shared")>();
+  return {
+    ...actual,
+    LIBRE_VENDOR_SERVICES: {
+      ...actual.LIBRE_VENDOR_SERVICES,
+      feedback: true,
+      officialAccountLogin: true,
+    },
+  };
+});
 
 function createHandlers() {
   return {

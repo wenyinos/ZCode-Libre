@@ -48,7 +48,7 @@ describe("NodeApiClient endpoint rewriting", () => {
     await client.request("https://api.z.ai/v1/models");
 
     const zcodeHeaders = new Headers(fetchImpl.mock.calls[0]?.[1]?.headers);
-    expect(zcodeHeaders.get("User-Agent")).toMatch(/^ZCode\//);
+    expect(zcodeHeaders.get("User-Agent")).toMatch(/^ZCode-Libre\//);
     expect(zcodeHeaders.get("X-Title")).toBe(ZCODE_SOURCE_HEADERS["X-Title"]);
     expect(zcodeHeaders.get("X-OpenRouter-Title")).toBeNull();
     expect(zcodeHeaders.get("X-OpenRouter-Categories")).toBeNull();

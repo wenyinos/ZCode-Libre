@@ -1,8 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import { mkdtemp, rm, truncate, writeFile } from "node:fs/promises";
 import { release, tmpdir } from "node:os";
 import { join } from "node:path";
+
+// ZCode-Libre：反馈默认关闭（feedbackHttpClient.request 统一截断）；这些用例验证的是
+// 反馈协议本身，因此统一注入设置快照开启，测试后还原，与分支默认值解耦。
+import { setVendorServiceSettingsSnapshot } from "@zcode/shared";
 
 import type {
   ApiRequestInit,
@@ -107,7 +111,12 @@ function makeClient(
 }
 
 describe("FeedbackHttpClient", () => {
+  beforeEach(() => {
+    setVendorServiceSettingsSnapshot({ vendorServiceFeedbackEnabled: true });
+  });
+
   afterEach(() => {
+    setVendorServiceSettingsSnapshot(null);
     vi.unstubAllGlobals();
   });
 
@@ -887,7 +896,12 @@ describe("FeedbackHttpClient", () => {
 });
 
 describe("createFeedbackService", () => {
+  beforeEach(() => {
+    setVendorServiceSettingsSnapshot({ vendorServiceFeedbackEnabled: true });
+  });
+
   afterEach(() => {
+    setVendorServiceSettingsSnapshot(null);
     setDataBaseDir(null);
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();

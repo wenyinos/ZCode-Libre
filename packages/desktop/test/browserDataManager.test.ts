@@ -779,6 +779,15 @@ describe("browserDataManager", () => {
       Buffer.from("binary\0META:https://chat.z.ai", "latin1"),
     );
 
+    // 原 platform:"aix" 意在让可执行文件发现失败；但发现器还会扫描运行中的 Chrome
+    // 进程命令行与 CHROME_PATH，装了 Chrome 的开发机上仍能找到真 Chrome，用例随之失效。
+    // 显式 mock 返回 null，让用例只考察「origin 已发现但 helper 不可用」的失败统计。
+    const discovery = await import("../src/main/chromeExecutableDiscovery.js");
+    const discoverySpy = vi
+      .spyOn(discovery, "resolveChromeExecutablePath")
+      .mockResolvedValue(null);
+
+    try {
     const result = await importChromeLocalStorage({
       profilePath,
       platform: "aix",
@@ -791,6 +800,9 @@ describe("browserDataManager", () => {
       originsFailed: 1,
       error: "chrome_executable_not_found",
     });
+    } finally {
+      discoverySpy.mockRestore();
+    }
   });
 
   it("普通清理保留 Cookie，全量清理使用 Electron 全存储清理", async () => {

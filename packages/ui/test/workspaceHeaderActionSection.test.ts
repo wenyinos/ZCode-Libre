@@ -6,6 +6,16 @@ import type { WorkspaceHeaderActionSection as WorkspaceHeaderActionSectionType }
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { createSettingsTestServices } from "./lib/settingsTestServices.js";
 
+// ZCode-Libre：反馈/漏洞报告入口默认随 feedback 开关隐藏；这里验证的是头部操作区的
+// 菜单结构与路由，因此 mock 开关为开启，与分支默认值解耦。
+vi.mock("@zcode/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@zcode/shared")>();
+  return {
+    ...actual,
+    LIBRE_VENDOR_SERVICES: { ...actual.LIBRE_VENDOR_SERVICES, feedback: true },
+  };
+});
+
 const capturedHeaderHelp = vi.hoisted(() => {
   const screenshot = {
     dataBase64: "base64-image",

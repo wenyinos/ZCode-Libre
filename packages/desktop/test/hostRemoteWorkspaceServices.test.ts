@@ -2,6 +2,16 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+// ZCode-Libre：官方账号派生凭据（oauth: 等）默认在存储层拒绝读取，entitlement 快照会
+// 变成未登录；这个文件验证的是远程工作区的服务装配与用量链路，因此 mock 开关为开启。
+vi.mock("@zcode/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@zcode/shared")>();
+  return {
+    ...actual,
+    LIBRE_VENDOR_SERVICES: { ...actual.LIBRE_VENDOR_SERVICES, officialAccountCredentials: true },
+  };
+});
 import { ChannelClient, ChannelServer, createQueuePair, Emitter, ProxyChannel } from "@zcode/rpc";
 import {
   ServiceCollection,

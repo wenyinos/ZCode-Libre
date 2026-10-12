@@ -49,7 +49,7 @@ describe("dev Electron app bundle", () => {
         electronVersion: "41.0.3",
         arch: "arm64",
       }),
-    ).toBe("/tmp/zcode-runtime/41.0.3-arm64/ZCode Dev.app");
+    ).toBe("/tmp/zcode-runtime/41.0.3-arm64/ZCode-Libre Dev.app");
   });
 
   it("makes the macOS dev launcher use the prepared bundle executable", async () => {
@@ -84,12 +84,12 @@ describe("dev Electron app bundle", () => {
       arch: "arm64",
     });
 
-    expect(result.appPath).toBe(`${outputRoot}/41.0.3-arm64/ZCode Dev.app`);
+    expect(result.appPath).toBe(`${outputRoot}/41.0.3-arm64/ZCode-Libre Dev.app`);
     expect(result.executablePath).toBe(
-      `${outputRoot}/41.0.3-arm64/ZCode Dev.app/Contents/MacOS/Electron`,
+      `${outputRoot}/41.0.3-arm64/ZCode-Libre Dev.app/Contents/MacOS/Electron`,
     );
     const plist = await readFile(join(result.appPath, "Contents", "Info.plist"), "utf8");
-    expect(plist).toContain("dev.zcode.app.development");
+    expect(plist).toContain("dev.zcode-libre.app.development");
     expect(plist).toContain("<string>zcode</string>");
   });
 

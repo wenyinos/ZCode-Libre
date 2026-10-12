@@ -34,7 +34,7 @@ describe("settingsPageConfig", () => {
     ).toEqual([
       {
         id: "basics",
-        sections: ["general", "appearance", "modelProvider", "browser", "shortcuts"],
+        sections: ["general", "appearance", "modelProvider", "browser", "vendorServices", "shortcuts"],
       },
       {
         id: "agentCapabilities",
@@ -42,7 +42,7 @@ describe("settingsPageConfig", () => {
       },
       {
         id: "dataAndStats",
-        sections: ["usage"],
+        sections: ["usage", "personalPlan"],
       },
     ]);
 
@@ -58,8 +58,10 @@ describe("settingsPageConfig", () => {
       "commands",
       "hooks",
       "browser",
+      "vendorServices",
       "shortcuts",
       "usage",
+      "personalPlan",
     ]);
   });
 
@@ -79,8 +81,10 @@ describe("settingsPageConfig", () => {
       "commands",
       "hooks",
       "browser",
+      "vendorServices",
       "shortcuts",
       "usage",
+      "personalPlan",
     ]);
   });
 
@@ -141,6 +145,7 @@ describe("settingsPageConfig", () => {
       "modelProvider",
       "browser",
       "computerUse",
+      "vendorServices",
       "shortcuts",
     ]);
     expect(

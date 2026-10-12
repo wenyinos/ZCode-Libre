@@ -51,7 +51,7 @@ describe("HighspeedShareNoticeCard", () => {
     expect(document.querySelector(".highspeed-share-dialog__benefit")).not.toBeNull();
     expect(document.querySelector(".highspeed-share-dialog__chart-bars--baseline")).not.toBeNull();
     expect(document.querySelector(".highspeed-share-dialog__chart-bars--fast")).not.toBeNull();
-    expect(document.body.textContent).toContain("I used the ZCode Highspeed card and saved 480s.");
+    expect(document.body.textContent).toContain("I used the ZCode-Libre Highspeed card and saved 480s.");
     expect(document.body.textContent).toContain("https://zcode.z.ai");
     expect(document.querySelector('[data-highspeed-share-dialog-card="true"]')).not.toBeNull();
     // Bug 回归锁：Electron 窗口不可见时 animationend 永不触发，Radix 会因等退出动画
