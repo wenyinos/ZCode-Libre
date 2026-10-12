@@ -77,6 +77,13 @@ vi.mock("@/store/StoreProvider.js", () => ({
     }),
 }));
 
+// ZCode-Libre：取消失败态后 loginMode 会回到 apiKey（本分支默认入口），rerender 时
+// LoginApiKeyForm 会被渲染；这个文件只关心 OAuth 失败块交互，mock 掉表单避免依赖 ServiceProvider。
+const LoginApiKeyFormMock = vi.hoisted(() => vi.fn(() => null));
+vi.mock("@/login/LoginApiKeyForm.js", () => ({
+  LoginApiKeyForm: LoginApiKeyFormMock,
+}));
+
 async function renderWelcomeScreen() {
   const { WelcomeScreen } = await import("@/WelcomeScreen.js");
   const view = render(createElement(WelcomeScreen, { onComplete: vi.fn() }));
@@ -129,7 +136,7 @@ describe("登录失败态的取消交互", () => {
     expect(screen.queryByTestId(TID_OAUTH_LOGIN_BUTTON)).toBeNull();
   });
 
-  it("点击失败态取消:清 store 错误并取消 pending,状态回 idle 后渠道列表恢复", async () => {
+  it("点击失败态取消:清 store 错误并取消 pending,状态回 idle 后回到 API Key 表单", async () => {
     const { view, WelcomeScreen } = await renderWelcomeScreen();
 
     fireEvent.click(screen.getByTestId(TID_OAUTH_CANCEL));
@@ -144,9 +151,12 @@ describe("登录失败态的取消交互", () => {
     storeState.oauthError = null;
     view.rerender(createElement(WelcomeScreen, { onComplete: vi.fn() }));
 
-    expect(screen.getByTestId(TID_OAUTH_LOGIN_BUTTON)).toBeTruthy();
+    // ZCode-Libre：官方账号登录默认关闭，取消后 resetApiKeyForm 回到 apiKey 入口，
+    // 而不是上游的 OAuth 渠道列表（分支下该列表为空，没有可返回的目标）。
+    expect(screen.queryByTestId(TID_OAUTH_LOGIN_BUTTON)).toBeNull();
     expect(screen.queryByTestId(TID_OAUTH_ERROR)).toBeNull();
     expect(screen.queryByTestId(TID_OAUTH_CANCEL)).toBeNull();
+    expect(vi.mocked(LoginApiKeyFormMock).mock.calls.length).toBeGreaterThan(0);
   });
 
   it("失败后点重新登录:清 store 错误并沿用最近失败的渠道重试", async () => {

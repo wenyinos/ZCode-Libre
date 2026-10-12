@@ -34,6 +34,29 @@ vi.mock("@/hooks/useOAuth.js", () => ({
   }),
 }));
 
+// 本文件锁定的是官方登录渠道面板的样式，因此把供应商服务策略里的官方登录打开，
+// 让 WelcomeScreen 落在 providers 初始态，与分支默认值解耦。
+vi.mock("@zcode/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@zcode/shared")>();
+  return {
+    ...actual,
+    LIBRE_VENDOR_SERVICES: {
+      ...actual.LIBRE_VENDOR_SERVICES,
+      officialAccountLogin: true,
+    },
+  };
+});
+
+// ZCode-Libre：官方账号登录关闭后，登录页静态渲染会直达 API Key 表单；
+// 该表单只在异步保存里用到 Root services，这里提供占位即可。
+vi.mock("@/hooks/useServices.js", () => ({
+  useServices: () => ({
+    modelSelectionService: {},
+    providerSettingsService: {},
+    settingService: {},
+  }),
+}));
+
 vi.mock("@/i18n/IntlProvider.js", () => ({
   useZCodeIntl: () => ({
     intl: {

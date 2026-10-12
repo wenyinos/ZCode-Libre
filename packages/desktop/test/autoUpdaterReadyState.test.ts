@@ -94,6 +94,18 @@ vi.mock("node:child_process", () => ({
   spawn: spawnMock,
 }));
 
+// ZCode-Libre：本分支默认 selfHostedReleaseUpdates=true，会跳过 electron-updater 的
+// 启动检查与轮询、菜单点击分流到自有 Release 检测。这个文件验证的是上游 manifest
+// 更新链路本身，因此 mock 成 false 让上游语义可测；自有 Release 路径由
+// githubReleaseUpdates.test.ts 单独覆盖。
+vi.mock("@zcode/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@zcode/shared")>();
+  return {
+    ...actual,
+    LIBRE_VENDOR_SERVICES: { ...actual.LIBRE_VENDOR_SERVICES, selfHostedReleaseUpdates: false },
+  };
+});
+
 vi.mock("electron", () => ({
   app: appMock,
   BrowserWindow: {

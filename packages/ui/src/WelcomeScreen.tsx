@@ -94,8 +94,10 @@ export function LoginPanel({ active, onComplete }: LoginPanelProps) {
   const clearLoginEntryRequest = useZCodeStore((s) => s.clearLoginEntryRequest);
   const markLoginEntryAttemptStatus = useZCodeStore((s) => s.markLoginEntryAttemptStatus);
   // ZCode-Libre：官方账号登录默认关闭，登录页默认展示 API Key 表单。
-  // 显式开启 OAuth（ZAI_OAUTH_ENABLED / BIGMODEL_OAUTH_ENABLED）时仍可切换回渠道列表。
-  const [loginMode, setLoginMode] = useState<"providers" | "apiKey">("apiKey");
+  // 初始态与 resetApiKeyForm 用同一个判据，避免开启 OAuth 后首屏仍停在 API Key 表单。
+  const [loginMode, setLoginMode] = useState<"providers" | "apiKey">(
+    LIBRE_VENDOR_SERVICES.officialAccountLogin ? "providers" : "apiKey",
+  );
   const wasActiveRef = useRef(active);
   const consumedLoginRequestRef = useRef<number | null>(null);
   const observedOAuthSuccessSeqRef = useRef(oauthSuccessSeq);
@@ -363,7 +365,10 @@ export function LoginPanel({ active, onComplete }: LoginPanelProps) {
           </div>
         )}
 
-        {status === "idle" && loginMode === "apiKey" ? (
+        {/* ZCode-Libre：默认 loginMode=apiKey，但失败态（status==="error" 或 Root 层 oauthError）
+            必须由下方失败块接管；不给 apiKey 表单加同样的 !oauthError 门禁时，失败态会与
+            API Key 表单同屏（上游默认 providers 不经过这里，测试用例也按失败块独占断言）。 */}
+        {status === "idle" && !oauthError && loginMode === "apiKey" ? (
           <LoginApiKeyForm
             // 没有可返回的 OAuth 渠道时不传 onCancel，由表单隐藏返回按钮，
             // 避免把用户带到"没有可用登录提供方"的空列表。
