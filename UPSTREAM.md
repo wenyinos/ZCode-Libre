@@ -298,6 +298,7 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
    - **品牌口径**：断言写死了上游文案、应用名、`appId`、`.desktop` 文件名、User-Agent 等 → 改断言为分支值（`pnpm test:unit` 里 `about`、`desktopProductIdentity`、`zcodeSourceHeaders`、各 i18n 快照都属这类）。
    - **策略开关**：上游用例锁的是厂商服务开启时的行为 → 在该测试文件里 mock 策略，别改生产默认值。经包入口读开关的用 `vi.mock("@zcode/shared", importOriginal)` 覆盖 `LIBRE_VENDOR_SERVICES`；走运行期快照的用 `setVendorServiceSettingsSnapshot()`；若生产代码用**相对路径**直接 import `./libre-features.js`（如 `remoteAppConfig`、`communityUrl`、`helpAppConfig`），包入口 mock 拦不住，必须 mock 解析后的相对路径。
    - **同源资产与枚举数**：主题覆盖数、`styles.css` token 计数、内联图标字节一致 —— 按分支实际补齐（多一套主题、重新生成图标），不要放宽断言。
+10. `packages/web-share/vite.config.ts` 的 `resolve.alias` —— 上游 v3.15.1 新增这个包，别名写成对象、`"@zcode/shared": ".../src/index.ts"`。Vite 的字符串别名按「全等或 `find + /` 前缀」匹配，所以上游新增的 `@zcode/shared/mcp-apps`、`/zcode-protocol-v4`、`/config-schema`、`/model-config` 会被拼成 `src/index.ts/mcp-apps`，`pnpm build:bootstrap` 直接 ENOTDIR 失败，六个桌面打包 job 全红。本分支已改成数组形式，先用正则把子路径映射到 `packages/shared/src/`，再留根入口。**上游同步会把它改回去**，合并后必须本地跑一次 `pnpm run build:bootstrap` 才能发现。
 
 ## 同步后自检
 

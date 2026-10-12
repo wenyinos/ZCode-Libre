@@ -33,22 +33,30 @@ export default defineConfig(({ mode }) => {
     publicDir: resolve(REPO_ROOT, "packages/web/public"),
     plugins: [react(), tailwindcss()],
     resolve: {
-      alias: {
-        "@": resolve(REPO_ROOT, "packages/ui/src"),
-        "@zcode/shared": resolve(REPO_ROOT, "packages/shared/src/index.ts"),
+      alias: [
+        // Bugfix: 上游 v3.15.1 起 ui/provider 改成按 `@zcode/shared/<子路径>` 导入
+        // （mcp-apps、zcode-protocol-v4、config-schema、model-config）。Vite 的字符串别名
+        // 按「全等或 `find + /` 前缀」匹配，`@zcode/shared` 会把子路径拼成
+        // `src/index.ts/mcp-apps`，构建直接 ENOTDIR。子路径必须优先且映射到源码目录。
+        {
+          find: /^@zcode\/shared\/(.*)$/,
+          replacement: `${resolve(REPO_ROOT, "packages/shared/src")}/$1`,
+        },
+        { find: "@zcode/shared", replacement: resolve(REPO_ROOT, "packages/shared/src/index.ts") },
+        { find: "@", replacement: resolve(REPO_ROOT, "packages/ui/src") },
         // Share 镜像不安装 @zcode/ui（它会带入 services/rpc 闭包），子路径导入必须显式指向源码。
-        "@zcode/ui/useTheme": resolve(REPO_ROOT, "packages/ui/src/useTheme.ts"),
-        "@zcode/ui/conversation-share-readonly": resolve(
-          REPO_ROOT,
-          "packages/share-ui/src/index.ts",
-        ),
+        { find: "@zcode/ui/useTheme", replacement: resolve(REPO_ROOT, "packages/ui/src/useTheme.ts") },
+        {
+          find: "@zcode/ui/conversation-share-readonly",
+          replacement: resolve(REPO_ROOT, "packages/share-ui/src/index.ts"),
+        },
         // 登录卡片要用 provider 图标（svg 走 @ -> packages/ui/src 别名解析）。
         // 该模块只依赖 shared/lucide/cn，不会把 services/rpc 闭包带进 share 镜像。
-        "@zcode/ui/oauth-provider-icon": resolve(
-          REPO_ROOT,
-          "packages/ui/src/lib/oauthProviderIcon.tsx",
-        ),
-      },
+        {
+          find: "@zcode/ui/oauth-provider-icon",
+          replacement: resolve(REPO_ROOT, "packages/ui/src/lib/oauthProviderIcon.tsx"),
+        },
+      ],
     },
     define: {
       __ZCODE_VERSION__: JSON.stringify(version),
