@@ -11,6 +11,12 @@ export interface DefaultPluginMarketplace {
 
 export const ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "zcode-plugins-official";
 
+/**
+ * Claude Code 官方市场（GitHub git 源）。它不是 ZCode 的强依赖：GitHub 不可达时刷新必然失败，
+ * 该失败不应作为错误提示打扰用户，UI 侧按此 id 静默处理其刷新失败（任何原因）。
+ */
+export const CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "claude-plugins-official";
+
 /** Settings 三类资源发现共用；Bootstrap 单测与官方 definition 的 defaultEnabled 机械对照。 */
 export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set([
   "browser-use@zcode-plugins-official",
@@ -26,6 +32,9 @@ export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set(
   "skill-creator@zcode-plugins-official",
   "plugin-creator@zcode-plugins-official",
   "zcode-guide@zcode-plugins-official",
+  // visualize（交互视图）随 UI 插件合入时 CLI 定义已标 defaultEnabled，但这里漏加，
+  // Settings 会把它当成默认关闭，与 CLI 实际启用状态不一致。
+  "visualize@zcode-plugins-official",
   // 电脑控制回退为默认关闭，故 computer-use 不在此名单内。
   // 该集合必须与 official-plugin-definitions.ts 里标了 defaultEnabled 的插件逐一对应，
   // bootstrap 的「Settings 默认启用集合与 CLI 的官方插件声明一致」单测机械对照两者。
@@ -41,14 +50,27 @@ const ZCODE_OFFICIAL_MARKETPLACE: DefaultPluginMarketplace = {
   pluginCount: 0,
 };
 
+const CLAUDE_OFFICIAL_MARKETPLACE: DefaultPluginMarketplace = {
+  id: CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+  source: "anthropics/claude-plugins-official",
+  name: CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+  description:
+    "Directory of popular Claude Code extensions including development tools, productivity plugins, and MCP integrations",
+  // 只内置官方 catalog 来源，不把远端 manifest 快照打包进仓库；首次刷新前数量未知。
+  pluginCount: 0,
+};
+
 /**
  * ZCode-Libre：默认不播种任何远端市场源，避免启动时向 cdn-zcode.z.ai 拉取市场清单。
  * 内置插件不受影响 —— 它们的市场分片由安装包本地写出（bundled-plugins.ts），
  * browser-use / documents / pdf / spreadsheets 等能力照常可用。
- * 自建部署可把 LIBRE_VENDOR_SERVICES.pluginMarketplaceRemoteSource 置为 true 恢复官方市场源。
+ * 自建部署可把 LIBRE_VENDOR_SERVICES.pluginMarketplaceRemoteSource 置为 true 恢复远端市场源
+ * （ZCode 官方 CDN 与上游 v3.15.1 新增的 Claude 官方目录一起恢复）。
  */
 export const DEFAULT_PLUGIN_MARKETPLACES: DefaultPluginMarketplace[] =
-  LIBRE_VENDOR_SERVICES.pluginMarketplaceRemoteSource ? [ZCODE_OFFICIAL_MARKETPLACE] : [];
+  LIBRE_VENDOR_SERVICES.pluginMarketplaceRemoteSource
+    ? [ZCODE_OFFICIAL_MARKETPLACE, CLAUDE_OFFICIAL_MARKETPLACE]
+    : [];
 
 // 商店「公开」分段只有一个 ZCode 官方市场 id，内置与 CDN 不再拆分身份。
 export const PUBLIC_STORE_MARKETPLACE_IDS = [ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID] as const;

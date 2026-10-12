@@ -97,6 +97,7 @@ Use the **standard API** template in Settings → Model Providers when you want 
 
 ## Updates
 
+- 2026-10-13: Synced upstream ZCode v3.15.1 (UI plugins and Gen UI, remote workspace and agent updates).
 - 2026-09-26: Added a standalone CLI distribution (TUI + Web, covering macOS arm64 and Linux x64/arm64), released under the same version number as the desktop build.
 - 2026-09-24: Established the ZCode-Libre brand fork: independent application identity, independent data directory, a new circular mark, and a sync of the upstream v3.14.3 source.
 
@@ -202,6 +203,12 @@ node apps/zcode-cli/packages/cli/dist/zcode.cjs --help
 
 This entry runs the Agent CLI directly and does not go through the distribution package's `--web` routing. Use `pnpm dev:web` for Web development; to verify the unified `zcode` command, use the extracted `bin/zcode.mjs` described below.
 
+### UI Plugin development
+
+See the [UI Plugin guide](UI_PLUGIN.en.md) for the Excalidraw workflow, supported APIs, plugin installation and updates, and host debugging.
+
+**Plugin PRs in `zcode-plugins` must declare whether they affect a UI Plugin and list the plugin names in the PR template.** See the [required plugin-type declaration](UI_PLUGIN.en.md#declare-the-plugin-type-in-pull-requests).
+
 ## Configuration
 
 The root [.env.example](.env.example) provides examples for service addresses and build configuration; copy it to `.env` as needed and put local overrides in `.env.local`. The Desktop development environment is selected through `dev:desktop:test` / `dev:desktop:prod`.
@@ -246,13 +253,13 @@ Download `ZCode-Libre-CLI-<version>.tar.gz` (~60 MB) from [Releases](https://git
 
 ```bash
 # Option 1: extract and run, nothing written outside the directory
-tar -xzf ZCode-Libre-CLI-3.14.7.tar.gz
+tar -xzf ZCode-Libre-CLI-3.15.0.tar.gz
 node zcode/bin/zcode.mjs        # TUI
 node zcode/bin/zcode.mjs --web  # Web UI
 
 # Option 2: install into your home directory and get the zcode command
 # (install.sh is on the same release page)
-sh install.sh --tarball ./ZCode-Libre-CLI-3.14.7.tar.gz
+sh install.sh --tarball ./ZCode-Libre-CLI-3.15.0.tar.gz
 zcode        # TUI
 zcode --web  # Web UI
 ```

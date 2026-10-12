@@ -10,7 +10,7 @@ import {
 const BIGMODEL_USERINFO_PATH = "/api/biz/customer/getCustomerInfo";
 const BIGMODEL_AUTHORIZE_PATH = "/login";
 
-const BIGMODEL_OAUTH_PROVIDER_CONFIG: Omit<OAuthProviderRuntimeConfig, "appSecret"> = {
+export const BIGMODEL_OAUTH_PROVIDER_CONFIG: Omit<OAuthProviderRuntimeConfig, "appSecret"> = {
   id: BIGMODEL_PROVIDER_ID,
   displayName: "BigModel",
   // 默认值来自分支策略（见 libre-features.ts）：官方账号登录默认关闭，

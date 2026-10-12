@@ -13,7 +13,7 @@ import {
   readEnv,
 } from "./configUtils.js";
 
-const ZAI_OAUTH_PROVIDER_CONFIG: Omit<OAuthProviderRuntimeConfig, "appSecret"> = {
+export const ZAI_OAUTH_PROVIDER_CONFIG: Omit<OAuthProviderRuntimeConfig, "appSecret"> = {
   id: ZAI_PROVIDER_ID,
   displayName: "Z.ai",
   // 默认值来自分支策略（见 libre-features.ts）：官方账号登录默认关闭，

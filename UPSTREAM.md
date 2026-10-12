@@ -50,7 +50,7 @@ pnpm lint
 
 `package.json` 的 `version` 由本分支维护（用户 2026-09-24 明确要求）。规则：
 
-- **`major.minor` 对齐上游的发布线**（当前 `3.14`）。上游升到 `3.15` 时才跟着换前两段。
+- **`major.minor` 对齐上游的发布线**（当前 `3.15`）。上游升到 `3.16` 时才跟着换前两段。
 - **`patch` 位是本分支自己的递增计数**，不跟随上游的 patch 号。本分支的补丁、品牌与默认关闭设置不与上游同步发布，跟上游 patch 号会让产物名与实际包含的改动对不上。
 - 合并上游时若 `package.json` 的 `version` 冲突，**保留本分支的值**；合并后按上面的命令确认没被改回上游值。
 - 必须是**标准 semver 三段式**。四段式（如 `3.14.3.1`）会让应用内更新检测失效：`packages/desktop/src/main/githubReleaseUpdates.ts` 用 `semver.coerce` 解析，`3.14.3.1` 被截断成 `3.14.3`，与上一版比较会判定为"已是最新"，连续的四段版本之间也无法排序。
@@ -137,9 +137,11 @@ pnpm lint
 
 **遥测（编译期，必须在启动早期生效，故不放在策略模块）**
 
+上游 v3.15.1 起把遥测端点改为**构建期注入**（`__ZCODE_ARMS_RUM_ENDPOINT__` 等 define，见 `scripts/build-time-config.mjs`；未注入即空、SDK 以 enable=false 初始化）。本分支保留运行时总开关 `ZCODE_TELEMETRY_ENABLED`，与构建期空端点构成双防线：即使自建构建注入了端点，默认仍不上报。
+
 | 文件 | 改动 |
 | --- | --- |
-| `packages/shared/src/env.ts` | `ZCODE_TELEMETRY_ENABLED` 由硬编码 `true` 改为读环境变量、默认关闭（`1/true/on/yes/enabled` 才开启） |
+| `packages/shared/src/env.ts` | 保留 `ZCODE_TELEMETRY_ENABLED`（上游 v3.15.1 已删除该常量）：只有显式设为真值（`1/true/on/yes/enabled`）才启用；端点常量并入上游构建期注入机制 |
 | `packages/desktop/src/main/index.ts` | 把原先逃逸在总开关之外的 `configureDesktopMcpTelemetry` / `registerDesktopStabilityMonitors` / `registerDesktopResourceTelemetry` / `registerRendererHeapSampleIpc` / `registerDesktopZCodeDataSizeTelemetry` / `registerDesktopNetworkTelemetry` 全部并入 `if (ZCODE_TELEMETRY_ENABLED && ZCODE_ARMS_RUM_ENDPOINT)` 块 |
 | `packages/desktop/src/main/appCrashCaptureBootstrap.ts` | `initializeCrashCapture(logger, true)` 的硬编码 `true` 改为按实际遥测状态取值，遥测关闭时走纯本地 crashReporter（不上传） |
 | `apps/zcode-cli/packages/telemetry/src/bootstrap.ts` | `isExplicitlyDisabled` 反转为 `isExplicitlyEnabled`：模型遥测由"未设置即启用"改为"必须显式启用" |
@@ -152,7 +154,7 @@ pnpm lint
 | --- | --- |
 | `packages/shared/src/libre-features.ts`（新增） | 策略真相源：`officialAccountLogin` / `conversationShare` / `feedback` / `codingPlanPurchase` / `pluginMarketplaceRemoteSource` 默认全为 false，`selfHostedReleaseUpdates` 为 true |
 | `packages/services/src/oauth/providers/{zai,bigmodel}ProviderConfig.ts` | OAuth provider 的 `enabled` 默认值改引用策略；仍可用 `ZAI_OAUTH_ENABLED` / `BIGMODEL_OAUTH_ENABLED` 覆盖开启 |
-| `packages/shared/src/plugin-marketplaces.ts` | `DEFAULT_PLUGIN_MARKETPLACES` 默认不播种远端市场源；**`DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS` 未改动** |
+| `packages/shared/src/plugin-marketplaces.ts` | `DEFAULT_PLUGIN_MARKETPLACES` 默认不播种远端市场源；**`DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS` 未改动**。上游 v3.15.1 在默认市场里新增了 Claude 官方目录（`anthropics/claude-plugins-official`），已并入策略开关的 true 分支，与 ZCode 官方 CDN 一起受 `pluginMarketplaceRemoteSource` 控制 |
 | `packages/services/src/node.ts` | 会话分享复用 `createUnsupportedConversationShareService` |
 | `packages/services/src/feedback/feedbackHttpClient.ts` | 在所有反馈请求的唯一出口 `request()` 处截断（附件先取凭证再直传 OSS，因此一并阻断） |
 | `packages/ui/src/settings/CodingPlanUpgradeDialogProvider.tsx` | `openCodingPlanUpgrade` 统一守卫处早退 |
@@ -202,7 +204,9 @@ pnpm lint
 | `packages/ui/src/useTheme.ts` | `Theme` 类型、`resolveTheme`（dusk 属深色）、`applyTheme` 的 class 切换、`isTheme` 校验 |
 | `packages/ui/src/settings/settingsPageConfig.ts` | `THEME_MODES` 增加一项（设置页外观选择器） |
 | `packages/ui/src/WorkspaceSidebarFooter.tsx`、`WorkspaceSidebar.tsx`、`SettingsPage.tsx` | 菜单项与主题值校验 |
-| `packages/web/src/webThemeSeed.ts`、`packages/web/src/main.tsx`、`packages/web/index.html` | Web 端主题种子类型、class 切换、启动壳深浅判定（漏掉会让首屏按浅色渲染并闪白底） |
+| `packages/shared/src/web-remote-control.ts`、`packages/web/src/webRemoteControlThemeSeed.ts` | Web 远控主题种子链路（上游 v3.15.1 由本分支旧文件 `webThemeSeed.ts` 重构而来）：`WebRemoteControlThemeSeed` 类型与 `isWebRemoteControlThemeSeed` 校验都必须含 `zai-dusk` |
+| `packages/ui/src/WebRemoteControlThemeMenu.tsx` | 手机端主题菜单枚举（上游 v3.15.1 新增）：`MOBILE_THEME_OPTIONS` 需列出 `zai-dusk` |
+| `packages/web/src/main.tsx`、`packages/web/index.html` | Web 端 class 切换、启动壳深浅判定（漏掉会让首屏按浅色渲染并闪白底） |
 | `packages/desktop/src/renderer/src/main.tsx`、`resource-manager.tsx` | 桌面启动期与资源管理器窗口的主题判定与 class 切换 |
 | `packages/ui/src/openWorkspacePageThemeHero.tsx` | 新主题的 mesh 视觉参数 |
 | `packages/ui/src/ToolCallBlocks/renderers/EditInlineDiffContent.tsx`、`components/ai-elements/{mermaid-block,message}.tsx` | 深色判断补上 dusk |
@@ -218,7 +222,7 @@ pnpm lint
 | 文件 | 改动 |
 | --- | --- |
 | `packages/desktop/src/main/githubReleaseUpdates.ts`（新增） | 查询 `wenyinos/ZCode-Libre` 的 GitHub Release，用 semver 比较版本；网络失败/限流/结构异常一律收敛为 `error`，无 Release 时按"已是最新"处理；`fetchImpl` 可注入便于测试 |
-| `packages/desktop/src/main/autoUpdater.ts` | `checkForUpdateMenuClick` 在打包态检查前排分流到 `runSelfHostedReleaseCheck`；`autoInstallOnAppQuit` 在该模式下恒为 false；init 末尾跳过 electron-updater 的启动检查与轮询；菜单重放 `available` 时带上 `downloadUrl` |
+| `packages/desktop/src/main/autoUpdater.ts` | `checkForUpdateMenuClick` 在打包态检查前排分流到 `runSelfHostedReleaseCheck`；`autoInstallOnAppQuit` 保持 false（上游 v3.15.1 起本就全平台 false，与本分支语义重合）；init 末尾跳过 electron-updater 的启动检查与轮询 |
 | `packages/shared/src/update.ts` | `UpdateCheckResultPayload.available` 与 `UpdateStatePayload["update-available"]` 新增可选 `downloadUrl` |
 | `packages/ui/src/UpdateStatusDialog{,Controller}.tsx` | 有 `downloadUrl` 时主按钮改为「前往下载」并 `openExternal`，隐藏无意义的自动下载开关；自动下载副作用不再触发 |
 
@@ -241,6 +245,7 @@ pnpm lint
 | `packages/services/src/provider-balance/providerBalance.ts`（新增） | 服务 descriptor |
 | `packages/ui/src/settings/usage-stats/ProviderBalancePanel.tsx`（新增）、`hooks/useProviderBalance.ts`（新增） | 额度面板与数据 hook |
 | `channels.ts` / `accessor.ts` / `index.ts` / `node.ts` / `remoteServiceAccess.ts` | 服务接线：通道、访问器字段、导出、注册、远程代理 |
+| `packages/web/src/main.tsx` | Web 远控端的服务占位表需补 `providerBalanceService`（`createUnsupportedHomeOnlyService`）：远控端无本地数据根，额度面板在该端不可用；漏补会让 `IServiceAccessor` 类型检查失败 |
 
 同步注意：上游若调整 provider 配置的文件结构或 `decodeProviderConfigFile` 的返回形状，需同步 `resolveBalanceSources`；上游新增服务时，`IServiceAccessor` 与 `RemoteServiceAccess` 都要补齐字段，否则类型检查会报缺属性。
 
