@@ -143,7 +143,7 @@ pnpm lint
 
 | 文件 | 改动 |
 | --- | --- |
-| `packages/shared/src/env.ts` | 保留 `ZCODE_TELEMETRY_ENABLED`（上游 v3.15.1 已删除该常量）：只有显式设为真值（`1/true/on/yes/enabled`）才启用；端点常量并入上游构建期注入机制 |
+| `packages/shared/src/env.ts` | 保留 `ZCODE_TELEMETRY_ENABLED`（上游 v3.15.1 已删除该常量）：只有显式设为真值（`1/true/on/yes/enabled`）才启用；端点常量并入上游构建期注入机制。**`packages/shared/src/index.ts` 必须同时把它加进 env 导出表**——桌面 Main 的 `appCrashCaptureBootstrap.ts` 直接 import 它，而 `pnpm typecheck` 不覆盖 `packages/desktop/tsconfig.main.json`，漏导出只会在 `pnpm bootstrap` 的 tsup 阶段报 `No matching export in "../shared/src/index.ts"` |
 | `packages/desktop/src/main/index.ts` | 把原先逃逸在总开关之外的 `configureDesktopMcpTelemetry` / `registerDesktopStabilityMonitors` / `registerDesktopResourceTelemetry` / `registerRendererHeapSampleIpc` / `registerDesktopZCodeDataSizeTelemetry` / `registerDesktopNetworkTelemetry` 全部并入 `if (ZCODE_TELEMETRY_ENABLED && ZCODE_ARMS_RUM_ENDPOINT)` 块 |
 | `packages/desktop/src/main/appCrashCaptureBootstrap.ts` | `initializeCrashCapture(logger, true)` 的硬编码 `true` 改为按实际遥测状态取值，遥测关闭时走纯本地 crashReporter（不上传） |
 | `apps/zcode-cli/packages/telemetry/src/bootstrap.ts` | `isExplicitlyDisabled` 反转为 `isExplicitlyEnabled`：模型遥测由"未设置即启用"改为"必须显式启用" |
@@ -299,6 +299,7 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
    - **策略开关**：上游用例锁的是厂商服务开启时的行为 → 在该测试文件里 mock 策略，别改生产默认值。经包入口读开关的用 `vi.mock("@zcode/shared", importOriginal)` 覆盖 `LIBRE_VENDOR_SERVICES`；走运行期快照的用 `setVendorServiceSettingsSnapshot()`；若生产代码用**相对路径**直接 import `./libre-features.js`（如 `remoteAppConfig`、`communityUrl`、`helpAppConfig`），包入口 mock 拦不住，必须 mock 解析后的相对路径。
    - **同源资产与枚举数**：主题覆盖数、`styles.css` token 计数、内联图标字节一致 —— 按分支实际补齐（多一套主题、重新生成图标），不要放宽断言。
 10. `packages/web-share/vite.config.ts` 的 `resolve.alias` —— 上游 v3.15.1 新增这个包，别名写成对象、`"@zcode/shared": ".../src/index.ts"`。Vite 的字符串别名按「全等或 `find + /` 前缀」匹配，所以上游新增的 `@zcode/shared/mcp-apps`、`/zcode-protocol-v4`、`/config-schema`、`/model-config` 会被拼成 `src/index.ts/mcp-apps`，`pnpm build:bootstrap` 直接 ENOTDIR 失败，六个桌面打包 job 全红。本分支已改成数组形式，先用正则把子路径映射到 `packages/shared/src/`，再留根入口。**上游同步会把它改回去**，合并后必须本地跑一次 `pnpm run build:bootstrap` 才能发现。
+11. `.gitattributes` 对 Gen UI 离线快照的 `-text` 规则 —— `apps/zcode-cli/packages/visualize-plugin/skills/visualize/assets/**` 里的文件由 `packages/desktop/scripts/gen-ui-runtime-assets.mjs` 在构建期逐个校验 sha256。Windows runner 的 `core.autocrlf=true` 会把 LF 换成 CRLF，哈希随之漂移，`Build Windows-x64` 在「准备构建资源」就失败。上游没有这条规则（它的 CI 不打 Windows 包），同步时容易被冲掉；验证方法：`git -c core.autocrlf=true checkout-index -f --prefix=/tmp/probe/ -- <快照文件>` 后比对 sha256 与工作区一致。
 
 ## 同步后自检
 
@@ -311,6 +312,7 @@ grep -n "providerFamilyDomain ||" packages/ui/src/root/useProviderAvailabilityLo
 git diff upstream/main --stat | tail -1                # 偏离规模是否符合预期
 pnpm typecheck && pnpm lint
 pnpm run test:unit:affected                            # 推送钩子用的就是这条；全量核对再跑 pnpm test:unit
+pnpm run build:bootstrap                               # 桌面 Main 由 tsup 从源码打包，typecheck 不覆盖 tsconfig.main.json
 ```
 
 关键行为抽查（改动涉及产品路径，建议实机确认）：

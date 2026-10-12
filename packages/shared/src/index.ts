@@ -73,6 +73,9 @@ export {
   ZCODE_APP_VERSION_ENV,
   ZCODE_BUILD_COMMIT_ID_ENV,
   RUNTIME_ZCODE_DEBUG,
+  // ZCode-Libre：本分支保留上游 v3.15.1 删掉的运行期遥测总开关，
+  // 桌面 Main 与 crash 上报都读它，必须随其余 env 常量一起导出。
+  ZCODE_TELEMETRY_ENABLED,
   ZCODE_ARMS_RUM_ENDPOINT,
   ZCODE_TELEMETRY_REPORT_ENDPOINT,
   ZCODE_AUTO_UPDATE_ENABLED,
