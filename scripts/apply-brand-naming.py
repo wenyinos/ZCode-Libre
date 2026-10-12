@@ -24,7 +24,16 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 PATTERN = re.compile(r"(?<![A-Za-z0-9@._/-])ZCode(?![A-Za-z0-9-])")
 
 # 指代远端服务端点与协议的专名，保持原样，避免用户把它误解为本机应用名。
-KEEP_PATTERNS = ("ZCode Endpoint", "ZCode Protocol", "ZCode Agent")
+# ZCode MCP / ZCode 预置插件指厂商提供的 MCP 服务（上游测试也断言这些字面量），
+# 改写会让「额度」「配额」类文案把厂商服务误标成分支自有能力。
+KEEP_PATTERNS = (
+    "ZCode Endpoint",
+    "ZCode Protocol",
+    "ZCode Agent",
+    "ZCode MCP",
+    "ZCode 预置插件",
+    "ZCode built-in plugin",
+)
 
 # 用户可见文案所在文件。上游同步若新增同类文件，在此登记。
 TARGETS = (

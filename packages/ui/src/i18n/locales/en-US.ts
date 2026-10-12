@@ -3902,7 +3902,7 @@ const enUS: Record<string, string> = {
   "settings.usage.entitlementFiveHourUsage": "5-hour remaining",
   "settings.usage.entitlementWeeklyUsage": "Weekly remaining",
   "settings.usage.entitlementMonthlyMcpUsage": "Tool calls",
-  "settings.usage.entitlementServerMcpUsage": "ZCode-Libre MCP",
+  "settings.usage.entitlementServerMcpUsage": "ZCode MCP",
   "settings.usage.entitlementResetAt": "Resets {time}",
   "settings.usage.entitlementUsageDetails": "Tool usage detail",
   "settings.usage.entitlementPromptCap": "5-hour prompt pool",
@@ -3960,9 +3960,9 @@ const enUS: Record<string, string> = {
   "sidebar.usage.plan.fiveHour": "5 hours",
   "sidebar.usage.plan.weekly": "Weekly",
   "sidebar.usage.plan.toolCalls": "Tool calls",
-  "sidebar.usage.plan.mcp": "ZCode-Libre MCP",
-  "sidebar.usage.plan.zcodeMcp": "ZCode-Libre MCP",
-  "sidebar.usage.plan.zcodeMcpDescription": "Daily aggregate quota for ZCode-Libre built-in plugin MCPs",
+  "sidebar.usage.plan.mcp": "ZCode MCP",
+  "sidebar.usage.plan.zcodeMcp": "ZCode MCP",
+  "sidebar.usage.plan.zcodeMcpDescription": "Daily aggregate quota for ZCode built-in plugin MCPs",
   "chat.planUsage.title": "Plan usage",
   "chat.planUsage.titleWithPlan": "{plan} Plan usage",
   "chat.planUsage.providerFallback": "Current provider",
@@ -6300,9 +6300,9 @@ const enUS: Record<string, string> = {
   "chat.quota.startPlan.concurrentLimit.switchModel":
     "The current model request concurrency limit has been reached. Switch models to continue your current task.",
   "chat.quota.mcp.quotaExhausted":
-    'ZCode-Libre MCP "{server}" has used up today\'s quota. It resets tomorrow.',
+    'ZCode MCP "{server}" has used up today\'s quota. It resets tomorrow.',
   "chat.quota.mcp.codingPlanRequired":
-    'No ZCode-Libre MCP "{server}" quota. Sign in or get a Coding Plan to use it.',
+    'No ZCode MCP "{server}" quota. Sign in or get a Coding Plan to use it.',
   "chat.quota.providerLimited":
     "The current account quota or plan limit has been reached. Upgrade or adjust the plan to continue.",
   "chat.quota.action.upgrade": "Upgrade",
