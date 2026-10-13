@@ -1,0 +1,50 @@
+name: Pages
+
+# 本分支的站点是自有的落地页（docs/index.html + docs/promo/），但上游把完整文档语料
+# 也放在 docs/ 下（规格 md、打包的 knip 文档站含 .astro/.mdx）。
+# 走「从分支发布」时 Jekyll 会递归解析整个 docs/，撞上 .astro 的非法 YAML front matter
+# 直接构建失败：Invalid YAML front matter in docs/knip/docs/src/components/Footer.astro。
+# 所以改为用 Actions 显式上传自有站点，既不让 Jekyll 扫描上游语料，
+# 也不会随上游每次新增文件再次变红。
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/index.html"
+      - "docs/promo/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: 发布项目站点
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 组装站点产物
+        run: |
+          mkdir -p _site
+          cp docs/index.html _site/index.html
+          cp -R docs/promo _site/promo
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

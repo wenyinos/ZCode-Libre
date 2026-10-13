@@ -271,6 +271,12 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 
 同步注意：上游若调整 `stageTuiRuntime`、node-pty prebuild 处理或 `install.sh` 模板，需保留「只覆盖三个平台」与「`tarballUrl` 优先」这两条。
 
+### 14. 项目站点改用 Actions 发布
+
+上游把完整文档语料（规格 md、打包的 knip 文档站含 `.astro` / `.mdx`）也放在 `docs/` 下；本分支的 Pages 站点恰好也在 `docs/`（`index.html` + `promo/`）。走「从分支发布 `/docs`」时，Jekyll 会递归解析整个目录，撞上 `.astro` 的非法 YAML front matter 直接失败：`Invalid YAML front matter in docs/knip/docs/src/components/Footer.astro`。
+
+因此改用 `.github/workflows/pages.yml` 显式上传这两项，仓库 Pages 的 `build_type` 设为 `workflow`。合并前 `docs/` 只有 4 个文件，合并后 2200+；站点内容不得改回依赖 Jekyll 扫描 `docs/`。
+
 ## 有意保持与上游一致
 
 以下标识**不要改名**，它们是跨端契约，改动会破坏与既有服务端、协议及用户既有项目的兼容性：
@@ -302,6 +308,8 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
    - **同源资产与枚举数**：主题覆盖数、`styles.css` token 计数、内联图标字节一致 —— 按分支实际补齐（多一套主题、重新生成图标），不要放宽断言。
 10. `packages/web-share/vite.config.ts` 的 `resolve.alias` —— 上游 v3.15.1 新增这个包，别名写成对象、`"@zcode/shared": ".../src/index.ts"`。Vite 的字符串别名按「全等或 `find + /` 前缀」匹配，所以上游新增的 `@zcode/shared/mcp-apps`、`/zcode-protocol-v4`、`/config-schema`、`/model-config` 会被拼成 `src/index.ts/mcp-apps`，`pnpm build:bootstrap` 直接 ENOTDIR 失败，六个桌面打包 job 全红。本分支已改成数组形式，先用正则把子路径映射到 `packages/shared/src/`，再留根入口。**上游同步会把它改回去**，合并后必须本地跑一次 `pnpm run build:bootstrap` 才能发现。
 11. `.gitattributes` 对 Gen UI 离线快照的 `-text` 规则 —— `apps/zcode-cli/packages/visualize-plugin/skills/visualize/assets/**` 里的文件由 `packages/desktop/scripts/gen-ui-runtime-assets.mjs` 在构建期逐个校验 sha256。Windows runner 的 `core.autocrlf=true` 会把 LF 换成 CRLF，哈希随之漂移，`Build Windows-x64` 在「准备构建资源」就失败。上游没有这条规则（它的 CI 不打 Windows 包），同步时容易被冲掉；验证方法：`git -c core.autocrlf=true checkout-index -f --prefix=/tmp/probe/ -- <快照文件>` 后比对 sha256 与工作区一致。
+
+12. `docs/` —— 上游把规格语料与打包的 knip 文档站（含 9 个 `.astro` + 11 个 `.mdx`）放进 `docs/`，正好是本分支 Pages 的源目录，合并后 Pages 构建会因 Jekyll 解析 `.astro` 而失败（详见偏离清单第 14 条）。本分支已改用 Actions 发布：同步时**不要**删 `docs/index.html` 与 `docs/promo/`，也不要把 Pages 换回 legacy 的「从分支发布」。
 
 ## 同步后自检
 
