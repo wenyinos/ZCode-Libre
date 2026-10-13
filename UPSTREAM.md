@@ -323,6 +323,7 @@ git diff upstream/main --stat | tail -1                # 偏离规模是否符�
 pnpm typecheck && pnpm lint
 pnpm run test:unit:affected                            # 推送钩子用的就是这条；全量核对再跑 pnpm test:unit
 pnpm run build:bootstrap                               # 桌面 Main 由 tsup 从源码打包，typecheck 不覆盖 tsconfig.main.json
+ls docs/index.html docs/promo/                         # 站点文件仍在；Pages 由 .github/workflows/pages.yml 发布，不再走 Jekyll
 ```
 
 关键行为抽查（改动涉及产品路径，建议实机确认）：
