@@ -171,12 +171,12 @@ Agent 源码修改后，执行 `pnpm --filter @zcode/cli... build` 并重启服�
 
 ```bash
 # 方式一：解压即用，不写系统目录
-tar -xzf ZCode-Libre-CLI-3.15.0.tar.gz
+tar -xzf ZCode-Libre-CLI-3.15.1.tar.gz
 node zcode/bin/zcode.mjs        # 终端界面（TUI）
 node zcode/bin/zcode.mjs --web  # Web 界面
 
 # 方式二：安装到用户目录并生成 zcode 命令（install.sh 在同一下载页）
-sh install.sh --tarball ./ZCode-Libre-CLI-3.15.0.tar.gz
+sh install.sh --tarball ./ZCode-Libre-CLI-3.15.1.tar.gz
 zcode        # 终端界面（TUI）
 zcode --web  # Web 界面
 ```

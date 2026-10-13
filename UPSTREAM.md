@@ -31,8 +31,7 @@ pnpm audit:upstream               # 加 --strict 可在有高危提交时以退�
 git merge upstream/main          # 或按需 git rebase upstream/main
 
 # 2) 解决冲突（热点文件见下节）
-#    注意 package.json 的 version：本分支只对齐上游的大版本线，patch 位自己走，
-#    冲突时保留本分支的值，别接受上游的 patch 号：
+#    package.json 的 version 直接取上游的发布号（详见「版本号」一节）：
 node -p "require('./package.json').version"
 # 3) 上游新文案仍写着 ZCode，用脚本补齐品牌名
 python3 scripts/apply-brand-naming.py --check    # 列出遗留项，退出码 1 表示有遗留
@@ -46,15 +45,18 @@ pnpm lint
 
 若上游更新了 `public/logo/` 之外的图标源或应用名，另需检查下节「品牌资源」与「产品身份」。
 
-### 版本号：只对齐大版本线，patch 自己走
+### 版本号：直接用上游版本号，自研增量在其上继续加
 
-`package.json` 的 `version` 由本分支维护（用户 2026-09-24 明确要求）。规则：
+主人 2026-10-13 改定；旧的「只对齐 `major.minor`、`patch` 自己走」作废。
 
-- **`major.minor` 对齐上游的发布线**（当前 `3.15`）。上游升到 `3.16` 时才跟着换前两段。
-- **`patch` 位是本分支自己的递增计数**，不跟随上游的 patch 号。本分支的补丁、品牌与默认关闭设置不与上游同步发布，跟上游 patch 号会让产物名与实际包含的改动对不上。
-- 合并上游时若 `package.json` 的 `version` 冲突，**保留本分支的值**；合并后按上面的命令确认没被改回上游值。
+- `package.json` 的 `version` **等于本次同步的上游发布版本号**：同步上游 v3.15.1，本分支就发 `3.15.1`，不要再自造 `3.15.0` 这类与上游对不上的号。
+- 本分支自己的补丁 / 特性发布，在该号之上继续 `patch +1`（上游 `3.15.1` → 下一次自研发布 `3.15.2`，再下一条 `3.15.3`）；等下一次同步上游新版本时重新对齐上游号，继续这个规则。
+- 合并上游时 `package.json` 的 `version` 冲突：**取上游的值**（与旧规则相反）；合并后跑 `node -e "console.log(require('./package.json').version)"` 确认。
+- 与上游同号意味着 **tag 名也同名**。抓取上游一律 `--no-tags`（见开头）；打本分支 tag 前先 `git tag -d <同名>` 删掉本地那条上游 tag（只删本地 ref，上游提交仍可由 `upstream/main` 可达），再把新 tag 推到 `origin`，绝不推 `upstream`。
 - 必须是**标准 semver 三段式**。四段式（如 `3.14.3.1`）会让应用内更新检测失效：`packages/desktop/src/main/githubReleaseUpdates.ts` 用 `semver.coerce` 解析，`3.14.3.1` 被截断成 `3.14.3`，与上一版比较会判定为"已是最新"，连续的四段版本之间也无法排序。
-- `version` 同时决定产物文件名（`ZCode-Libre-<version>-<平台>-<架构>.<ext>`），改它等于改发布产物命名，见下节「产品身份」。
+- `version` 同时决定产物文件名（`ZCode-Libre-<version>-<平台>-<架构>.<ext>`、`ZCode-Libre-CLI-<version>.tar.gz`），改它等于改发布产物命名，见下节「产品身份」。
+
+历史留痕：`v3.15.0` 是按旧规则发的（内容同步上游 v3.15.1 却打了 3.15.0），Release 页与产物名和上游对不上；该发布保留不动，自 `v3.15.1` 起改用本规则。
 
 ## 偏离上游的改动清单
 

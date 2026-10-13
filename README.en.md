@@ -253,13 +253,13 @@ Download `ZCode-Libre-CLI-<version>.tar.gz` (~60 MB) from [Releases](https://git
 
 ```bash
 # Option 1: extract and run, nothing written outside the directory
-tar -xzf ZCode-Libre-CLI-3.15.0.tar.gz
+tar -xzf ZCode-Libre-CLI-3.15.1.tar.gz
 node zcode/bin/zcode.mjs        # TUI
 node zcode/bin/zcode.mjs --web  # Web UI
 
 # Option 2: install into your home directory and get the zcode command
 # (install.sh is on the same release page)
-sh install.sh --tarball ./ZCode-Libre-CLI-3.15.0.tar.gz
+sh install.sh --tarball ./ZCode-Libre-CLI-3.15.1.tar.gz
 zcode        # TUI
 zcode --web  # Web UI
 ```
