@@ -71,6 +71,7 @@ import {
   ZCODE_ENV,
   ZCODE_PRODUCT_FLAVOR,
   ZCODE_AUTO_UPDATE_ENABLED,
+  LIBRE_VENDOR_SERVICES,
   DEFAULT_ZCODE_ENDPOINT_ORIGIN,
   DEFAULT_LOCALE,
   TEST_ZCODE_ENDPOINT_ORIGIN,
@@ -2236,8 +2237,14 @@ app.whenReady().then(async () => {
   // Preview 身份无论连接哪个后端都不自动更新：stable feed 上只分发正式 ZCode 安装包，
   // 不向 Preview 渠道提供更新。构建期未启用自动更新时同样不更新
   // （见 docs/desktop/build-time-optional-capabilities.md）。
+  // ZCode-Libre：自有 Release 检测走 githubReleaseUpdates、不经过 electron-updater，
+  // 不受厂商构建期开关约束，因此启用条件里并上 selfHostedReleaseUpdates——只按上游条件
+  // 会把公开仓库构建（不注入 ZCODE_AUTO_UPDATE）的 enabled 置 false，手动检查恒为
+  // dev-skipped，自有更新链路整条失效。
   void initAutoUpdater({
-    enabled: ZCODE_PRODUCT_FLAVOR === "production" && ZCODE_AUTO_UPDATE_ENABLED,
+    enabled:
+      ZCODE_PRODUCT_FLAVOR === "production" &&
+      (ZCODE_AUTO_UPDATE_ENABLED || LIBRE_VENDOR_SERVICES.selfHostedReleaseUpdates),
     onBeforeQuitAndInstall: async () => {
       notifyStabilityLifecycle("update_install");
       await prepareAppQuit("auto-update quitAndInstall", "update-install");

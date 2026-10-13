@@ -231,12 +231,16 @@ pnpm lint
 | `packages/desktop/src/main/autoUpdater.ts` | `checkForUpdateMenuClick` 在打包态检查前排分流到 `runSelfHostedReleaseCheck`；`autoInstallOnAppQuit` 保持 false（上游 v3.15.1 起本就全平台 false，与本分支语义重合）；init 末尾跳过 electron-updater 的启动检查与轮询 |
 | `packages/shared/src/update.ts` | `UpdateCheckResultPayload.available` 与 `UpdateStatePayload["update-available"]` 新增可选 `downloadUrl` |
 | `packages/ui/src/UpdateStatusDialog{,Controller}.tsx` | 有 `downloadUrl` 时主按钮改为「前往下载」并 `openExternal`，隐藏无意义的自动下载开关；自动下载副作用不再触发 |
+| `packages/desktop/src/main/index.ts` | `initAutoUpdater` 的 `enabled` 条件改为 `production && (ZCODE_AUTO_UPDATE_ENABLED \|\| LIBRE_VENDOR_SERVICES.selfHostedReleaseUpdates)`：自有检测不受厂商构建期开关约束 |
+| `docs/desktop/build-time-optional-capabilities.md` | 校正自动更新一节：关闭 `ZCODE_AUTO_UPDATE` 只关厂商链路，自有 Release 检测仍可用 |
+| `packages/desktop/test/autoUpdaterSelfHostedManualCheck.test.ts`（新增） | 回归用例：`enabled: false`（构建期未启用）时手动检查仍走自有 Release 检测 |
 
 **保留未删**：`manifestUpdateProvider.ts` 与 electron-updater 的其余集成仍在（策略置 false 即可回退到上游行为）。
 
 同步注意：
 - 上游若改动 `initAutoUpdater` 的自动检查/轮询结构，需确认跳过分支仍在轮询启动之前，否则会重新向厂商发请求。
-- `checkForUpdateMenuClick` 的分流必须留在 `canUseAutoUpdaterInCurrentRuntime()` 之后、上游 v3.15.1 新增的 `autoUpdaterDisabledForProductFlavor` 闸**之后**（产品禁用更新时 Libre 同样只能 dev-skipped，不得向任何远端发请求）、各 `menuState` 分支之前。分流位置由 `pnpm check:defaults` 静态断言。
+- `checkForUpdateMenuClick` 的分流顺序：`canUseAutoUpdaterInCurrentRuntime()` → 自有 Release 分流 → `autoUpdaterDisabledForProductFlavor` 闸 → 各 `menuState` 分支。自有分流必须排在 flavor 闸**之前**——`runSelfHostedReleaseCheck` 不经过 electron-updater，而 flavor 闸保护的是「未初始化的 updater 不触碰厂商占位 feed」这条厂商链路。上游 v3.15.1 起 `enabled` 还叠加了构建期开关 `ZCODE_AUTO_UPDATE_ENABLED`（公开仓库与 CI 都不注入 → false），若 flavor 闸先判，打包后的手动检查恒为 dev-skipped，界面提示「开发环境不检查更新」，自有更新链路整条失效（2026-10-13 实测踩过）。分流顺序由 `pnpm check:defaults` 静态断言。
+- `index.ts` 里 `initAutoUpdater` 的启用条件也必须并上自有分支：`ZCODE_PRODUCT_FLAVOR === "production" && (ZCODE_AUTO_UPDATE_ENABLED || LIBRE_VENDOR_SERVICES.selfHostedReleaseUpdates)`，否则公开仓库构建的 `enabled` 为 false，同样触发上面的 flavor 闸。
 - 该功能只在打包态生效（开发态走 `dev-skipped`），验证需要实际打包产物。
 
 ### 12. 新增功能：模型额度显示

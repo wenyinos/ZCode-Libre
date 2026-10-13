@@ -402,6 +402,32 @@ expectContains(
   }
 }
 
+// 自有 Release 分流必须排在 flavor 闸之前：上游 v3.15.1 的 enabled 叠加了构建期开关
+// （公开仓库不注入 → false），若 flavor 闸先判，打包后的手动检查恒为 dev-skipped，
+// 提示"开发环境不检查更新"，自有更新链路整条失效。两条锚点各只出现一次，比较位置即可。
+{
+  const content = read("packages/desktop/src/main/autoUpdater.ts");
+  if (content !== null) {
+    const selfHostedIndex = content.indexOf("runSelfHostedReleaseCheck(targetWindow);");
+    const flavorGateIndex = content.indexOf(
+      "skip manual check: updater disabled for this product flavor",
+    );
+    if (selfHostedIndex >= 0 && flavorGateIndex >= 0 && selfHostedIndex > flavorGateIndex) {
+      failures.push(
+        "packages/desktop/src/main/autoUpdater.ts: 自有 Release 分流排在 flavor 闸之后，构建期未启用厂商更新时手动检查会恒为 dev-skipped",
+      );
+    }
+  }
+}
+
+// init 的启用条件必须并上自有 Release 分支：只按上游条件（production && 构建期开关）
+// 会把公开仓库构建的 enabled 置 false，进一步触发上面的 flavor 闸。
+expectContains(
+  "packages/desktop/src/main/index.ts",
+  "ZCODE_AUTO_UPDATE_ENABLED || LIBRE_VENDOR_SERVICES.selfHostedReleaseUpdates",
+  "initAutoUpdater 的启用条件未包含自有 Release 分支，公开仓库构建会禁用整条更新链路",
+);
+
 // ── 登录门禁：不得把 providerFamilyDomain 重新加回 ──────────────────────────
 
 expectNoLineMatching(

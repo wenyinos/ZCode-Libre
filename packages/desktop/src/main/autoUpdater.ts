@@ -2052,21 +2052,25 @@ export function checkForUpdateMenuClick(originWindow?: BrowserWindow | null) {
     return;
   }
 
+  if (LIBRE_VENDOR_SERVICES.selfHostedReleaseUpdates) {
+    // 自有 Release 检测取代厂商 manifest 流程：只报版本并给出下载页，不下载不安装。
+    // 上游 manifest 会提供官方 ZCode 版本，安装它会覆盖本分支的品牌与默认关闭设置。
+    // 必须排在 flavor 闸之前：runSelfHostedReleaseCheck 不经过 electron-updater，而
+    // autoUpdaterDisabledForProductFlavor 保护的是「未初始化的 updater 不触碰占位 feed」
+    // 这条厂商链路。上游 v3.15.1 起 enabled 还叠加了构建期开关
+    // ZCODE_AUTO_UPDATE_ENABLED（公开仓库与 CI 都不注入），若 flavor 闸先判，
+    // 打包后的手动检查会恒为 dev-skipped，提示「开发环境不检查更新」。
+    void runSelfHostedReleaseCheck(targetWindow);
+    return;
+  }
+
   if (autoUpdaterDisabledForProductFlavor) {
     // 入口本应已按产品身份隐藏；这里是最后一道闸，不让未初始化的 updater 实例向占位 feed 发请求。
-    // 上游 v3.15.1 的禁用语义必须 fail-closed 在自有 Release 分流之前：产品禁用更新时
-    // ZCode-Libre 同样只能 dev-skipped，不得向任何远端（含自有 Release）发起检查。
+    // 自有 Release 分流已在上面处理，这条闸只保护厂商链路。
     logger.info("[auto-update] skip manual check: updater disabled for this product flavor");
     targetWindow.webContents.send(PlatformChannels.UpdateCheckResult, {
       kind: "dev-skipped",
     } satisfies UpdateCheckResultPayload);
-    return;
-  }
-
-  if (LIBRE_VENDOR_SERVICES.selfHostedReleaseUpdates) {
-    // 自有 Release 检测取代厂商 manifest 流程：只报版本并给出下载页，不下载不安装。
-    // 上游 manifest 会提供官方 ZCode 版本，安装它会覆盖本分支的品牌与默认关闭设置。
-    void runSelfHostedReleaseCheck(targetWindow);
     return;
   }
 
