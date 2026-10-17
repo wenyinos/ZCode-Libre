@@ -428,6 +428,32 @@ expectContains(
   "initAutoUpdater 的启用条件未包含自有 Release 分支，公开仓库构建会禁用整条更新链路",
 );
 
+// 厂商 manifest 通道的所有入口都必须过 Libre 门禁。只挡 init 末尾的启动检查与首次轮询
+// 不够：轮询表由 setAutoUpdaterMenuState 装配，自有 Release 检查自身也会触发状态变化，
+// 一旦装表就会按厂商 manifest 轮询、把官方版本当可用更新自动弹窗
+// （2026-10-17 实测：点一次"检查更新"后 15 分钟弹出官方 3.15.3）。
+{
+  const content = read("packages/desktop/src/main/autoUpdater.ts");
+  if (content !== null) {
+    if (content.indexOf("function isVendorManifestUpdateEnabled()") < 0) {
+      failures.push(
+        "packages/desktop/src/main/autoUpdater.ts: 缺少厂商 manifest 通道的统一门禁 isVendorManifestUpdateEnabled",
+      );
+    }
+    // 轮询装配点：从函数头到 setInterval 之间必须出现门禁判定。
+    const pollFnIndex = content.indexOf("function ensureAutoUpdatePollInterval()");
+    const pollSetIntervalIndex = content.indexOf("autoUpdatePollTimer = setInterval");
+    if (pollFnIndex >= 0 && pollSetIntervalIndex > pollFnIndex) {
+      const pollBody = content.slice(pollFnIndex, pollSetIntervalIndex);
+      if (!pollBody.includes("isVendorManifestUpdateEnabled()")) {
+        failures.push(
+          "packages/desktop/src/main/autoUpdater.ts: 轮询装配点未过 Libre 门禁，自有模式会按厂商 manifest 轮询并自动弹出官方版本更新",
+        );
+      }
+    }
+  }
+}
+
 // ── 登录门禁：不得把 providerFamilyDomain 重新加回 ──────────────────────────
 
 expectNoLineMatching(

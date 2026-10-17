@@ -161,6 +161,19 @@ function canUseAutoUpdaterInCurrentRuntime(): boolean {
   return app.isPackaged || isDevAutoUpdateEnabled();
 }
 
+/**
+ * 厂商 manifest 更新通道是否可用。
+ *
+ * ZCode-Libre 用自有 Release 检测（githubReleaseUpdates）取代厂商 manifest，因此必须把
+ * **所有**会请求厂商 manifest 的入口一并关掉，而不只是 init 末尾的启动检查与首次轮询：
+ * 轮询表由 `setAutoUpdaterMenuState` 装配，而自有 Release 检查自身也会触发状态变化，
+ * 一旦装表就会按厂商 manifest 轮询、把官方版本当成可用更新自动弹窗
+ * （2026-10-17 实测：点一次"检查更新"后 15 分钟即弹出官方 3.15.3）。
+ */
+function isVendorManifestUpdateEnabled(): boolean {
+  return !LIBRE_VENDOR_SERVICES.selfHostedReleaseUpdates;
+}
+
 function shouldRelaunchForDevAutoUpdateInstall(): boolean {
   return !app.isPackaged && isDevAutoUpdateEnabled();
 }
@@ -1407,6 +1420,13 @@ export function refreshAutoUpdaterReleaseChannel(
     return;
   }
 
+  // ZCode-Libre：自有 Release 模式没有厂商 manifest 通道可切换，切换 preview 开关
+  // 不得顺带打一次厂商 manifest。
+  if (!isVendorManifestUpdateEnabled()) {
+    logger.info(`[auto-update] skip ${reason}: vendor manifest disabled (self-hosted release mode)`);
+    return;
+  }
+
   if (menuState.kind === "download-progress" || menuState.kind === "update-downloaded") {
     logger.info(`[auto-update] skip ${reason}: state=${menuState.kind} channel=${nextChannel}`);
     return;
@@ -1556,6 +1576,12 @@ export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Pro
   applyManifestUpdateProvider(options);
 
   const triggerCheckForUpdates = (reason: string) => {
+    // ZCode-Libre：自有 Release 模式不做厂商 manifest 检查。启动检查、小时轮询与下载复查
+    // 都经此函数，这里是最后一道闸。
+    if (!isVendorManifestUpdateEnabled()) {
+      logger.info(`[auto-update] skip ${reason}: vendor manifest disabled (self-hosted release mode)`);
+      return;
+    }
     if (checkForUpdatesInFlight) {
       logger.info(`[auto-update] skip ${reason}: check already in flight`);
       return;
@@ -1846,6 +1872,16 @@ export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Pro
 }
 
 function ensureAutoUpdatePollInterval() {
+  // ZCode-Libre：自有 Release 模式不装厂商轮询表；已装上的也要清掉，
+  // 否则一次自有检查触发状态变化就会把厂商轮询重新装回来。
+  if (!isVendorManifestUpdateEnabled()) {
+    if (autoUpdatePollTimer) {
+      clearInterval(autoUpdatePollTimer);
+      autoUpdatePollTimer = null;
+      autoUpdatePollIntervalMs = null;
+    }
+    return;
+  }
   if (menuState.kind === "download-progress") {
     if (autoUpdatePollTimer) {
       clearInterval(autoUpdatePollTimer);

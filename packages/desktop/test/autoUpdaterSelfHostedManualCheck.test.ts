@@ -238,4 +238,59 @@ describe("autoUpdater 自有 Release 手动检查", () => {
     expect(autoUpdaterMock.checkForUpdates).not.toHaveBeenCalled();
     expect(autoUpdaterMock.downloadUpdate).not.toHaveBeenCalled();
   });
+
+  it("自有检查后不会装上厂商轮询表：越过轮询间隔也不打厂商 manifest", async () => {
+    // Bugfix 回归：轮询表由 setAutoUpdaterMenuState 装配，自有检查自身也会触发状态变化。
+    // 只挡 init 末尾的启动检查/首次轮询不够——装表后 15 分钟就会按厂商 manifest 轮询，
+    // 把官方版本当可用更新自动弹窗（2026-10-17 实测）。
+    // 必须用 enabled:true 复现真实构建：打包产物里 enabled 为真（构建期开关或自有分支），
+    // init 才会走完并装上 recheckAfterDownload；enabled:false 会在 init 顶部直接 return。
+    vi.useFakeTimers();
+    try {
+      checkSelfHostedReleaseMock.mockResolvedValue({
+        kind: "up-to-date",
+        currentVersion: "0.1.24",
+      });
+      const win = {
+        isDestroyed: () => false,
+        webContents: {
+          id: 11,
+          send: vi.fn(),
+        },
+      };
+      browserWindows.push(win);
+
+      const { initAutoUpdater, checkForUpdateMenuClick } = await import(
+        "../src/main/autoUpdater.js"
+      );
+      await initAutoUpdater({ enabled: true });
+      checkForUpdateMenuClick(win as never);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(win.webContents.send).toHaveBeenCalledWith(PlatformChannels.UpdateCheckResult, {
+        kind: "up-to-date",
+        currentVersion: "0.1.24",
+      });
+      // init 阶段的 feed 配置不算"打厂商 manifest"：它只是装好 provider，没人调用就不发请求。
+      expect(autoUpdaterMock.checkForUpdates).not.toHaveBeenCalled();
+
+      // 越过 15 分钟轮询间隔与可见窗口的 2 分钟间隔，仍不得触碰厂商 manifest。
+      await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
+      expect(autoUpdaterMock.checkForUpdates).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("切换接收 preview 版本不会顺带打厂商 manifest", async () => {
+    const { initAutoUpdater, refreshAutoUpdaterReleaseChannel } = await import(
+      "../src/main/autoUpdater.js"
+    );
+    await initAutoUpdater({ enabled: true });
+
+    refreshAutoUpdaterReleaseChannel(true);
+    await Promise.resolve();
+
+    expect(autoUpdaterMock.checkForUpdates).not.toHaveBeenCalled();
+  });
 });

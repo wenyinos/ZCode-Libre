@@ -233,14 +233,16 @@ pnpm lint
 | `packages/ui/src/UpdateStatusDialog{,Controller}.tsx` | 有 `downloadUrl` 时主按钮改为「前往下载」并 `openExternal`，隐藏无意义的自动下载开关；自动下载副作用不再触发 |
 | `packages/desktop/src/main/index.ts` | `initAutoUpdater` 的 `enabled` 条件改为 `production && (ZCODE_AUTO_UPDATE_ENABLED \|\| LIBRE_VENDOR_SERVICES.selfHostedReleaseUpdates)`：自有检测不受厂商构建期开关约束 |
 | `docs/desktop/build-time-optional-capabilities.md` | 校正自动更新一节：关闭 `ZCODE_AUTO_UPDATE` 只关厂商链路，自有 Release 检测仍可用 |
-| `packages/desktop/test/autoUpdaterSelfHostedManualCheck.test.ts`（新增） | 回归用例：`enabled: false`（构建期未启用）时手动检查仍走自有 Release 检测 |
+| `packages/desktop/test/autoUpdaterSelfHostedManualCheck.test.ts`（新增） | 回归用例：`enabled: false`（构建期未启用）时手动检查仍走自有 Release 检测；自有检查后不装厂商轮询表（越过轮询间隔也不打厂商 manifest）；切换 preview 开关不打厂商 manifest |
 
 **保留未删**：`manifestUpdateProvider.ts` 与 electron-updater 的其余集成仍在（策略置 false 即可回退到上游行为）。
 
 同步注意：
 - 上游若改动 `initAutoUpdater` 的自动检查/轮询结构，需确认跳过分支仍在轮询启动之前，否则会重新向厂商发请求。
+- **厂商 manifest 通道的所有入口都必须过 `isVendorManifestUpdateEnabled()` 门禁**，不能只挡 init 末尾的启动检查与首次轮询：轮询表由 `setAutoUpdaterMenuState` 装配，而自有 Release 检查自身也会触发状态变化，一旦装表就会按厂商 manifest 轮询、把官方版本当成可用更新**自动弹窗**（2026-10-17 实测：点一次"检查更新"后 15 分钟弹出官方 3.15.3，界面提示有官方新版）。当前门禁覆盖三处：`ensureAutoUpdatePollInterval()`（不装表并清掉已装表）、`triggerCheckForUpdates()`（启动/轮询/下载复查的共用入口）、`refreshAutoUpdaterReleaseChannel()`（切换 preview 开关）。门禁由 `pnpm check:defaults` 静态断言，回归用例在 `autoUpdaterSelfHostedManualCheck.test.ts`（必须用 `enabled: true` 复现，`enabled: false` 会在 init 顶部直接 return 而不装 `recheckAfterDownload`，测不出问题）。
 - `checkForUpdateMenuClick` 的分流顺序：`canUseAutoUpdaterInCurrentRuntime()` → 自有 Release 分流 → `autoUpdaterDisabledForProductFlavor` 闸 → 各 `menuState` 分支。自有分流必须排在 flavor 闸**之前**——`runSelfHostedReleaseCheck` 不经过 electron-updater，而 flavor 闸保护的是「未初始化的 updater 不触碰厂商占位 feed」这条厂商链路。上游 v3.15.1 起 `enabled` 还叠加了构建期开关 `ZCODE_AUTO_UPDATE_ENABLED`（公开仓库与 CI 都不注入 → false），若 flavor 闸先判，打包后的手动检查恒为 dev-skipped，界面提示「开发环境不检查更新」，自有更新链路整条失效（2026-10-13 实测踩过）。分流顺序由 `pnpm check:defaults` 静态断言。
 - `index.ts` 里 `initAutoUpdater` 的启用条件也必须并上自有分支：`ZCODE_PRODUCT_FLAVOR === "production" && (ZCODE_AUTO_UPDATE_ENABLED || LIBRE_VENDOR_SERVICES.selfHostedReleaseUpdates)`，否则公开仓库构建的 `enabled` 为 false，同样触发上面的 flavor 闸。
+- 注意 `initAutoUpdater({ enabled: false })` 会在函数**顶部**直接 return（不注册 IPC、不赋值 `recheckAfterDownload`），而 `enabled: true` 才会走完 init；判断"某条更新链路是否可达"时别把这两种状态混为一谈。
 - 该功能只在打包态生效（开发态走 `dev-skipped`），验证需要实际打包产物。
 
 ### 12. 新增功能：模型额度显示
