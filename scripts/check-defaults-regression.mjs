@@ -454,6 +454,30 @@ expectContains(
   }
 }
 
+// ── 桌面 Main 的跨包标识符必须真的被导入 ────────────────────────────────────
+// 合并时最容易丢 `@zcode/shared` 的 import 行：上游删常量后，冲突解决保留了本分支的使用处却
+// 丢掉导入，产物里成为未定义的自由变量（tsup 不做类型检查，typecheck 不覆盖 tsconfig.main.json），
+// 启动期 ReferenceError 会让主窗口不再创建、应用只剩托盘（2026-10-18 实测）。
+{
+  const relativePath = "packages/desktop/src/main/index.ts";
+  const content = read(relativePath);
+  if (content !== null) {
+    const cut = content.indexOf('from "@zcode/shared"');
+    const importBlock = cut >= 0 ? content.slice(0, cut) : "";
+    // 剥掉注释与字符串字面量，避免把注释里提到的常量名当成使用。
+    const code = content
+      .replace(/\/\*[\s\S]*?\*\//g, " ")
+      .replace(/\/\/[^\n]*/g, " ")
+      .replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`/g, '""');
+    const imported = new Set(importBlock.match(/\bZCODE_[A-Z0-9_]+\b/g) ?? []);
+    for (const name of new Set(code.match(/(?<![.\w])ZCODE_[A-Z0-9_]+/g) ?? [])) {
+      if (!imported.has(name)) {
+        failures.push(`${relativePath}: ${name} 被使用但未从 @zcode/shared 导入，产物会 ReferenceError 并中断启动建窗`);
+      }
+    }
+  }
+}
+
 // ── 登录门禁：不得把 providerFamilyDomain 重新加回 ──────────────────────────
 
 expectNoLineMatching(

@@ -152,6 +152,12 @@ pnpm lint
 
 注意 `index.ts` 那处：上游把采样器注册放在总开关之外，其中 `desktopZCodeDataSizeTelemetry` 的 report 回调直接调用 `armsRum.sendCustom` 且没有初始化守卫，是本分支必须覆盖的点。这 9 个 `configure*` / `register*` 装配调用由 `pnpm check:defaults` 用语法树逐个判断是否落在总开关块内（不依赖缩进），上游若调整该块结构，脚本会报出逃逸的调用与行号。
 
+**同步注意：`@zcode/shared` 的 import 行最容易在合并时丢掉**（2026-10-18 实测踩过）。上游 v3.15.1 删除了 `ZCODE_TELEMETRY_ENABLED` 常量，冲突解决保留了本分支的总开关代码块、却丢掉了它的导入行，于是产物里 `ZCODE_TELEMETRY_ENABLED` / `ZCODE_ARMS_RUM_ENDPOINT` 变成**未定义的自由变量**（tsup/esbuild 不做类型检查，`pnpm typecheck` 又不覆盖 `packages/desktop/tsconfig.main.json`），启动执行到 `if (ZCODE_TELEMETRY_ENABLED && ZCODE_ARMS_RUM_ENDPOINT)` 抛 `ReferenceError`；`app.whenReady()` 的 async 链就此 reject，其后所有步骤（`await armsInitPromise`、强制升级闸、`ensurePrimaryWindow("app-ready")`）**全部不执行**，结果是**主窗口从未创建、应用只剩托盘，冷启动必须手动点托盘才出窗口**（Windows / Linux 均如此）。日志里的表征只有一条 `unhandledRejection: {}`——`packages/desktop/src/main/logger.ts` 用 `JSON.stringify` 格式化非字符串参数，Error 会序列化成 `{}`，真实信息被吞掉；排查同类问题时可临时改成打印 `reason instanceof Error ? reason.stack : util.inspect(reason)`。
+
+`pnpm check:defaults` 现在会扫描 `packages/desktop/src/main/index.ts` 里「被使用但未出现在 `@zcode/shared` 导入块中」的 `ZCODE_*` 标识符（先剥注释与字符串字面量，避免把注释里提到的常量名当成使用）并直接报错。合并后若改动了该文件的导入清单，务必跑一次 `pnpm bootstrap` 并确认产物里不再出现原样的 `ZCODE_TELEMETRY_ENABLED`。
+
+**刻意不改上游语义**：上游的设计就是「启动期出错就不创建主窗口」，这里只修真正的错误，不加 try/catch 去兜底建窗——否则真错误会被藏起来，故障从"看得见"变成"看不见"。
+
 **厂商服务（运行期，统一引用策略模块）**
 
 | 文件 | 改动 |
@@ -316,6 +322,7 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 11. `.gitattributes` 对 Gen UI 离线快照的 `-text` 规则 —— `apps/zcode-cli/packages/visualize-plugin/skills/visualize/assets/**` 里的文件由 `packages/desktop/scripts/gen-ui-runtime-assets.mjs` 在构建期逐个校验 sha256。Windows runner 的 `core.autocrlf=true` 会把 LF 换成 CRLF，哈希随之漂移，`Build Windows-x64` 在「准备构建资源」就失败。上游没有这条规则（它的 CI 不打 Windows 包），同步时容易被冲掉；验证方法：`git -c core.autocrlf=true checkout-index -f --prefix=/tmp/probe/ -- <快照文件>` 后比对 sha256 与工作区一致。
 
 12. `docs/` —— 上游把规格语料与打包的 knip 文档站（含 9 个 `.astro` + 11 个 `.mdx`）放进 `docs/`，正好是本分支 Pages 的源目录，合并后 Pages 构建会因 Jekyll 解析 `.astro` 而失败（详见偏离清单第 14 条）。本分支已改用 Actions 发布：同步时**不要**删 `docs/index.html` 与 `docs/promo/`，也不要把 Pages 换回 legacy 的「从分支发布」。
+13. `packages/desktop/src/main/index.ts` 的 `@zcode/shared` 导入清单 —— 上游删除常量时，冲突解决会保留本分支的使用处却丢掉导入行，产物里成为未定义的自由变量，**启动期 ReferenceError 导致主窗口不再创建、应用只剩托盘**（2026-10-18 实测，详见偏离清单第 7 节末段）。合并后必须跑 `pnpm check:defaults`（已加该文件的导入完整性断言）并确认产物里不出现原样的 `ZCODE_TELEMETRY_ENABLED`。
 
 ## 同步后自检
 
@@ -330,6 +337,7 @@ pnpm typecheck && pnpm lint
 pnpm run test:unit:affected                            # 推送钩子用的就是这条；全量核对再跑 pnpm test:unit
 pnpm run build:bootstrap                               # 桌面 Main 由 tsup 从源码打包，typecheck 不覆盖 tsconfig.main.json
 ls docs/index.html docs/promo/                         # 站点文件仍在；Pages 由 .github/workflows/pages.yml 发布，不再走 Jekyll
+grep -c "ZCODE_TELEMETRY_ENABLED&&" packages/desktop/out/main/index.js  # 应为 0；非 0 说明 index.ts 丢了导入，启动会 ReferenceError 且不建主窗口
 ```
 
 关键行为抽查（改动涉及产品路径，建议实机确认）：
