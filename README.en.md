@@ -97,6 +97,7 @@ Use the **standard API** template in Settings → Model Providers when you want 
 
 ## Updates
 
+- 2026-10-18: Fixed the missing main window on cold start (the v3.15.1 sync dropped a shared import in the desktop Main bundle, so a startup ReferenceError aborted window creation and left only the tray).
 - 2026-10-17: Fixed in-app update detection (a build-time flag cut off the self-hosted Release path, so the UI reported "development environment, skipping update check"), and moved the project site to an Actions deployment to avoid the upstream docs corpus.
 - 2026-10-13: Synced upstream ZCode v3.15.1 (UI plugins and Gen UI, remote workspace and agent updates).
 - 2026-09-26: Added a standalone CLI distribution (TUI + Web, covering macOS arm64 and Linux x64/arm64), released under the same version number as the desktop build.
@@ -254,13 +255,13 @@ Download `ZCode-Libre-CLI-<version>.tar.gz` (~60 MB) from [Releases](https://git
 
 ```bash
 # Option 1: extract and run, nothing written outside the directory
-tar -xzf ZCode-Libre-CLI-3.15.2.tar.gz
+tar -xzf ZCode-Libre-CLI-3.15.3.tar.gz
 node zcode/bin/zcode.mjs        # TUI
 node zcode/bin/zcode.mjs --web  # Web UI
 
 # Option 2: install into your home directory and get the zcode command
 # (install.sh is on the same release page)
-sh install.sh --tarball ./ZCode-Libre-CLI-3.15.2.tar.gz
+sh install.sh --tarball ./ZCode-Libre-CLI-3.15.3.tar.gz
 zcode        # TUI
 zcode --web  # Web UI
 ```

@@ -97,6 +97,7 @@ ZCode-Libre 是 [ZCode](https://github.com/zai-org/ZCode) 的社区分支，遵�
 
 ## 更新
 
+- 2026-10-18：修复冷启动不显示主窗口（同步 v3.15.1 时桌面 Main 丢了一处 shared 导入，启动期 ReferenceError 中断建窗，应用只剩托盘）。
 - 2026-10-17：修复应用内更新检测（构建期开关会掐断自有 Release 检测链路，界面曾提示"开发环境不检查更新"），并把项目站点改为 Actions 发布以避开上游文档语料。
 - 2026-10-13：同步上游 ZCode v3.15.1（UI 插件与 Gen UI、远程工作区与 Agent 能力更新）。
 - 2026-09-26：新增命令行版独立发行（TUI + Web，覆盖 macOS arm64 与 Linux x64/arm64），与桌面版同一版本号发布。
@@ -172,12 +173,12 @@ Agent 源码修改后，执行 `pnpm --filter @zcode/cli... build` 并重启服�
 
 ```bash
 # 方式一：解压即用，不写系统目录
-tar -xzf ZCode-Libre-CLI-3.15.2.tar.gz
+tar -xzf ZCode-Libre-CLI-3.15.3.tar.gz
 node zcode/bin/zcode.mjs        # 终端界面（TUI）
 node zcode/bin/zcode.mjs --web  # Web 界面
 
 # 方式二：安装到用户目录并生成 zcode 命令（install.sh 在同一下载页）
-sh install.sh --tarball ./ZCode-Libre-CLI-3.15.2.tar.gz
+sh install.sh --tarball ./ZCode-Libre-CLI-3.15.3.tar.gz
 zcode        # 终端界面（TUI）
 zcode --web  # Web 界面
 ```
