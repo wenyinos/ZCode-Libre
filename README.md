@@ -77,6 +77,7 @@ ZCode-Libre 是 [ZCode](https://github.com/zai-org/ZCode) 的社区分支，遵�
 
 ### 更新
 
+- 2026-10-19：同步上游 ZCode v3.16.2（远程连接与 source server 能力、工作区外壳重构）。
 「帮助 → 检查更新」只查询本仓库的 GitHub Release 并比较版本，不会像上游那样从厂商服务器取更新清单——那会把官方 ZCode 装回来覆盖本分支。检测到新版本时，界面给出「前往下载」按钮，在浏览器中打开 Release 页面，由你选择对应平台的安装包自行下载安装。
 
 ### 用 API Key 接入模型
@@ -209,6 +210,8 @@ Web 模式默认工作目录为当前目录，监听 `127.0.0.1`，默认不启�
 构建方式见下方打包章节。`pnpm build:zcode` 只生成发行包，不会替换 `PATH` 中已有的 `zcode`。如果命令仍指向旧安装或其他源码目录，macOS / Linux 可用 `command -v zcode` 检查，Windows 可用 `where.exe zcode` 检查。
 
 ### CLI 源码开发
+
+CLI 的模型配置、非交互调用、工具与扩展、批量评测和轨迹记录见 [CLI 使用指南](apps/zcode-cli/docs/usage/README.md)。
 
 直接开发 TUI 或 Agent 时，运行源码入口：
 

@@ -2,7 +2,8 @@ import { createElement } from "react";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { DesktopCommandIds, TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER } from "@zcode/shared";
+import { DesktopCommandIds } from "@zcode/shared";
+import { TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER } from "@zcode/shared/test-ids";
 
 // ZCode-Libre：反馈/漏洞报告/产品建议入口默认随 feedback 开关一起隐藏；
 // 这个文件验证的是帮助菜单结构本身，因此 mock 开关为开启，与分支默认值解耦。

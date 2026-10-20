@@ -77,6 +77,7 @@ Bundled capability plugins (browser control, documents, PDF, spreadsheets, prese
 
 ### Updates
 
+- 2026-10-19: Synced upstream ZCode v3.16.2 (remote connection and source server capabilities, workspace shell refactor).
 "Help → Check for Updates" only queries this repository's GitHub Release and compares versions. It never reads the vendor update manifest the way upstream does — that manifest points at official ZCode and installing it would overwrite this fork. When a newer version exists, the dialog offers a "Go to download" button that opens the Release page in your browser, where you pick the installer for your platform.
 
 ### Connecting models with an API key
@@ -192,7 +193,9 @@ For build instructions see the packaging section below. `pnpm build:zcode` only 
 
 ### CLI source development
 
-To work directly on the TUI or Agent, run the source entry points:
+See the [CLI usage guide (Chinese)](apps/zcode-cli/docs/usage/README.md) for model configuration, non-interactive runs, tools and extensions, batch evaluation, and trajectory capture.
+
+Use the source entry when developing the TUI or Agent:
 
 ```bash
 pnpm --filter @zcode/cli dev --help

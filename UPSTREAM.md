@@ -49,8 +49,9 @@ pnpm lint
 
 主人 2026-10-13 改定；旧的「只对齐 `major.minor`、`patch` 自己走」作废。
 
-- `package.json` 的 `version` **等于本次同步的上游发布版本号**：同步上游 v3.15.1，本分支就发 `3.15.1`，不要再自造 `3.15.0` 这类与上游对不上的号。
-- 本分支自己的补丁 / 特性发布，在该号之上继续 `patch +1`（上游 `3.15.1` → 下一次自研发布 `3.15.2`，再下一条 `3.15.3`）；等下一次同步上游新版本时重新对齐上游号，继续这个规则。
+- `package.json` 的 `version` **等于本次同步的上游发布版本号**：同步上游 v3.16.2，本分支就发 `3.16.2`，不要再自造与上游对不上的号。
+- 本分支自己的补丁 / 特性发布，在该号之上继续 `patch +1`（上游 `3.16.2` → 下一次自研发布 `3.16.3`）；等下一次同步上游新版本时重新对齐上游号，继续这个规则。
+- 历史：`3.15.1` → 自研补丁 `3.15.2`、`3.15.3`；本次同步上游跃迁到 `3.16.2`，版本号随之对齐。
 - 合并上游时 `package.json` 的 `version` 冲突：**取上游的值**（与旧规则相反）；合并后跑 `node -e "console.log(require('./package.json').version)"` 确认。
 - 与上游同号意味着 **tag 名也同名**。抓取上游一律 `--no-tags`（见开头）；打本分支 tag 前先 `git tag -d <同名>` 删掉本地那条上游 tag（只删本地 ref，上游提交仍可由 `upstream/main` 可达），再把新 tag 推到 `origin`，绝不推 `upstream`。
 - 必须是**标准 semver 三段式**。四段式（如 `3.14.3.1`）会让应用内更新检测失效：`packages/desktop/src/main/githubReleaseUpdates.ts` 用 `semver.coerce` 解析，`3.14.3.1` 被截断成 `3.14.3`，与上一版比较会判定为"已是最新"，连续的四段版本之间也无法排序。
@@ -323,6 +324,17 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 
 12. `docs/` —— 上游把规格语料与打包的 knip 文档站（含 9 个 `.astro` + 11 个 `.mdx`）放进 `docs/`，正好是本分支 Pages 的源目录，合并后 Pages 构建会因 Jekyll 解析 `.astro` 而失败（详见偏离清单第 14 条）。本分支已改用 Actions 发布：同步时**不要**删 `docs/index.html` 与 `docs/promo/`，也不要把 Pages 换回 legacy 的「从分支发布」。
 13. `packages/desktop/src/main/index.ts` 的 `@zcode/shared` 导入清单 —— 上游删除常量时，冲突解决会保留本分支的使用处却丢掉导入行，产物里成为未定义的自由变量，**启动期 ReferenceError 导致主窗口不再创建、应用只剩托盘**（2026-10-18 实测，详见偏离清单第 7 节末段）。合并后必须跑 `pnpm check:defaults`（已加该文件的导入完整性断言）并确认产物里不出现原样的 `ZCODE_TELEMETRY_ENABLED`。
+
+## v3.16.2 同步记录（2026-10-20）
+
+上游两个 `chore: sync ZCode source` 提交（`0a1fc56d`、`3c5b2276`），4579 文件、+365k/−125k，主题是远程连接 / source server 与工作区外壳重构。冲突 42 个文件，以下是本次新增的同步注意点：
+
+- **`packages/shared` 的测试常量搬到了 `@zcode/shared/test-ids` 子路径**：`TID_*` 现在从 `@zcode/shared/test-ids` 导入，而 `DesktopCommandIds`、`LIBRE_VENDOR_SERVICES`、`ZAI_PROVIDER_ID`、`OAuthProviderMeta` 等仍来自 `@zcode/shared`。合并导入块时容易把两组混在一行，导致值导入自 test-ids 而运行时报错或 lint 重复声明。
+- **`WorkspaceSidebar` 被整体重写**：`packages/ui/src/WorkspaceSidebar.tsx` 现在只是 `project-sidebar/index.js` 的再导出，旧实现与 `WorkspaceSidebar/WorkspaceSidebarCollapsedRail.tsx` 已被上游删除（本分支已接受删除）。侧边栏相关改动要落到 `packages/ui/src/project-sidebar/`。
+- **上游自己也修了 web-share 别名**，但用的是「根入口精确匹配」；本分支保留正则子路径写法（`/^@zcode\/shared\/(.*)$/` → `packages/shared/src/$1`），因为它同时覆盖子路径导入，已在本地 `pnpm --filter @zcode/web-share build` 验证。合并时别被上游版本覆盖。
+- **`prepare` 脚本新增 `pnpm build:cua`**：`pnpm install` 现在会额外构建 CUA（`packages/zcode-cua`，tsc --noEmit）。CI 的 `pnpm install --frozen-lockfile` 会跟着执行，安装时间变长属正常。
+- **两个 relay 传输退避测试对运行时版本敏感**：`packages/desktop/test/webRemoteControlTransport.test.ts` 与 `packages/web/test/webRemoteControlTransportV2.test.ts` 与上游逐字节一致，但在 Node **24.18.0** 下有 2 个退避用例失败（仓库 `mise.toml` 锁定 **24.14.0**）。这两条属环境差异，不要在测试里放宽时限；按 `mise.toml` 用 24.14.0 复跑。
+- 上游删除了 4 个 UI 测试（`interactionThemeTokens`、`modelConfigHelpCopy`、`onboardingWelcomeI18n`、`shared/test/pluginMarketplaces`）且无替代；本分支已接受删除，紫夜主题的覆盖改由 `styles.css` 相关断言与 `useTheme` 测试承担。
 
 ## 同步后自检
 

@@ -6,7 +6,6 @@ import {
   formatAboutDetail,
   formatAboutOptimizationLine,
 } from "../src/main/about.js";
-import { createCustomAboutDialogHtml } from "../src/main/aboutWindow.js";
 
 describe("about", () => {
   const appleSiliconSnapshot = createAboutSnapshot({
@@ -70,54 +69,6 @@ describe("about", () => {
       copyright: "上游版权 © 2026 Z.AI Co., Ltd。",
       credits: "已针对 Apple Silicon 优化。",
     });
-  });
-
-  it("应生成参考图样式的自定义 About 内容", () => {
-    const html = createCustomAboutDialogHtml({
-      applicationName: "ZCode-Libre",
-      appVersion: appleSiliconSnapshot.appVersion,
-      copyright: "Upstream copyright © 2026 Z.AI Co., Ltd.",
-      disclaimer: "Third-party fork of ZCode, not affiliated with Z.AI.",
-      optimizationLine: "Optimized for Apple Silicon.",
-      versionLabel: "version",
-      okButtonLabel: "OK",
-    });
-
-    expect(html).toContain("ZCode-Libre");
-    expect(html).toContain("version 0.1.7");
-    expect(html).toContain("Optimized for Apple Silicon.");
-    expect(html).toContain("Upstream copyright © 2026 Z.AI Co., Ltd.");
-    expect(html).toContain("class=\"ok-button\"");
-    expect(html).toContain(">OK</button>");
-    expect(html).toContain("class=\"app-logo\"");
-    expect(html).toContain("viewBox=\"0 0 256 256\"");
-    expect(html).toContain("--startup-page-bg: #f4f4f5");
-    expect(html).toContain("--startup-page-bg: #171717");
-    expect(html).toContain("class=\"about-window\"");
-    expect(html).toContain("border-radius: 0");
-    expect(html).toContain("background: var(--about-primary)");
-    expect(html).toContain("color: var(--about-primary-foreground)");
-    expect(html).toContain("font-weight: 400");
-    expect(html).toContain("--startup-page-bg: #171717");
-    expect(html).not.toContain("<animate");
-    expect(html).not.toContain("box-shadow: 0 28px 70px");
-  });
-
-  it("应生成中文自定义 About 内容", () => {
-    const html = createCustomAboutDialogHtml({
-      applicationName: "ZCode-Libre",
-      appVersion: appleSiliconSnapshot.appVersion,
-      copyright: "上游版权 © 2026 Z.AI Co., Ltd。",
-      disclaimer: "基于 ZCode 的第三方分支，与智谱（Z.AI）官方无关。",
-      optimizationLine: "已针对 Apple Silicon 优化。",
-      versionLabel: "版本",
-      okButtonLabel: "确定",
-    });
-
-    expect(html).toContain("版本 0.1.7");
-    expect(html).toContain("已针对 Apple Silicon 优化。");
-    expect(html).toContain("上游版权 © 2026 Z.AI Co., Ltd。");
-    expect(html).toContain(">确定</button>");
   });
 
   it("非 Apple Silicon 不展示 Apple Silicon 优化文案", () => {

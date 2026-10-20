@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
   getCommunityUrlFromConfig,
   getCommunityUrlFromConfigs,
-  getFeedbackUrlFromConfig,
   getForceUpdateMinimalVersionFromConfig,
 } from "../src/remoteAppConfig.js";
 
@@ -17,14 +16,6 @@ vi.mock("../src/libre-features.js", async (importOriginal) => {
 });
 
 describe("remoteAppConfig", () => {
-  it("读取 feedback_url", () => {
-    expect(
-      getFeedbackUrlFromConfig({
-        feedback_url: "https://example.com/feedback",
-      }),
-    ).toBe("https://example.com/feedback");
-  });
-
   it("中文界面只读取中文社群地址", () => {
     expect(
       getCommunityUrlFromConfig(

@@ -167,7 +167,7 @@ describe("desktopCommandHandlers resolveFeedbackUrl", () => {
     });
 
     expect(feedbackUrl).toBe("https://remote.example.com/feedback");
-  }, 15_000);
+  });
 
   it("远端不可用时回退到本地 JSON", async () => {
     const logger = {
