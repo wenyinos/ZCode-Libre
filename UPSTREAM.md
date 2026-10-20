@@ -170,7 +170,11 @@ pnpm lint
 | `packages/services/src/feedback/feedbackHttpClient.ts` | 在所有反馈请求的唯一出口 `request()` 处截断（附件先取凭证再直传 OSS，因此一并阻断） |
 | `packages/ui/src/settings/CodingPlanUpgradeDialogProvider.tsx` | `openCodingPlanUpgrade` 统一守卫处早退 |
 
-**刻意没有改的**：`DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS` 里是 browser-use、documents、pdf、spreadsheets 等**内置能力插件**，清空会让用户失去全部本地功能，因此保留；`computer-use` 本就默认关闭。官方 MCP 需要 z.ai 账号凭据，登录屏蔽后已自然失效，无需额外改动。
+**刻意没有改的**：`DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS` 里是 browser-use、documents、pdf、spreadsheets 等**内置能力插件**，清空会让用户失去全部本地功能，因此保留；`computer-use` 本就默认关闭。
+
+**已知无效项（保留现状，2026-10-21 记录）**：内置集合里的 `image-search@zcode-plugins-official` 是**依赖厂商身份的官方 MCP**——它需要宿主解析出 z.ai 账号身份头，而本分支在存储层拦截了官方账号凭据，解析必然失败（日志表现为 `官方 MCP 身份头不可用 {reason:"official_auth_unavailable"}`，随后回退匿名并被服务端拒绝）。该插件仍保持默认启用、不做特殊处理：清空或单独关闭它会把「内置插件默认集合」与上游 `official-plugin-definitions.ts` 的 `defaultEnabled` 断言关系弄乱，收益也只是少几条日志。**不要**为消除这条日志把它从 `DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS` 里删掉（`check:defaults` 与 bootstrap 单测都会对照该集合）。
+
+**插件市场的口径**（便于排查"市场为什么像开着"）：商店里默认出现的条目都是**随应用打包的内置插件**（`official-plugin-definitions.ts` 的 seed），插件 ID 的 `@zcode-plugins-official` 只是命名空间后缀，不表示从远端拉过清单；`DEFAULT_PLUGIN_MARKETPLACES` 被 `pluginMarketplaceRemoteSource`（默认 false）置空，因此**不会播种任何远端市场源**，日志里也不会有 `marketplace.json` 请求。面向用户的"添加市场"是另一条路径（`addPluginMarketplace`，用户手填源地址），不受该策略开关约束——策略只控制默认播种。
 
 这些默认值由 `pnpm check:defaults` 逐项断言：脚本用语法树读出 `LIBRE_VENDOR_SERVICES` 的字面量值逐一比对，只查键名存在的话，把 false 改回 true 也能"通过"。新增策略项必须在脚本里登记期望值，否则检查失败——避免新开关悄悄逃过「默认关闭」的约束。
 
