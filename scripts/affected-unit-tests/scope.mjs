@@ -29,9 +29,19 @@ async function resolvePushBase(root, head, remote) {
 }
 
 async function firstPushBase(root, head) {
-  // 首次推送没有 remote SHA；只使用已确认的集成分支，缺失时严格报错，不猜测其他分支。
-  const staging = await commit(root, "origin/staging");
-  return (await git(root, ["merge-base", staging, head])).toString().trim();
+  // 首次推送没有 remote SHA；上游以 origin/staging 作集成分支基线，缺失时严格报错。
+  // ZCode-Libre 没有 staging 分支，集成分支是 origin/main —— 按顺序尝试已确认的集成分支，
+  // 两者都不可用才报错，避免 tag 首次推送直接卡死 pre-push。
+  const candidates = ["origin/staging", "origin/main"];
+  for (const ref of candidates) {
+    try {
+      const base = await commit(root, ref);
+      return (await git(root, ["merge-base", base, head])).toString().trim();
+    } catch {
+      // 该集成分支不存在，继续尝试下一个
+    }
+  }
+  throw new Error(`无法解析首次推送基线：${candidates.join(" 与 ")} 都不可用`);
 }
 
 /** 只解析比较基线；改动文件与关联测试全部由 Vitest 官方选择。 */

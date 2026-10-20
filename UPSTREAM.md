@@ -334,6 +334,7 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 - **上游自己也修了 web-share 别名**，但用的是「根入口精确匹配」；本分支保留正则子路径写法（`/^@zcode\/shared\/(.*)$/` → `packages/shared/src/$1`），因为它同时覆盖子路径导入，已在本地 `pnpm --filter @zcode/web-share build` 验证。合并时别被上游版本覆盖。
 - **`prepare` 脚本新增 `pnpm build:cua`**：`pnpm install` 现在会额外构建 CUA（`packages/zcode-cua`，tsc --noEmit）。CI 的 `pnpm install --frozen-lockfile` 会跟着执行，安装时间变长属正常。
 - **两个 relay 传输退避测试对运行时版本敏感**：`packages/desktop/test/webRemoteControlTransport.test.ts` 与 `packages/web/test/webRemoteControlTransportV2.test.ts` 与上游逐字节一致，但在 Node **24.18.0** 下有 2 个退避用例失败（仓库 `mise.toml` 锁定 **24.14.0**）。这两条属环境差异，不要在测试里放宽时限；按 `mise.toml` 用 24.14.0 复跑。
+- **上游的 affected 测试脚本以 `origin/staging` 作首次推送基线**（`scripts/affected-unit-tests/scope.mjs` 的 `firstPushBase`，缺失时故意报错）。本分支没有 `staging` 分支，首次推 tag 时 pre-push 会因此失败；已改为按 `origin/staging` → `origin/main` 顺序回落，两者都缺失才报错。同步时若上游再改这段，注意保留下沉回落。
 - 上游删除了 4 个 UI 测试（`interactionThemeTokens`、`modelConfigHelpCopy`、`onboardingWelcomeI18n`、`shared/test/pluginMarketplaces`）且无替代；本分支已接受删除，紫夜主题的覆盖改由 `styles.css` 相关断言与 `useTheme` 测试承担。
 
 ## 同步后自检
