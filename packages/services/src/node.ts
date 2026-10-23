@@ -42,6 +42,7 @@ import {
 } from "./onboarding/localUsageEvidence.js";
 import {
   isVendorServiceEnabled,
+  LIBRE_VENDOR_SERVICES,
   buildLocalMediaPreviewUrl,
   type DynamicWorkflowMode,
   type ProviderProvisioningTrigger,
@@ -56,7 +57,10 @@ import { getAppConfigDir as getContentAppConfigDir } from "#src/paths.js";
 import { ICloudContentService } from "#src/cloud-content/cloudContent.js";
 import { createCloudContentService } from "#src/cloud-content/cloudContentService.js";
 import { IMarketingTouchService } from "#src/marketing-touch/marketingTouch.js";
-import { createMarketingTouchService } from "#src/marketing-touch/marketingTouchService.js";
+import {
+  createDisabledMarketingTouchService,
+  createMarketingTouchService,
+} from "#src/marketing-touch/marketingTouchService.js";
 import { createMarketingAssetRegistry } from "#src/marketing-touch/marketingAssetRegistry.js";
 import type { IChannel } from "@zcode/rpc";
 import {
@@ -496,9 +500,15 @@ import { createSourceServerWorkspaceService } from "./source-server-workspace/so
 import { createUsageStatsService } from "./usage-stats/usageStatsService.js";
 import { createProviderBalanceService } from "./provider-balance/providerBalanceService.js";
 import { createCodingPlanSubscriptionService } from "./coding-plan-subscription/codingPlanSubscriptionService.js";
-import { createClientConfigService } from "./client-config/clientConfigService.js";
+import {
+  createClientConfigService,
+  createDisabledClientConfigService,
+} from "./client-config/clientConfigService.js";
 import { IClientConfigService } from "./client-config/clientConfig.js";
-import { createClientScenesService } from "./client-scenes/clientScenesService.js";
+import {
+  createClientScenesService,
+  createDisabledClientScenesService,
+} from "./client-scenes/clientScenesService.js";
 import { createSkillsService } from "./skills/skillsService.js";
 import { createSkillSyncService } from "./skill-sync/skillSyncService.js";
 import { createMcpSyncService } from "./mcp-sync/mcpSyncService.js";
@@ -2654,14 +2664,17 @@ export function createLocalServices(options: {
   const services = new ServiceCollection()
     .register(
       IMarketingTouchService,
-      createMarketingTouchService({
-        apiClient,
-        getToken: () => credentialService.load("zcodejwttoken"),
-        getDeviceMid: () => options?.agentTelemetry?.getDeviceMid?.(),
-        baseUrl: buildRuntimeZCodeApiUrl(process.env, "/"),
-        appVersion: ZCODE_VERSION,
-        onSnapshot: (snapshot) => marketingAssets.accept(snapshot),
-      }),
+      // ZCode-Libre：开源版本不参与上游活动，营销轮询固定在装配层关闭。
+      LIBRE_VENDOR_SERVICES.marketingTouch
+        ? createMarketingTouchService({
+            apiClient,
+            getToken: () => credentialService.load("zcodejwttoken"),
+            getDeviceMid: () => options?.agentTelemetry?.getDeviceMid?.(),
+            baseUrl: buildRuntimeZCodeApiUrl(process.env, "/"),
+            appVersion: ZCODE_VERSION,
+            onSnapshot: (snapshot) => marketingAssets.accept(snapshot),
+          })
+        : createDisabledMarketingTouchService(),
     )
     .register(IFileService, fileService)
     .register(IMediaPreviewService, mediaPreviewService)
@@ -2727,16 +2740,25 @@ export function createLocalServices(options: {
     .register(ICodingPlanSubscriptionService, codingPlanSubscriptionService)
     .register(
       IClientConfigService,
-      createClientConfigService({
-        apiClient,
-        resolveRequestContext: async () => ({
-          endpointOrigin: await resolveCurrentZCodeEndpointOrigin(),
-          appVersion: ZCODE_VERSION,
-          platform: `${process.platform}-${process.arch}`,
-        }),
-      }),
+      // ZCode-Libre：开源分支不拉取上游 /api/v1/client/configs 的公开配置。
+      LIBRE_VENDOR_SERVICES.officialClientConfig
+        ? createClientConfigService({
+            apiClient,
+            resolveRequestContext: async () => ({
+              endpointOrigin: await resolveCurrentZCodeEndpointOrigin(),
+              appVersion: ZCODE_VERSION,
+              platform: `${process.platform}-${process.arch}`,
+            }),
+          })
+        : createDisabledClientConfigService(),
     )
-    .register(IClientScenesService, createClientScenesService({ apiClient }))
+    .register(
+      IClientScenesService,
+      // ZCode-Libre：开源分支不拉取厂商运营下发的建议提示与自动化模板。
+      LIBRE_VENDOR_SERVICES.officialClientScenes
+        ? createClientScenesService({ apiClient })
+        : createDisabledClientScenesService(),
+    )
     .register(
       IOffPeakTaskService,
       (() => {

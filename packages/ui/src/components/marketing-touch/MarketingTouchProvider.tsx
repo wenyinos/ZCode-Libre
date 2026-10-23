@@ -20,7 +20,7 @@ import {
   marketingSettingsSections,
   waitForMarketingCapability,
 } from "@/lib/marketingNavigation.js";
-import { BUILTIN_MODEL_PROVIDER_IDS, ZCODE_ENV } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, LIBRE_VENDOR_SERVICES, ZCODE_ENV } from "@zcode/shared";
 import { useServices } from "@/hooks/useServices.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useZCodeStore } from "@/store/StoreProvider.js";
@@ -88,6 +88,8 @@ export function MarketingTouchProvider({
   refreshStartEntitlementRef.current = startEntitlement.refresh;
   const identity = user?.id ?? "anonymous";
   const createRuntime = useCallback(() => {
+    // ZCode-Libre：营销推送固定关闭，不创建轮询器，也不渲染 Banner/弹窗。
+    if (!LIBRE_VENDOR_SERVICES.marketingTouch) return null;
     const service = services.marketingTouchService;
     if (!service || restoring) return null;
     let poller: ReturnType<typeof createMarketingTouchPoller>;

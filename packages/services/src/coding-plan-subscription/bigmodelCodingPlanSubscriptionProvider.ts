@@ -1,4 +1,5 @@
 import {
+  LIBRE_VENDOR_SERVICES,
   readRequestVerificationConfig,
   requestVerificationClaimHeaders,
   isRequestVerificationMessage,
@@ -799,6 +800,10 @@ export class BigModelCodingPlanSubscriptionProvider {
   }
 
   private async getClientConfigs(): Promise<ZCodeClientConfigEnvelope> {
+    // ZCode-Libre：客户端远端配置固定关闭，套餐列表、StartPlanCard 与灰度均按空配置处理。
+    if (!LIBRE_VENDOR_SERVICES.officialClientConfig) {
+      return { code: 0, data: { configs: {} } };
+    }
     if (this.clientConfigSnapshot && this.clientConfigSnapshotExpiresAt > Date.now()) {
       return this.clientConfigSnapshot;
     }

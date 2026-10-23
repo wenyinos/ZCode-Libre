@@ -49,6 +49,8 @@ export interface CreateSingleFeatureRolloutOptions<T extends SingleFeatureRollou
   logger: SingleFeatureRolloutLogger;
   timeoutMs?: number;
   cacheTtlMs?: number;
+  /** 为 false 时不发起任何请求，refresh/awaitFirstDecision 直接返回默认快照。 */
+  enabled?: boolean;
 }
 
 export function createSingleFeatureRollout<T extends SingleFeatureRolloutConfig>(
@@ -59,6 +61,15 @@ export function createSingleFeatureRollout<T extends SingleFeatureRolloutConfig>
   let inFlight: Promise<T> | undefined;
   const timeoutMs = Math.max(options.timeoutMs ?? SINGLE_FEATURE_REQUEST_TIMEOUT_MS, 1);
   const cacheTtlMs = Math.max(options.cacheTtlMs ?? SINGLE_FEATURE_CACHE_TTL_MS, 1);
+
+  // ZCode-Libre：远端配置关闭时直接返回默认快照，不建计时器，也不发 /client/configs 请求。
+  if (options.enabled === false) {
+    return {
+      refresh: () => Promise.resolve(snapshot),
+      getSnapshot: () => snapshot,
+      awaitFirstDecision: () => Promise.resolve(snapshot),
+    };
+  }
 
   const refresh = (): Promise<T> => {
     if (Date.now() < snapshotExpiresAt) {

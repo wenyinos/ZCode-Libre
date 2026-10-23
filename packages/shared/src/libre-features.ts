@@ -27,6 +27,23 @@ export const LIBRE_VENDOR_SERVICES = {
   /** 插件市场远端市场源：从厂商 CDN 拉取市场清单。内置插件不受影响。 */
   pluginMarketplaceRemoteSource: false,
   /**
+   * 营销推送（Marketing Touch）：轮询厂商接口获取活动投放，用于左下角
+   * 「领 token / 限时体验套餐」Banner 与弹窗。开源版本不参与上游活动，
+   * 固定关闭且不暴露用户开关；关闭后不再请求营销接口与投放下发的资源。
+   */
+  marketingTouch: false,
+  /**
+   * 客户端远端配置：`/api/v1/client/configs` 下的强制升级 gate 与功能灰度。
+   * 本分支的更新只走自有 Release，上游的 minimalVersion 会把官方版本当成必须升级项；
+   * 灰度开关也不应影响开源分支行为。固定关闭且不暴露用户设置。
+   */
+  officialClientConfig: false,
+  /**
+   * 客户端场景：`/api/v1/client/scenes` 下发的草稿建议提示与自动化模板。
+   * 属厂商运营内容，开源分支不拉取；固定关闭且不暴露用户设置。
+   */
+  officialClientScenes: false,
+  /**
    * 应用内更新改为检测自有 GitHub Release，并且只检测、不下载不安装：
    * 命中的是上游厂商 manifest 会把官方 ZCode 装回本分支，覆盖品牌与上述默认关闭设置，
    * 而本分支的桌面产物未做代码签名，应用内自动安装也会持续触发系统安全拦截。

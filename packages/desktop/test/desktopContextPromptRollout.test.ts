@@ -4,6 +4,15 @@ import {
   resolveDesktopContextPromptConfig,
 } from "../src/main/desktopContextPromptRollout.js";
 
+// 本分支默认关闭上游客户端配置；本文件验证上游开启时的灰度语义，需显式覆盖策略。
+vi.mock("@zcode/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@zcode/shared")>();
+  return {
+    ...actual,
+    LIBRE_VENDOR_SERVICES: { ...actual.LIBRE_VENDOR_SERVICES, officialClientConfig: true },
+  };
+});
+
 function config(enabled: boolean, configVersion = "desktop-sp-v1") {
   return {
     code: 0,

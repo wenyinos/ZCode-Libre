@@ -1,5 +1,6 @@
 import {
   DISABLED_RENDERER_ACTION_TRACE_CONFIG,
+  LIBRE_VENDOR_SERVICES,
   rendererActionTraceConfigSchema,
   rendererActionTraceGroupSchema,
   type RendererActionTraceConfigV1,
@@ -73,5 +74,6 @@ export function createRendererActionTraceRollout(options: {
     logger: options.logger,
     timeoutMs: options.timeoutMs,
     cacheTtlMs: options.cacheTtlMs,
+    enabled: LIBRE_VENDOR_SERVICES.officialClientConfig,
   });
 }

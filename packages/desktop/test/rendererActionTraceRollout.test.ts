@@ -4,6 +4,15 @@ import {
   resolveRendererActionTraceConfig,
 } from "../src/main/rendererActionTraceRollout.js";
 
+// 本分支默认关闭上游客户端配置；本文件验证上游开启时的灰度语义，需显式覆盖策略。
+vi.mock("@zcode/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@zcode/shared")>();
+  return {
+    ...actual,
+    LIBRE_VENDOR_SERVICES: { ...actual.LIBRE_VENDOR_SERVICES, officialClientConfig: true },
+  };
+});
+
 describe("renderer action trace rollout", () => {
   it("parses known groups and ignores unknown groups", () => {
     expect(

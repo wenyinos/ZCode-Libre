@@ -827,6 +827,17 @@ exceptions:
     rule: disable-count
     paths: [packages/desktop/src/renderer/src/plugin-sandbox/genUiTweakRuntime.js]
     reason: Allow the control-character validation regex and the single-file parameter-control runtime.
+  - id: libre-marketing-touch-disable
+    rule: unmanaged-new-file
+    paths:
+      - packages/services/src/marketing-touch/marketingTouchService.ts
+      - packages/ui/src/components/marketing-touch/MarketingTouchProvider.tsx
+    reason: ZCode-Libre 固定关闭上游营销推送，只在既有上游文件的两处装配/短路点接入策略；不接管目录，模块边界与导入关系不变。
+  - id: libre-official-client-config-disable
+    rule: unmanaged-new-file
+    paths:
+      - packages/services/src/client-config/clientConfigService.ts
+    reason: ZCode-Libre 固定关闭上游 /api/v1/client/configs 公共配置，只在既有服务装配点增加空快照分支；不接管目录，模块边界不变。
   - id: settings-machine-unmanaged-edit
     rule: unmanaged-new-file
     paths: [packages/ui/src/settings/SettingsMachine.tsx]

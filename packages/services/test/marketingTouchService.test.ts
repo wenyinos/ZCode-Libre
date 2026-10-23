@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createMarketingTouchService } from "#src/marketing-touch/marketingTouchService.js";
+import {
+  createMarketingTouchService,
+  createDisabledMarketingTouchService,
+} from "#src/marketing-touch/marketingTouchService.js";
 
 function fixture(createService = createMarketingTouchService) {
   let token: string | null = "first-token";
@@ -78,6 +81,27 @@ describe("MarketingTouchService", () => {
     expect(f.request).toHaveBeenCalledTimes(2);
     const [, init] = f.request.mock.calls[0] as unknown as [string, RequestInit];
     expect(new Headers(init.headers).has("Authorization")).toBe(false);
+  });
+});
+
+describe("DisabledMarketingTouchService", () => {
+  it("returns an empty snapshot and accepts reports without network access", async () => {
+    const service = createDisabledMarketingTouchService();
+    await expect(service.query({ locale: "zh-CN" })).resolves.toEqual({
+      serverTime: expect.any(Number),
+      language: "zh-CN",
+      deliveries: [],
+      rejectedCount: 0,
+      scope: "disabled",
+    });
+    await expect(
+      service.report({
+        locale: "zh-CN",
+        scope: "disabled",
+        campaignId: "campaign",
+        actionType: "confirm",
+      }),
+    ).resolves.toBeUndefined();
   });
 });
 

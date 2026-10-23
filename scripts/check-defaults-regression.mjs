@@ -193,6 +193,9 @@ const LIBRE_VENDOR_SERVICE_DEFAULTS = {
   feedback: false,
   codingPlanPurchase: false,
   pluginMarketplaceRemoteSource: false,
+  marketingTouch: false,
+  officialClientConfig: false,
+  officialClientScenes: false,
   selfHostedReleaseUpdates: true,
   vendorCommunityLinks: false,
   officialAccountCredentials: false,
@@ -279,6 +282,28 @@ expectContains(
   "LIBRE_VENDOR_SERVICES",
   "设置页的厂商服务开关应引用策略模块作为默认值",
 );
+
+// 客户端远端配置与运营场景：这些请求不在用户可见的“登录/套餐”入口里，漏接装配点
+// 时回归最容易被忽略，却会持续把设备信息送到官方端点。
+for (const [path, token, reason] of [
+  [
+    "packages/desktop/src/main/index.ts",
+    "LIBRE_VENDOR_SERVICES.officialClientConfig",
+    "启动强制升级 gate 应受策略门禁，否则会重新读取上游 minimalVersion",
+  ],
+  [
+    "packages/services/src/node.ts",
+    "LIBRE_VENDOR_SERVICES.officialClientScenes",
+    "客户端场景服务应受策略门禁，否则会重新请求上游 /api/v1/client/scenes",
+  ],
+  [
+    "packages/services/src/node.ts",
+    "LIBRE_VENDOR_SERVICES.marketingTouch",
+    "营销推送服务应受策略门禁，否则会重新轮询上游 /api/v1/marketing/touch",
+  ],
+]) {
+  expectContains(path, token, reason);
+}
 
 // 反馈入口必须逐处门禁：漏掉任何一处，关闭状态下仍会露出一个注定失败的按钮，
 // 而它提交的目标是厂商工单系统。

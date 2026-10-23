@@ -1,6 +1,7 @@
 import {
   buildZCodeEndpointUrls,
   buildZCodeSourceHeadersFromContext,
+  LIBRE_VENDOR_SERVICES,
   ZCODE_ENV,
   ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
 } from "@zcode/shared";
@@ -77,6 +78,7 @@ export function createDesktopContextPromptRollout(options: {
     logger: options.logger,
     timeoutMs: options.timeoutMs,
     cacheTtlMs: options.cacheTtlMs,
+    enabled: LIBRE_VENDOR_SERVICES.officialClientConfig,
   });
 }
 

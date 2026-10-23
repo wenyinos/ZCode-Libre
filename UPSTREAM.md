@@ -163,12 +163,17 @@ pnpm lint
 
 | 文件 | 改动 |
 | --- | --- |
-| `packages/shared/src/libre-features.ts`（新增） | 策略真相源：`officialAccountLogin` / `conversationShare` / `feedback` / `codingPlanPurchase` / `pluginMarketplaceRemoteSource` 默认全为 false，`selfHostedReleaseUpdates` 为 true |
+| `packages/shared/src/libre-features.ts`（新增） | 策略真相源：`officialAccountLogin` / `conversationShare` / `feedback` / `codingPlanPurchase` / `pluginMarketplaceRemoteSource` / `marketingTouch` / `officialClientConfig` / `officialClientScenes` 默认全为 false，`selfHostedReleaseUpdates` 为 true |
 | `packages/services/src/oauth/providers/{zai,bigmodel}ProviderConfig.ts` | OAuth provider 的 `enabled` 默认值改引用策略；仍可用 `ZAI_OAUTH_ENABLED` / `BIGMODEL_OAUTH_ENABLED` 覆盖开启 |
 | `packages/shared/src/plugin-marketplaces.ts` | `DEFAULT_PLUGIN_MARKETPLACES` 默认不播种远端市场源；**`DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS` 未改动**。上游 v3.15.1 在默认市场里新增了 Claude 官方目录（`anthropics/claude-plugins-official`），已并入策略开关的 true 分支，与 ZCode 官方 CDN 一起受 `pluginMarketplaceRemoteSource` 控制 |
-| `packages/services/src/node.ts` | 会话分享复用 `createUnsupportedConversationShareService` |
+| `packages/services/src/node.ts` | 会话分享复用 `createUnsupportedConversationShareService`；营销推送、客户端配置与客户端场景在策略关闭时注册空实现 |
 | `packages/services/src/feedback/feedbackHttpClient.ts` | 在所有反馈请求的唯一出口 `request()` 处截断（附件先取凭证再直传 OSS，因此一并阻断） |
 | `packages/ui/src/settings/CodingPlanUpgradeDialogProvider.tsx` | `openCodingPlanUpgrade` 统一守卫处早退 |
+| `packages/services/src/marketing-touch/marketingTouchService.ts` | `createDisabledMarketingTouchService` 返回空快照，不请求 `/api/v1/marketing/touch`、不上报 `/action`；Renderer 的 `MarketingTouchProvider` 同时不创建 runtime（不轮询、不渲染 Banner/弹窗） |
+| `packages/desktop/src/main/singleFeatureRollout.ts` + `desktopContextPromptRollout.ts` + `rendererActionTraceRollout.ts` | 新增 `enabled` 入口；`officialClientConfig` 关闭时 `refresh` / `awaitFirstDecision` 直接返回默认快照，不建计时器，也不请求 `/api/v1/client/configs` |
+| `packages/services/src/client-config/clientConfigService.ts` | `createDisabledClientConfigService` 返回空快照；插件商店排序、漏洞报告链接与插件推荐不再读取上游公开配置 |
+| `packages/services/src/coding-plan-subscription/bigmodelCodingPlanSubscriptionProvider.ts` | `getClientConfigs()` 在策略关闭时返回空配置；套餐列表、StartPlanCard、闲时任务与动态工作流灰度不再请求 `/api/v1/client/configs` |
+| `packages/services/src/client-scenes/clientScenesService.ts` | `createDisabledClientScenesService` 返回空列表，不请求 `/api/v1/client/scenes`；草稿建议提示与自动化模板保持为空 |
 
 **刻意没有改的**：`DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS` 里是 browser-use、documents、pdf、spreadsheets 等**内置能力插件**，清空会让用户失去全部本地功能，因此保留；`computer-use` 本就默认关闭。
 
@@ -247,6 +252,8 @@ pnpm lint
 | `packages/desktop/test/autoUpdaterSelfHostedManualCheck.test.ts`（新增） | 回归用例：`enabled: false`（构建期未启用）时手动检查仍走自有 Release 检测；自有检查后不装厂商轮询表（越过轮询间隔也不打厂商 manifest）；切换 preview 开关不打厂商 manifest |
 
 **保留未删**：`manifestUpdateProvider.ts` 与 electron-updater 的其余集成仍在（策略置 false 即可回退到上游行为）。
+
+启动强制升级 gate 也走同一策略：`/api/v1/client/configs` 的 `minimalVersion` 在 `LIBRE_VENDOR_SERVICES.officialClientConfig` 关闭时整段跳过（`index.ts` 的 `skipOfficialForceUpdate`）。上游会把官方版本当成必须升级项，沿用会阻止主窗口创建并引导安装官方版本，与“只检测自有 Release”直接冲突；自建构建要恢复上游行为时把该策略置 true。同一策略还关闭 `desktopContextPrompt` / `rendererActionTrace` 两个灰度，它们与强更共用 `/api/v1/client/configs`，关闭后不建计时器、不发请求。
 
 同步注意：
 - 上游若改动 `initAutoUpdater` 的自动检查/轮询结构，需确认跳过分支仍在轮询启动之前，否则会重新向厂商发请求。

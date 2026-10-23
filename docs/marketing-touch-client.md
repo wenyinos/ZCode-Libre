@@ -1,5 +1,14 @@
 # Marketing Touch 客户端接入
 
+## ZCode-Libre 分支策略（2026-10-23）
+
+本分支不参与上游营销活动，Marketing Touch 固定关闭且不提供用户开关：
+
+- `LIBRE_VENDOR_SERVICES.marketingTouch = false` 是唯一策略源，不登记到设置覆盖。
+- Host 装配层注册空实现（`createDisabledMarketingTouchService`），不请求 `/api/v1/marketing/touch`，也不上报 `/action`。
+- Renderer 的 `MarketingTouchProvider` 在策略关闭时不创建 runtime，不启动轮询、不下载投放资源，也不渲染左下角 Banner 与弹窗。
+- 恢复上游行为需改策略常量；不新增设置项。
+
 ## Banner hover 桥接（2026-09-15）
 
 Banner iframe 保留 pointer-events:none、inert、不可聚焦及忽略包内 action。App Banner 是 hover 唯一 owner：鼠标移入/移出整块 Banner，经已有 `zcode-cloud-hero-v1` 发送 `{type:"hover",instanceId,hovered:boolean}`；不发送坐标、点击或业务事件，不改服务端投放字段。

@@ -22,6 +22,15 @@ interface CacheEntry {
   pending?: Promise<ClientConfigSnapshot>;
 }
 
+/** 客户端远端配置固定关闭时的实现：返回空快照，不请求 /api/v1/client/configs。 */
+export function createDisabledClientConfigService(): IClientConfigService {
+  return {
+    async getSnapshot() {
+      return { pluginStoreOrder: null, zsrcUrl: null, uiPluginRecommendations: [] };
+    },
+  };
+}
+
 /** 首期仅公开配置；账户灰度不得通过此实例或缓存复用。 */
 export function createClientConfigService(dependencies: {
   apiClient: ApiClient;

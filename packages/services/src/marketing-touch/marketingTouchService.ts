@@ -4,6 +4,25 @@ import { parseMarketingTouchResponse, type ApiClient } from "@zcode/shared";
 import { readApiJson } from "#src/providers/api/apiJson.js";
 import type { IMarketingTouchService } from "#src/marketing-touch/marketingTouch.js";
 
+/**
+ * 营销推送固定关闭时的实现：不请求厂商接口，也不下发任何投放。
+ * 返回空快照而不是抛错，避免调用方的轮询按失败退避反复重试。
+ */
+export function createDisabledMarketingTouchService(): IMarketingTouchService {
+  return {
+    async query({ locale }) {
+      return {
+        serverTime: Date.now(),
+        language: locale,
+        deliveries: [],
+        rejectedCount: 0,
+        scope: "disabled",
+      };
+    },
+    async report() {},
+  };
+}
+
 const localeSchema = z.enum(["zh-CN", "en-US"]);
 // 序号属于本次服务进程启动，不能随组件、账号或服务实例重建而归零。
 let bootRequestSeq = 0;

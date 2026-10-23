@@ -13,3 +13,12 @@ export function createClientScenesService(dependencies: {
       }),
   };
 }
+
+/**
+ * 客户端场景固定关闭时的实现：不请求厂商接口，建议提示与自动化模板保持为空。
+ */
+export function createDisabledClientScenesService(): IClientScenesService {
+  return {
+    list: async () => ({ code: 0, msg: "", data: [] }),
+  };
+}

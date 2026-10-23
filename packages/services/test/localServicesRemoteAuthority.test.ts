@@ -7,11 +7,16 @@ import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
 
 // ZCode-Libre：官方账号派生凭据默认在存储层拒绝读取，账号级请求会判未登录；
 // 这个文件验证的是 host 进程内的账号请求鉴权装配，mock 开关为开启，与分支默认值解耦。
+// 场景服务同时开启：本文件用它的请求验证 Host 注入的 transport 被复用。
 vi.mock("@zcode/shared", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@zcode/shared")>();
   return {
     ...actual,
-    LIBRE_VENDOR_SERVICES: { ...actual.LIBRE_VENDOR_SERVICES, officialAccountCredentials: true },
+    LIBRE_VENDOR_SERVICES: {
+      ...actual.LIBRE_VENDOR_SERVICES,
+      officialAccountCredentials: true,
+      officialClientScenes: true,
+    },
   };
 });
 import { accountProviderCredentialKey } from "../src/model-provider/accountProviderCredentialKey.js";
