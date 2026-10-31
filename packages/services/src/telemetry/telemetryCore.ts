@@ -596,7 +596,7 @@ export function createTelemetryCore(dependencies: TelemetryCoreDependencies = {}
               elementName: "app_launch",
               eventRegion: "app",
               eventType: "view",
-              eventExtraDetail: {},
+              eventExtraDetail: { ui_mode: context.uiMode ?? "unknown" },
               userId,
             },
             context,
@@ -650,7 +650,7 @@ export function createTelemetryCore(dependencies: TelemetryCoreDependencies = {}
                 elementName: "app_daily_active",
                 eventRegion: "app",
                 eventType: "view",
-                eventExtraDetail: {},
+                eventExtraDetail: { ui_mode: context.uiMode ?? "unknown" },
                 userId,
               },
               context,
@@ -679,6 +679,8 @@ export function createTelemetryCore(dependencies: TelemetryCoreDependencies = {}
       );
     },
 
+    // 接纳上游已收到但尚未开始 HTTP 上报的完整投递 Promise，共用既有 pending 与退出预算。
+    trackPendingReport: trackReport,
     flushPendingReports,
   };
 }

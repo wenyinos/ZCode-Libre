@@ -49,14 +49,27 @@ describe("settingsPageConfig", () => {
       },
       {
         id: "agentCapabilities",
-        sections: ["memory", "subagents", "plugin", "mcp", "skill", "commands", "hooks"],
+        sections: [
+          "personalization",
+          "memory",
+          "subagents",
+          "plugin",
+          "mcp",
+          "skill",
+          "commands",
+          "hooks",
+        ],
       },
-      { id: "dataAndStats", sections: ["usage", "personalPlan", "archives"] },
+      {
+        id: "dataAndStats",
+        sections: ["dataSync", "usage", "projects", "personalPlan", "archives"],
+      },
     ]);
     expect(settingsSections.map((section) => section.id)).toEqual([
       "general",
       "appearance",
       "modelProvider",
+      "personalization",
       "memory",
       "subagents",
       "plugin",
@@ -68,7 +81,9 @@ describe("settingsPageConfig", () => {
       "remoteDevices",
       "vendorServices",
       "shortcuts",
+      "dataSync",
       "usage",
+      "projects",
       "personalPlan",
       "archives",
     ]);

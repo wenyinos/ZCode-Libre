@@ -209,7 +209,7 @@ describe("offPeakServerClient × offPeakMockGateway 契约联测", () => {
     expect(after.tickets[0]!.state).toBe("settled");
   });
 
-  it("messages：active 到期后返回 400/3102（触发续跑）；未知票同样 3102", async () => {
+  it("messages：active 到期后返回 400/3106（触发续跑）；未知票 3104", async () => {
     await gateway.close();
     gateway = await startOffPeakMockGateway(
       {
@@ -237,10 +237,10 @@ describe("offPeakServerClient × offPeakMockGateway 契约联测", () => {
     await new Promise((resolve) => setTimeout(resolve, 60)); // 超过 activeMs
     const expired = await send(taken.ticketId);
     expect(expired.status).toBe(400);
-    expect(((await expired.json()) as { code: number }).code).toBe(3102);
+    expect(((await expired.json()) as { code: number }).code).toBe(3106);
 
     const unknown = await send("no-such-ticket");
-    expect(((await unknown.json()) as { code: number }).code).toBe(3102);
+    expect(((await unknown.json()) as { code: number }).code).toBe(3104);
   });
 
   it("客户端错误映射：非 2xx 抛 OffPeakServerError 携带 bizCode", async () => {

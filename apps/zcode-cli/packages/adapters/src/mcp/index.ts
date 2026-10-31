@@ -64,6 +64,11 @@ import {
   createMcpTransportFetch,
   type NetworkEgressEnvPolicy,
 } from "./network.js";
+import {
+  applyMcpNodeFallbackEnv,
+  type McpNodeFallback,
+  type McpNodeFallbackProvider,
+} from "./node-fallback.js";
 import { loadCredentialPair } from "./oauth-credentials.js";
 import {
   classifyInteractiveAuthorizationTrigger,
@@ -123,6 +128,11 @@ export interface CreateMcpAdapterOptions {
   telemetry?: McpTelemetryTracker;
   mcpOAuth?: McpOAuthRuntimeOptions;
   network?: NetworkEgressEnvPolicy;
+  /**
+   * 桌面 Electron Node 回退：宿主注入时，stdio MCP 的 node/npm/npx 在用户 PATH 缺失时
+   * 回退到 Electron 与随包 npm（docs/design/v2/mcp-node-fallback.md）。缺省时 env 不变。
+   */
+  nodeFallback?: McpNodeFallbackProvider;
   /**
    * 官方 Server MCP 鉴权依赖。trustedOrigins 缺失时仍 fail closed；authHeadersPort
    * 可缺省，此时各请求匿名降级并交给服务端做权威判定。
@@ -227,6 +237,12 @@ export {
   type McpConnectionPoolOptions,
 } from "./pool.js";
 export {
+  createMcpNodeFallbackProvider,
+  type CreateMcpNodeFallbackProviderOptions,
+  type McpNodeFallback,
+  type McpNodeFallbackProvider,
+} from "./node-fallback.js";
+export {
   createMcpTelemetryTracker,
   resolvePluginName,
   type McpTelemetryTracker,
@@ -248,6 +264,7 @@ class NodeMcpAdapter implements McpPort {
   private readonly logger?: Logger;
   private readonly mcpOAuth?: McpOAuthRuntimeOptions;
   private readonly network?: NetworkEgressEnvPolicy;
+  private readonly nodeFallback?: McpNodeFallbackProvider;
   private readonly officialMcpAuth?: CreateMcpAdapterOptions["officialMcpAuth"];
   private readonly telemetry?: McpTelemetryTracker;
   private readonly connectionGenerations = new Map<string, number>();
@@ -295,6 +312,7 @@ class NodeMcpAdapter implements McpPort {
     });
     this.mcpOAuth = options.mcpOAuth;
     this.network = options.network;
+    this.nodeFallback = options.nodeFallback;
     this.officialMcpAuth = options.officialMcpAuth;
     this.telemetry = options.telemetry;
     this.workingDirectory = options.workingDirectory;
@@ -1518,6 +1536,17 @@ class NodeMcpAdapter implements McpPort {
       config.type === "stdio" ? "process_start_failed" : "network_unreachable";
 
     try {
+      // 根因（MR !3089 评审 CR-02）：首次 stdio 连接要先准备 node fallback（文件 IO），原先在
+      // createTransport 里裸等，不受连接超时与取消约束；IO 卡住时连接会一直停在 connecting。
+      const nodeFallback =
+        config.type === "stdio" && this.nodeFallback
+          ? await withTimeout(
+              this.nodeFallback.resolve(),
+              timeoutMs,
+              `MCP server ${name} node fallback preparation timed out after ${timeoutMs}ms`,
+              signal,
+            )
+          : undefined;
       const transportBundle = await this.createTransport(
         config,
         name,
@@ -1525,6 +1554,7 @@ class NodeMcpAdapter implements McpPort {
         oauthAuthorizationTimeoutMs,
         workingDirectory,
         signal,
+        nodeFallback,
       );
       transport = transportBundle.transport;
       getRecentStderr = this.attachStdioLogging(name, transport);
@@ -1913,6 +1943,7 @@ class NodeMcpAdapter implements McpPort {
     _oauthAuthorizationTimeoutMs?: number,
     workingDirectory?: string,
     signal?: AbortSignal,
+    nodeFallback?: McpNodeFallback,
   ): Promise<{ transport: McpTransport }> {
     if (config.type === "stdio") {
       return {
@@ -1922,10 +1953,14 @@ class NodeMcpAdapter implements McpPort {
           cwd: config.cwd
             ? resolve(workingDirectory ?? this.workingDirectory ?? process.cwd(), config.cwd)
             : (workingDirectory ?? this.workingDirectory),
-          env: {
-            ...buildMcpStdioEnv({ env: this.env, network: this.network }),
-            ...config.env,
-          },
+          // fallback 在 server env 之后合并：插件自带 PATH 时 shim 目录仍追加在末尾。
+          env: applyMcpNodeFallbackEnv(
+            {
+              ...buildMcpStdioEnv({ env: this.env, network: this.network }),
+              ...config.env,
+            },
+            nodeFallback,
+          ),
           stderr: "pipe",
           ...(isOfficialAuthConfig(config) && config.official
             ? {
@@ -2309,6 +2344,9 @@ function mcpRequestMeta(request: McpCallToolRequest): Record<string, unknown> {
     ...(request.trace?.spanId ? { span_id: request.trace.spanId } : {}),
     ...(request.trace?.parentSpanId ? { parent_span_id: request.trace.parentSpanId } : {}),
     ...(request.trace?.sessionId ? { session_id: request.trace.sessionId } : {}),
+    // subagent / 工作流子代理的调用带上派生它的顶层 session，工作区共享的 server 据此
+    // 让子代理与父 session 共用状态（文档插件查看面板 spec §8.2）。
+    ...(request.trace?.rootSessionId ? { root_session_id: request.trace.rootSessionId } : {}),
     ...(request.trace?.turnId ? { turn_id: request.trace.turnId } : {}),
     ...(request.runtimeScope ? { runtime_scope: request.runtimeScope } : {}),
     ...(request.workspacePath ? { workspace_path: request.workspacePath } : {}),

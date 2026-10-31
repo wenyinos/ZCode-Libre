@@ -327,7 +327,7 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 7. `packages/shared/src/plugin-marketplaces.ts` —— 只改了 `DEFAULT_PLUGIN_MARKETPLACES`；若上游改动 `DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS`（内置插件默认集合），正常并入即可，勿为"关闭厂商服务"而清空它。
 8. `packages/services/src/oauth/providers/*ProviderConfig.ts` 的 `enabled` 默认值、`feedbackHttpClient.ts` 的 `request()` 早退、`node.ts` 的会话分享分支 —— 上游若重构这些入口，需确认策略判断仍在唯一收口点。
 9. 上游新增/重写的测试 —— 这些文件不冲突但会失败，`pnpm verify:pre-push` 会拦住推送。失败原因只有三类，按类处理：
-   - **品牌口径**：断言写死了上游文案、应用名、`appId`、`.desktop` 文件名、User-Agent 等 → 改断言为分支值（`pnpm test:unit` 里 `about`、`desktopProductIdentity`、`zcodeSourceHeaders`、各 i18n 快照都属这类）。
+   - **品牌口径**：断言写死了上游文案、应用名、`appId`、`.desktop` 文件名、User-Agent 等 → 改断言为分支值（本分支保留的 `about`、`desktopProductIdentity`、`zcodeSourceHeaders`、各 i18n 快照测试都属这类）。上游 v3.17.1 起 App 业务单测不再自动发现，这些测试需要手动运行或加入 `scripts/engineering-test-files.json`。
    - **策略开关**：上游用例锁的是厂商服务开启时的行为 → 在该测试文件里 mock 策略，别改生产默认值。经包入口读开关的用 `vi.mock("@zcode/shared", importOriginal)` 覆盖 `LIBRE_VENDOR_SERVICES`；走运行期快照的用 `setVendorServiceSettingsSnapshot()`；若生产代码用**相对路径**直接 import `./libre-features.js`（如 `remoteAppConfig`、`communityUrl`、`helpAppConfig`），包入口 mock 拦不住，必须 mock 解析后的相对路径。
    - **同源资产与枚举数**：主题覆盖数、`styles.css` token 计数、内联图标字节一致 —— 按分支实际补齐（多一套主题、重新生成图标），不要放宽断言。
 10. `packages/web-share/vite.config.ts` 的 `resolve.alias` —— 上游 v3.15.1 新增这个包，别名写成对象、`"@zcode/shared": ".../src/index.ts"`。Vite 的字符串别名按「全等或 `find + /` 前缀」匹配，所以上游新增的 `@zcode/shared/mcp-apps`、`/zcode-protocol-v4`、`/config-schema`、`/model-config` 会被拼成 `src/index.ts/mcp-apps`，`pnpm build:bootstrap` 直接 ENOTDIR 失败，六个桌面打包 job 全红。本分支已改成数组形式，先用正则把子路径映射到 `packages/shared/src/`，再留根入口。**上游同步会把它改回去**，合并后必须本地跑一次 `pnpm run build:bootstrap` 才能发现。
@@ -335,6 +335,19 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 
 12. `docs/` —— 上游把规格语料与打包的 knip 文档站（含 9 个 `.astro` + 11 个 `.mdx`）放进 `docs/`，正好是本分支 Pages 的源目录，合并后 Pages 构建会因 Jekyll 解析 `.astro` 而失败（详见偏离清单第 14 条）。本分支已改用 Actions 发布：同步时**不要**删 `docs/index.html` 与 `docs/promo/`，也不要把 Pages 换回 legacy 的「从分支发布」。
 13. `packages/desktop/src/main/index.ts` 的 `@zcode/shared` 导入清单 —— 上游删除常量时，冲突解决会保留本分支的使用处却丢掉导入行，产物里成为未定义的自由变量，**启动期 ReferenceError 导致主窗口不再创建、应用只剩托盘**（2026-10-18 实测，详见偏离清单第 7 节末段）。合并后必须跑 `pnpm check:defaults`（已加该文件的导入完整性断言）并确认产物里不出现原样的 `ZCODE_TELEMETRY_ENABLED`。
+
+## v3.17.1 同步记录（2026-10-24）
+
+上游一个 `chore: sync ZCode source` 提交（`a60ba6a7`，tag `v3.17.1`），5231 文件、+216k/−611k，含测试体系与打包链路重构。冲突 11 个内容冲突（另有一批上游删除 / 本地修改的测试），本次新增的同步注意点：
+
+- **上游退役 App 业务单测**：`test:unit` / `test:unit:affected` 与 `scripts/run-affected-unit-tests.mjs` 被删除，改为 `test:engineering` / `test:engineering:affected`，由 `scripts/engineering-test-files.json` 明确清单，不再自动发现 `packages/**/test`。本分支保留的策略与品牌测试需要手动运行；关键策略测试已加入该清单（营销推送、客户端配置/场景、两个灰度 rollout）。
+- **`verify:pre-push` 结构变化**：现在包含 `check-push-worktree`、`check:e2e-remote-targets`、`docs:stale-phrases:check`、`test:engineering:affected`，旧 `test:unit:affected` 不存在。同步时不要把本分支的 pre-push 链路改回旧命令。
+- **请求校验 API 改名**：`readRequestVerificationConfig` → `readValidatedRequestVerificationConfig`，并新增 `ApiError`；Coding Plan provider 的 `getClientConfigs()` 仍保留本分支的 `officialClientConfig` 空配置短路。
+- **桌面更新新增 Windows Authenticode 校验**：`autoUpdater.ts` 新增 `verifyWindowsAuthenticodeSignature` 导入；本分支的自有 Release 分流保留，合并时不要丢掉 `checkSelfHostedRelease`。
+- **Settings 新增 `projects` 入口**：与个人套餐 `personalPlan` 并存，`SettingsPage` 不能只保留一边。
+- **onboarding 欢迎页文案被上游移除**：`onboarding.dialog.*` / `onboarding.welcome.*` 在代码中已无引用，本分支按上游删除，只保留 `onboarding.wizard.label`。
+- **新增 `/api/v1/client/configs` 下载边界**：`packages/provider-node/src/zcode-builtin-download.ts` 会读取内置 provider 配置，当前没有调用方；若后续接入，必须补 `officialClientConfig` 策略门禁，不能绕过本分支的客户端配置关闭。
+- **上游删除的包内单测**：本分支保留了自己修改过的测试（品牌/策略断言），并把其中仍有效的加入 `scripts/engineering-test-files.json`；9 个与上游新实现不兼容的旧测试（`autoUpdaterReadyState`、`browserControlMainBridge`，以及 7 个依赖已移除的 `@testing-library/react` 的 UI 测试）已按上游退役删除。
 
 ## v3.16.2 同步记录（2026-10-20）
 
@@ -358,7 +371,7 @@ grep -rn "initializeCrashCapture(logger, true)" packages/desktop/src/   # 无残
 grep -n "providerFamilyDomain ||" packages/ui/src/root/useProviderAvailabilityLoginEntryGuard.ts  # 门禁未被改回
 git diff upstream/main --stat | tail -1                # 偏离规模是否符合预期
 pnpm typecheck && pnpm lint
-pnpm run test:unit:affected                            # 推送钩子用的就是这条；全量核对再跑 pnpm test:unit
+pnpm run test:engineering:affected                    # 推送钩子用的就是这条；全量核对再跑 pnpm test:engineering
 pnpm run build:bootstrap                               # 桌面 Main 由 tsup 从源码打包，typecheck 不覆盖 tsconfig.main.json
 ls docs/index.html docs/promo/                         # 站点文件仍在；Pages 由 .github/workflows/pages.yml 发布，不再走 Jekyll
 grep -c "ZCODE_TELEMETRY_ENABLED&&" packages/desktop/out/main/index.js  # 应为 0；非 0 说明 index.ts 丢了导入，启动会 ReferenceError 且不建主窗口

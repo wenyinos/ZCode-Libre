@@ -15,6 +15,7 @@ import {
 import {
   TID_LOGIN_USE_API_KEY_BUTTON,
   TID_OAUTH_CANCEL,
+  TID_OAUTH_COPY_LOGIN_LINK,
   TID_OAUTH_ERROR,
   TID_OAUTH_LOGIN_BUTTON,
   testId,
@@ -29,6 +30,7 @@ import { renderOAuthProviderIcon } from "./lib/oauthProviderIcon.js";
 import { ThemeHeroVisual } from "./openWorkspacePageThemeHero.js";
 import { useZCodeStore } from "./store/StoreProvider.js";
 import { DesktopOverlayWindowControls } from "@/DesktopOverlayWindowControls.js";
+import { toast } from "@/components/ui/toast.js";
 
 interface WelcomeScreenProps {
   onComplete: (reason: LoginCompleteReason) => void | Promise<void>;
@@ -85,6 +87,7 @@ export function LoginPanel({ active, onComplete }: LoginPanelProps) {
     providers,
     loadingProviders,
     pendingProvider,
+    authorizeUrl,
     refreshProviders,
   } = useOAuth();
   const user = useZCodeStore((s) => s.user);
@@ -260,6 +263,20 @@ export function LoginPanel({ active, onComplete }: LoginPanelProps) {
     setLoginMode(LIBRE_VENDOR_SERVICES.officialAccountLogin ? "providers" : "apiKey");
   }, []);
 
+  const handleCopyLoginLink = useCallback(async () => {
+    if (!authorizeUrl || typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+      toast(intl.formatMessage({ id: "login.oauth.copyLinkFailed" }));
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(authorizeUrl);
+      toast(intl.formatMessage({ id: "login.oauth.copyLinkSuccess" }));
+    } catch {
+      toast(intl.formatMessage({ id: "login.oauth.copyLinkFailed" }));
+    }
+  }, [authorizeUrl, intl]);
+
   useEffect(() => {
     if (active) {
       wasActiveRef.current = true;
@@ -409,6 +426,19 @@ export function LoginPanel({ active, onComplete }: LoginPanelProps) {
             >
               {intl.formatMessage({ id: "login.oauth.cancel" })}
             </Button>
+            {authorizeUrl ? (
+              <div className="flex items-center justify-center gap-1 text-center text-ui-sm text-foreground-subtle">
+                <span>{intl.formatMessage({ id: "login.oauth.browserNotOpened" })}</span>
+                <button
+                  type="button"
+                  className="font-medium text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  data-testid={TID_OAUTH_COPY_LOGIN_LINK}
+                  onClick={() => void handleCopyLoginLink()}
+                >
+                  {intl.formatMessage({ id: "login.oauth.copyLoginLink" })}
+                </button>
+              </div>
+            ) : null}
           </div>
         )}
 
