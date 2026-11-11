@@ -4,6 +4,7 @@ import {
   BIGMODEL_PROVIDER_ID,
   CREDENTIAL_DECRYPT_ERROR_CODE,
   ZCODE_VERSION,
+  ZAI_CN_PROVIDER_ID,
   ZAI_PROVIDER_ID,
   type ApiClient,
   type OAuthProviderId,
@@ -15,6 +16,7 @@ import { BIGMODEL_OAUTH_PROVIDER_CONFIG } from "../src/oauth/providers/bigmodelP
 import { ZAI_OAUTH_PROVIDER_CONFIG } from "../src/oauth/providers/zaiProviderConfig.js";
 import { ZaiProviderAdapter } from "../src/oauth/providers/zaiProviderAdapter.js";
 import type { ICredentialService } from "../src/credential/credential.js";
+import type { LocalCredentialService } from "../src/credential/credentialService.js";
 import type { OAuthProviderAdapter } from "../src/oauth/providers/index.js";
 import { OAuthService } from "../src/oauth/oauthService.js";
 import { OAuthCredentialRepo } from "../src/oauth/repo/oauthCredentialRepo.js";
@@ -69,10 +71,34 @@ cleanProcessEnv.BIGMODEL_OAUTH_ENABLED = "1";
 
 const credentialStore = new Map<string, string>();
 
-const credentialServiceStub: ICredentialService = {
+const credentialServiceStub: ICredentialService &
+  Pick<LocalCredentialService, "loadMany" | "updateMany" | "deleteUnreadable"> = {
   load: async (key: string) => credentialStore.get(key) ?? null,
+  loadMany: async (keys: readonly string[]) =>
+    Object.fromEntries(keys.map((key) => [key, credentialStore.get(key) ?? null])),
   save: async (key: string, value: string) => {
     credentialStore.set(key, value);
+  },
+  updateMany: async (changes, options) => {
+    for (const [key, expected] of Object.entries(options?.expected ?? {})) {
+      if ((credentialStore.get(key) ?? null) !== expected) return false;
+    }
+    options?.assertCurrent?.();
+    for (const [key, value] of Object.entries(changes)) {
+      if (value === null) credentialStore.delete(key);
+      else credentialStore.set(key, value);
+    }
+    return true;
+  },
+  deleteUnreadable: async (keys, options) => {
+    for (const [key, expected] of Object.entries(options?.expected ?? {})) {
+      if ((credentialStore.get(key) ?? null) !== expected) return false;
+    }
+    let deleted = false;
+    for (const key of keys) {
+      deleted = credentialStore.delete(key) || deleted;
+    }
+    return deleted;
   },
   delete: async (key: string) => {
     credentialStore.delete(key);
@@ -84,9 +110,14 @@ const OAUTH_SESSION_CREDENTIAL_KEYS = [
   "oauth:bigmodel:access_token",
   "oauth:bigmodel:refresh_token",
   "oauth:bigmodel:user_info",
+  "oauth:linked_bigmodel",
+  "oauth:session_revision",
   "oauth:zai:access_token",
   "oauth:zai:refresh_token",
   "oauth:zai:user_info",
+  "oauth:zai_cn:access_token",
+  "oauth:zai_cn:refresh_token",
+  "oauth:zai_cn:user_info",
   "zcodejwttoken",
 ] as const;
 
@@ -101,6 +132,39 @@ function expectDeletedOAuthSessionCredentials(
 
 function createMockCredentialDecryptError(message = "Serialized credential decrypt failure") {
   return Object.assign(new Error(message), { code: CREDENTIAL_DECRYPT_ERROR_CODE });
+}
+
+/**
+ * OAuth 仓储现在通过 Host 私有批量接口读写会话（loadMany/updateMany/deleteUnreadable），
+ * 只实现单 key 方法的 stub 会在会话提交时被拒绝，这里统一补齐批量语义。
+ */
+function createOAuthCredentialStoreStub(options: {
+  deletedKeys: string[];
+  load: (key: string) => Promise<string | null>;
+}): ICredentialService &
+  Pick<LocalCredentialService, "loadMany" | "updateMany" | "deleteUnreadable"> {
+  // 真实存储删除损坏键后再次读取会返回 null，而不是继续抛解密错误。
+  const removed = new Set<string>();
+  const load = async (key: string) => (removed.has(key) ? null : options.load(key));
+  return {
+    load,
+    loadMany: async (keys: readonly string[]) =>
+      Object.fromEntries(await Promise.all(keys.map(async (key) => [key, await load(key)]))),
+    save: async () => {},
+    updateMany: async () => true,
+    deleteUnreadable: async (keys, deleteOptions) => {
+      const toDelete = new Set([...keys, ...(deleteOptions?.removeKeys ?? [])]);
+      for (const key of toDelete) {
+        removed.add(key);
+        options.deletedKeys.push(key);
+      }
+      return true;
+    },
+    delete: async (key: string) => {
+      removed.add(key);
+      options.deletedKeys.push(key);
+    },
+  };
 }
 
 function expectProviderLogoutNotifications(
@@ -280,6 +344,7 @@ describe("oauthService", () => {
     const service = createBigModelService({
       apiClient: createMockApiClient(mockFetch),
       now: () => now,
+      monotonicNow: () => now,
     });
 
     const started = await service.startOAuthWithPolling(ZAI_PROVIDER_ID);
@@ -318,6 +383,16 @@ describe("oauthService", () => {
           tokenClient,
           credentialService: credentialServiceStub,
           accountIdentity: "user-1",
+          // 上游把账号凭据读取改为显式注入：Team Plan 运行时 key 必须按 family 读取当前 OAuth 账号。
+          loadOAuthAccountMaterial: async () => ({
+            family: "zai",
+            loginProvider: ZAI_PROVIDER_ID,
+            zcodeUserId: "user-1",
+            sessionRevision: null,
+            accountIdentity: "user-1",
+            accessToken: "zai-business-token",
+            zcodeJwtToken: "zcode-jwt",
+          }),
           access: {
             type: "zhipu-account",
             family: "zai",
@@ -459,6 +534,7 @@ describe("oauthService", () => {
     const service = createBigModelService({
       apiClient: createMockApiClient(mockFetch),
       now: () => now,
+      monotonicNow: () => now,
       adapters: [baseAdapter],
     });
 
@@ -499,6 +575,7 @@ describe("oauthService", () => {
     const service = createBigModelService({
       apiClient: createMockApiClient(mockFetch),
       now: () => now,
+      monotonicNow: () => now,
     });
 
     await service.startOAuthWithPolling(ZAI_PROVIDER_ID);
@@ -810,6 +887,7 @@ describe("oauthService", () => {
       const service = createBigModelService({
         apiClient: createMockApiClient(mockFetch),
         now: () => now,
+        monotonicNow: () => now,
       });
 
       await service.startOAuthWithPolling(ZAI_PROVIDER_ID);
@@ -865,6 +943,7 @@ describe("oauthService", () => {
     const service = createBigModelService({
       apiClient: createMockApiClient(mockFetch),
       now: () => now,
+      monotonicNow: () => now,
     });
 
     await service.startOAuthWithPolling(ZAI_PROVIDER_ID);
@@ -966,6 +1045,12 @@ describe("oauthService", () => {
         displayName: "Z.ai",
         enabled: true,
         order: 1,
+      },
+      {
+        id: "zai_cn",
+        displayName: "Z.ai (CN)",
+        enabled: true,
+        order: 2,
       },
     ]);
   });
@@ -1509,7 +1594,8 @@ describe("oauthService", () => {
     expect(await credentialServiceStub.load("oauth:active_provider")).toBeNull();
   });
 
-  it("falls back to zai userinfo when backend token response misses user", async () => {
+  // 上游收紧登录契约：token 交换必须返回 data.user.user_id，不再回退 userinfo 兜底。
+  it("rejects login when backend token response misses data.user.user_id", async () => {
     const fetchMock = vi.fn<typeof fetch>();
     const service = createBigModelService({
       apiClient: createMockApiClient(fetchMock),
@@ -1532,42 +1618,10 @@ describe("oauthService", () => {
       ),
     );
     fetchMock.mockResolvedValueOnce(createZaiBusinessLoginResponse());
-    fetchMock.mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          sub: "zai-u-003",
-          name: "Fallback User",
-          picture: "https://example.com/fallback-avatar.png",
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      ),
-    );
 
     await expect(
       service.handleCallback(`zcode://oauth/callback?code=zai-code-003&state=${state}`),
-    ).resolves.toEqual({
-      kind: "session",
-      provider: ZAI_PROVIDER_ID,
-      userInfo: {
-        id: "zai-u-003",
-        username: "Fallback User",
-        displayName: "Fallback User",
-        avatarUrl: "https://example.com/fallback-avatar.png",
-      },
-    });
-
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      3,
-      ZAI_OAUTH_PROVIDER_CONFIG.userinfoUrl,
-      expect.objectContaining({
-        method: "GET",
-        headers: {
-          Authorization: "Bearer zai_business_access_token",
-          "Content-Type": "application/json",
-        },
-      }),
-    );
+    ).rejects.toThrow("Token 交换失败：响应缺少 data.user.user_id");
   });
 
   it("maps zai backend expires_in into OAuthTokenSet expiresAt", async () => {
@@ -1591,6 +1645,8 @@ describe("oauthService", () => {
             zai: {
               access_token: "zai_oauth_access_token",
             },
+            // 上游要求 token 交换响应携带 data.user.user_id，缺失会直接拒绝登录。
+            user: { user_id: "zai-u-001" },
             expires_in: 86400,
           },
         }),
@@ -1607,6 +1663,7 @@ describe("oauthService", () => {
           state: "state-001",
           redirectUri: ZAI_OAUTH_PROVIDER_CONFIG.redirectUri,
           now: () => now,
+          monotonicNow: () => now,
         },
       ),
     ).resolves.toEqual({
@@ -1638,6 +1695,8 @@ describe("oauthService", () => {
             zai: {
               access_token: "zai_oauth_access_token",
             },
+            // 上游要求 token 交换响应携带 data.user.user_id，缺失会直接拒绝登录。
+            user: { user_id: "zai-u-001" },
           },
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
@@ -1674,7 +1733,7 @@ describe("oauthService", () => {
     expect(JSON.stringify(consoleLogSpy.mock.calls)).not.toContain(fullCode);
   });
 
-  it("logs zai final token response body without exposing full token", async () => {
+  it("does not expose full token in zai token exchange logs", async () => {
     const fetchMock = vi.fn<typeof fetch>();
     const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const adapter = new ZaiProviderAdapter(
@@ -1721,36 +1780,15 @@ describe("oauthService", () => {
       },
     );
 
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      expect.stringContaining("[zaiOAuth]"),
-      "token final response body",
-      {
-        code: 0,
-        msg: "",
-        data: {
-          token: "eyJh...ture",
-          tokenLength: fullToken.length,
-          zai: {
-            access_token: "zai_...leak",
-            accessTokenLength: fullZaiAccessToken.length,
-          },
-          expires_in: 86400,
-          user: {
-            user_id: "u_xxxxx",
-            email: "user@example.com",
-            avatar: "https://example.com/avatar.png",
-            created_at: "2026-04-27T10:00:00Z",
-          },
-        },
-      },
-    );
+    // 上游移除了逐字段的 token 响应日志，保留脱敏断言：任何日志都不得包含完整 token。
     expect(JSON.stringify(consoleLogSpy.mock.calls)).not.toContain(fullToken);
     expect(JSON.stringify(consoleLogSpy.mock.calls)).not.toContain(fullZaiAccessToken);
   });
 
   it("logs zai token response request id on backend error", async () => {
     const fetchMock = vi.fn<typeof fetch>();
-    const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    // 上游把后端失败日志改到 warn 级别，输出通道是 console.warn。
+    const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const adapter = new ZaiProviderAdapter(
       {
         ...ZAI_OAUTH_PROVIDER_CONFIG,
@@ -1791,7 +1829,7 @@ describe("oauthService", () => {
       }),
     );
 
-    expect(consoleLogSpy).toHaveBeenCalledWith(
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
       expect.stringContaining("[zaiOAuth]"),
       "token response error",
       {
@@ -1805,7 +1843,7 @@ describe("oauthService", () => {
         },
       },
     );
-    expect(JSON.stringify(consoleLogSpy.mock.calls)).not.toContain("visitor_id=secret");
+    expect(JSON.stringify(consoleWarnSpy.mock.calls)).not.toContain("visitor_id=secret");
   });
 
   it("stores namespaced credential keys and active provider after callback", async () => {
@@ -2392,18 +2430,15 @@ describe("oauthService", () => {
   it("clears OAuth login credentials when active provider cannot be decrypted", async () => {
     const onProviderLogout = vi.fn(async () => {});
     const deletedKeys: string[] = [];
-    const brokenCredentialService: ICredentialService = {
+    const brokenCredentialService = createOAuthCredentialStoreStub({
+      deletedKeys,
       load: async (key: string) => {
         if (key === "oauth:active_provider") {
           throw createMockCredentialDecryptError();
         }
         return `${key}-value`;
       },
-      save: async () => {},
-      delete: async (key: string) => {
-        deletedKeys.push(key);
-      },
-    };
+    });
     const service = new OAuthService(brokenCredentialService, {
       adapters: [],
       onProviderLogout,
@@ -2412,7 +2447,11 @@ describe("oauthService", () => {
     await expect(service.getActiveProvider()).resolves.toBeNull();
 
     expectDeletedOAuthSessionCredentials(deletedKeys);
-    expectProviderLogoutNotifications(onProviderLogout, [BIGMODEL_PROVIDER_ID, ZAI_PROVIDER_ID]);
+    expectProviderLogoutNotifications(onProviderLogout, [
+      BIGMODEL_PROVIDER_ID,
+      ZAI_PROVIDER_ID,
+      ZAI_CN_PROVIDER_ID,
+    ]);
   });
 
   it("keeps corrupt OAuth recovery successful when derived provider cleanup fails", async () => {
@@ -2421,18 +2460,15 @@ describe("oauthService", () => {
       throw new Error("model provider config write failed");
     });
     const deletedKeys: string[] = [];
-    const brokenCredentialService: ICredentialService = {
+    const brokenCredentialService = createOAuthCredentialStoreStub({
+      deletedKeys,
       load: async (key: string) => {
         if (key === "oauth:active_provider") {
           throw createMockCredentialDecryptError();
         }
         return `${key}-value`;
       },
-      save: async () => {},
-      delete: async (key: string) => {
-        deletedKeys.push(key);
-      },
-    };
+    });
     const service = new OAuthService(brokenCredentialService, {
       adapters: [],
       onProviderLogout,
@@ -2441,14 +2477,19 @@ describe("oauthService", () => {
     await expect(service.getActiveProvider()).resolves.toBeNull();
 
     expectDeletedOAuthSessionCredentials(deletedKeys);
-    expectProviderLogoutNotifications(onProviderLogout, [BIGMODEL_PROVIDER_ID, ZAI_PROVIDER_ID]);
+    expectProviderLogoutNotifications(onProviderLogout, [
+      BIGMODEL_PROVIDER_ID,
+      ZAI_PROVIDER_ID,
+      ZAI_CN_PROVIDER_ID,
+    ]);
     expect(warnSpy).toHaveBeenCalled();
   });
 
   it("clears OAuth login credentials when cached user info cannot be decrypted", async () => {
     const onProviderLogout = vi.fn(async () => {});
     const deletedKeys: string[] = [];
-    const brokenCredentialService: ICredentialService = {
+    const brokenCredentialService = createOAuthCredentialStoreStub({
+      deletedKeys,
       load: async (key: string) => {
         if (key === "oauth:active_provider") {
           return ZAI_PROVIDER_ID;
@@ -2458,11 +2499,7 @@ describe("oauthService", () => {
         }
         return `${key}-value`;
       },
-      save: async () => {},
-      delete: async (key: string) => {
-        deletedKeys.push(key);
-      },
-    };
+    });
     const service = new OAuthService(brokenCredentialService, {
       adapters: [
         {
@@ -2487,14 +2524,19 @@ describe("oauthService", () => {
     await expect(service.restoreCachedSession()).resolves.toBeNull();
 
     expectDeletedOAuthSessionCredentials(deletedKeys);
-    expectProviderLogoutNotifications(onProviderLogout, [BIGMODEL_PROVIDER_ID, ZAI_PROVIDER_ID]);
+    expectProviderLogoutNotifications(onProviderLogout, [
+      BIGMODEL_PROVIDER_ID,
+      ZAI_PROVIDER_ID,
+      ZAI_CN_PROVIDER_ID,
+    ]);
   });
 
   it("clears registered OAuth provider credentials when cached user info cannot be decrypted", async () => {
     const customProviderId = "custom-oauth" as OAuthProviderId;
     const onProviderLogout = vi.fn(async () => {});
     const deletedKeys: string[] = [];
-    const brokenCredentialService: ICredentialService = {
+    const brokenCredentialService = createOAuthCredentialStoreStub({
+      deletedKeys,
       load: async (key: string) => {
         if (key === "oauth:active_provider") {
           return customProviderId;
@@ -2504,11 +2546,7 @@ describe("oauthService", () => {
         }
         return `${key}-value`;
       },
-      save: async () => {},
-      delete: async (key: string) => {
-        deletedKeys.push(key);
-      },
-    };
+    });
     const service = new OAuthService(brokenCredentialService, {
       adapters: [
         {
@@ -2540,6 +2578,7 @@ describe("oauthService", () => {
     expectProviderLogoutNotifications(onProviderLogout, [
       BIGMODEL_PROVIDER_ID,
       ZAI_PROVIDER_ID,
+      ZAI_CN_PROVIDER_ID,
       customProviderId,
     ]);
   });
@@ -2763,6 +2802,7 @@ describe("oauthService", () => {
     const service = createBigModelService({
       apiClient: createMockApiClient(fetchMock),
       now: () => now,
+      monotonicNow: () => now,
     });
 
     const cachedUser = {
@@ -2962,18 +3002,20 @@ describe("oauthService", () => {
 
     let blockedBigModelTokenLoad = false;
     let businessTokenReads = 0;
-    vi.spyOn(credentialServiceStub, "load").mockImplementation(async (key) => {
-      // 首次读取用于本地有效期检查；这里暂停第二次、属于后台资料迁移的读取。
+    const originalLoadMany = credentialServiceStub.loadMany;
+    // 启动恢复与后台资料迁移都走批量读取；暂停第二次含 BigModel access token 的读取。
+    vi.spyOn(credentialServiceStub, "loadMany").mockImplementation(async (keys) => {
+      // 启动恢复内部会先读快照再复检（共三次含 access token），迁移读取在其后。
       if (
-        key === "oauth:bigmodel:access_token" &&
-        ++businessTokenReads === 2 &&
+        keys.includes("oauth:bigmodel:access_token") &&
+        ++businessTokenReads >= 4 &&
         !blockedBigModelTokenLoad
       ) {
         blockedBigModelTokenLoad = true;
         markTokenLoadStarted();
         await tokenLoadCanFinish;
       }
-      return credentialStore.get(key) ?? null;
+      return originalLoadMany.call(credentialServiceStub, keys);
     });
 
     await expect(migrationService.restoreCachedSession()).resolves.toEqual(cachedUser);
@@ -3042,12 +3084,18 @@ describe("oauthService", () => {
     await expect(service.restoreCachedSession()).resolves.toEqual(cachedUser);
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
-    vi.spyOn(credentialServiceStub, "save").mockImplementation(async (key, value) => {
-      if (key === "oauth:bigmodel:user_info" && value.includes("Account Center Name")) {
+    // 迁移结果通过批量提交落盘，阻塞含新昵称的 updateMany。
+    vi.spyOn(credentialServiceStub, "updateMany").mockImplementation(async (changes) => {
+      const userInfo = changes["oauth:bigmodel:user_info"];
+      if (typeof userInfo === "string" && userInfo.includes("Account Center Name")) {
         markSaveStarted();
         await saveCanFinish;
       }
-      credentialStore.set(key, value);
+      for (const [key, value] of Object.entries(changes)) {
+        if (value === null) credentialStore.delete(key);
+        else credentialStore.set(key, value);
+      }
+      return true;
     });
 
     resolveUserInfo(
@@ -3119,18 +3167,27 @@ describe("oauthService", () => {
       );
       await credentialServiceStub.save("bot:independent:token", "bot-token");
       await credentialServiceStub.save("independent-pat", "pat-token");
-      const originalLoad = credentialServiceStub.load;
-      vi.spyOn(credentialServiceStub, "load").mockImplementation(async (key) => {
-        if (key === (kind === "business" ? `oauth:${provider}:access_token` : "zcodejwttoken"))
+      const originalLoadMany = credentialServiceStub.loadMany;
+      // 解密失败只注入一次：清理损坏会话后的重读要能正常返回，才能落到 signed-out。
+      let decryptErrorInjected = false;
+      vi.spyOn(credentialServiceStub, "loadMany").mockImplementation(async (keys) => {
+        const target = kind === "business" ? `oauth:${provider}:access_token` : "zcodejwttoken";
+        if (!decryptErrorInjected && keys.includes(target)) {
+          decryptErrorInjected = true;
           throw createMockCredentialDecryptError();
-        return originalLoad(key);
+        }
+        return originalLoadMany.call(credentialServiceStub, keys);
       });
 
       await expect(service.restoreCachedSessionState()).resolves.toEqual({ status: "signed-out" });
       for (const key of OAUTH_SESSION_CREDENTIAL_KEYS) expect(credentialStore.has(key)).toBe(false);
       expect(credentialStore.get("bot:independent:token")).toBe("bot-token");
       expect(credentialStore.get("independent-pat")).toBe("pat-token");
-      expectProviderLogoutNotifications(onProviderLogout, [BIGMODEL_PROVIDER_ID, ZAI_PROVIDER_ID]);
+      expectProviderLogoutNotifications(onProviderLogout, [
+        BIGMODEL_PROVIDER_ID,
+        ZAI_PROVIDER_ID,
+        ZAI_CN_PROVIDER_ID,
+      ]);
       expect(fetchMock).not.toHaveBeenCalled();
     },
   );
@@ -3145,11 +3202,12 @@ describe("oauthService", () => {
       "oauth:zai:user_info",
       JSON.stringify({ user_id: "cached-user", name: "Fixture User" }),
     );
-    const originalLoad = credentialServiceStub.load;
+    const originalLoadMany = credentialServiceStub.loadMany;
     const failure = new Error("credential RPC unavailable");
-    vi.spyOn(credentialServiceStub, "load").mockImplementation(async (key) => {
-      if (key === "oauth:zai:access_token") throw failure;
-      return originalLoad(key);
+    // 普通 IO 错误同样发生在会话批量读取阶段，必须原样传播且不清理凭据。
+    vi.spyOn(credentialServiceStub, "loadMany").mockImplementation(async (keys) => {
+      if (keys.includes("oauth:zai:access_token")) throw failure;
+      return originalLoadMany.call(credentialServiceStub, keys);
     });
     await expect(service.restoreCachedSessionState()).rejects.toBe(failure);
     expect(credentialStore.get("oauth:active_provider")).toBe(ZAI_PROVIDER_ID);
@@ -3219,13 +3277,14 @@ describe("oauthService", () => {
     let releaseExpiredJwtRead = () => undefined;
     let didBlockExpiredJwtRead = false;
     const expiredJwtReadStarted = new Promise<void>((resolve) => {
-      const originalLoad = credentialServiceStub.load;
-      vi.spyOn(credentialServiceStub, "load").mockImplementation(async (key) => {
-        if (key !== "zcodejwttoken" || didBlockExpiredJwtRead) {
-          return originalLoad(key);
+      const originalLoadMany = credentialServiceStub.loadMany;
+      // 启动恢复用批量接口读会话；在这里暂停含 zcodejwttoken 的那次读取。
+      vi.spyOn(credentialServiceStub, "loadMany").mockImplementation(async (keys) => {
+        if (!keys.includes("zcodejwttoken") || didBlockExpiredJwtRead) {
+          return originalLoadMany.call(credentialServiceStub, keys);
         }
         didBlockExpiredJwtRead = true;
-        const snapshot = await originalLoad(key);
+        const snapshot = await originalLoadMany.call(credentialServiceStub, keys);
         resolve();
         await new Promise<void>((release) => {
           releaseExpiredJwtRead = release;
@@ -3267,10 +3326,11 @@ describe("oauthService", () => {
     const reading = new Promise<void>((resolve) => {
       started = resolve;
     });
-    const originalLoad = credentialServiceStub.load;
+    const originalLoadMany = credentialServiceStub.loadMany;
     let first = true;
-    vi.spyOn(credentialServiceStub, "load").mockImplementation(async (key) => {
-      if (key === "oauth:bigmodel:access_token" && first) {
+    // 启动恢复用批量接口读会话；让首次含 access_token 的批量读取暂停后抛解密错误。
+    vi.spyOn(credentialServiceStub, "loadMany").mockImplementation(async (keys) => {
+      if (keys.includes("oauth:bigmodel:access_token") && first) {
         first = false;
         started();
         await new Promise<void>((resolve) => {
@@ -3278,7 +3338,7 @@ describe("oauthService", () => {
         });
         throw createMockCredentialDecryptError();
       }
-      return originalLoad(key);
+      return originalLoadMany.call(credentialServiceStub, keys);
     });
     const fetchMock = vi.fn<typeof fetch>();
     const service = createBigModelService({ apiClient: createMockApiClient(fetchMock) });
@@ -3306,13 +3366,14 @@ describe("oauthService", () => {
     let releaseExpiredJwtRead = () => undefined;
     let didBlockExpiredJwtRead = false;
     const expiredJwtReadStarted = new Promise<void>((resolve) => {
-      const originalLoad = credentialServiceStub.load;
-      vi.spyOn(credentialServiceStub, "load").mockImplementation(async (key) => {
-        if (key !== "zcodejwttoken" || didBlockExpiredJwtRead) {
-          return originalLoad(key);
+      const originalLoadMany = credentialServiceStub.loadMany;
+      // 启动恢复用批量接口读会话；在这里暂停含 zcodejwttoken 的那次读取。
+      vi.spyOn(credentialServiceStub, "loadMany").mockImplementation(async (keys) => {
+        if (!keys.includes("zcodejwttoken") || didBlockExpiredJwtRead) {
+          return originalLoadMany.call(credentialServiceStub, keys);
         }
         didBlockExpiredJwtRead = true;
-        const snapshot = await originalLoad(key);
+        const snapshot = await originalLoadMany.call(credentialServiceStub, keys);
         resolve();
         await new Promise<void>((release) => {
           releaseExpiredJwtRead = release;
@@ -3435,6 +3496,11 @@ describe("oauthService", () => {
 
     await credentialServiceStub.save("oauth:active_provider", BIGMODEL_PROVIDER_ID);
     await credentialServiceStub.save("oauth:bigmodel:access_token", "session-access-token");
+    // 上游要求恢复必须已有可信缓存主身份，不能仅凭远端 userinfo 构造用户。
+    await credentialServiceStub.save(
+      "oauth:bigmodel:user_info",
+      JSON.stringify({ id: "u-restore-001", username: "Restore User", displayName: "Restore User" }),
+    );
 
     fetchMock.mockResolvedValueOnce(
       new Response(
@@ -3474,6 +3540,11 @@ describe("oauthService", () => {
 
     await credentialServiceStub.save("oauth:active_provider", BIGMODEL_PROVIDER_ID);
     await credentialServiceStub.save("auth_token", "legacy-access-token");
+    // 上游要求恢复必须已有可信缓存主身份，legacy token 仍需配合缓存 profile。
+    await credentialServiceStub.save(
+      "oauth:bigmodel:user_info",
+      JSON.stringify({ id: "u-legacy-001", username: "Legacy User", displayName: "Legacy User" }),
+    );
 
     fetchMock.mockResolvedValueOnce(
       new Response(

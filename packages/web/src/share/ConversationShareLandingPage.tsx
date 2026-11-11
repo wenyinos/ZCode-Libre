@@ -9,25 +9,20 @@ import {
   type MouseEvent,
 } from "react";
 import { ArrowUpRightIcon, MoonIcon, SunIcon } from "lucide-react";
-import { BIGMODEL_PROVIDER_ID, ZAI_PROVIDER_ID } from "@zcode/shared";
 import type { ConversationSharePreview } from "@zcode/shared";
 import { ConversationShareReadonlyTimeline } from "@zcode/ui/conversation-share-readonly";
-import { renderOAuthProviderIcon } from "@zcode/ui/oauth-provider-icon";
+import {
+  WebRegionalLoginActions,
+  type WebRegionalLoginActionsProps,
+} from "#src/auth/WebRegionalLoginActions.js";
 import { applyTheme, resolveTheme, type Theme } from "@zcode/ui/useTheme";
 import "./conversationShareLandingPage.css";
-import type { WebOAuthProviderId } from "../auth/browserOAuthCredentialRepo.js";
 import {
   buildShareImportDeepLink,
   type ConversationSharePreviewClientError,
   type ConversationSharePreviewErrorKind,
 } from "./conversationSharePreviewClient.js";
 import { resolveShareHeaderView, type ShareHeaderView } from "./shareHeaderLayout.js";
-
-/** 登录入口的展示顺序，与桌面端登录卡片一致（z.ai 在上）。 */
-const SHARE_LOGIN_PROVIDERS: readonly WebOAuthProviderId[] = [
-  ZAI_PROVIDER_ID,
-  BIGMODEL_PROVIDER_ID,
-];
 
 export type ConversationShareLandingLocale = "zh-CN" | "en-US";
 export type ConversationShareLandingState =
@@ -65,10 +60,11 @@ interface Copy {
   loginDescription: string;
   login: string;
   /** 每个 provider 的登录按钮文案与区域徽标，对齐桌面端 login.oauth.* 口径。 */
-  loginWith: Record<WebOAuthProviderId, string>;
-  loginRegion: Record<WebOAuthProviderId, string>;
   expiredTitle: string;
   expiredDescription: string;
+  revokedTitle: string;
+  revokedDescription: string;
+  manageShares: string;
   notFoundTitle: string;
   notFoundDescription: string;
   notFoundAccountHint: string;
@@ -113,17 +109,14 @@ const COPY: Record<ConversationShareLandingLocale, Copy> = {
     loginTitle: "登录后查看分享",
     loginDescription: "请登录后确认你是否有权限查看这个分享。",
     login: "登录",
-    loginWith: {
-      zai: "连接 Z.ai 继续使用",
-      bigmodel: "连接 BigModel 继续使用",
-    },
-    loginRegion: { zai: "全球", bigmodel: "中国" },
     expiredTitle: "分享已过期",
     expiredDescription: "这个分享链接已经过期，请让分享者重新生成链接。",
+    revokedTitle: "分享已撤销",
+    revokedDescription: "分享者已撤销这个链接。如需查看，请让分享者重新分享。",
+    manageShares: "管理我的分享",
     notFoundTitle: "找不到分享内容",
     notFoundDescription: "链接可能无效、分享已被移除，或当前登录账号无法访问。",
-    notFoundAccountHint:
-      "Z.ai 与 BigModel 的账号数据不互通。请检查是否选错了登录平台或使用了其他账号。",
+    notFoundAccountHint: "请确认所选区域和账号与分享者授予访问权限的账号一致。",
     backToHome: "回到首页",
     rateLimitedTitle: "访问过于频繁",
     rateLimitedDescription: "请稍后重试。",
@@ -159,18 +152,16 @@ const COPY: Record<ConversationShareLandingLocale, Copy> = {
     loginTitle: "Sign in to view this share",
     loginDescription: "Sign in to check whether you can view this shared conversation.",
     login: "Sign in",
-    loginWith: {
-      zai: "Connect to Z.ai",
-      bigmodel: "Connect to BigModel",
-    },
-    loginRegion: { zai: "Global", bigmodel: "CN" },
     expiredTitle: "Share expired",
     expiredDescription: "This share link has expired. Ask the author to create a new one.",
+    revokedTitle: "Share revoked",
+    revokedDescription: "The author revoked this link. Ask them to share it again.",
+    manageShares: "Manage my shares",
     notFoundTitle: "Share not found",
     notFoundDescription:
       "The link may be invalid, the share may have been removed, or your current account may not have access.",
     notFoundAccountHint:
-      "Z.ai and BigModel do not share account data. Check whether you selected the wrong sign-in platform or used a different account.",
+      "Check that your account and region match the account granted access by the author.",
     backToHome: "Back to home",
     rateLimitedTitle: "Too many requests",
     rateLimitedDescription: "Try again later.",
@@ -226,7 +217,7 @@ const SHARE_CONTINUE_COMPACT_CLASS =
 const SHARE_THEME_TOGGLE_CLASS =
   "inline-flex size-8 shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-input-border-focused";
 
-function ShareThemeToggle({
+export function ShareThemeToggle({
   theme,
   copy,
   onThemeChange,
@@ -251,6 +242,46 @@ function ShareThemeToggle({
     >
       <Icon className="size-4" aria-hidden="true" />
     </button>
+  );
+}
+
+/** 品牌标 + 字标。分享落地页与分享管理页共用，定位由各自的外层容器决定。 */
+export function ShareBrandMark() {
+  return (
+    <>
+      <span data-share-brand-icon="true" aria-hidden="true">
+        {/* ZCode-Libre 品牌标：渐变 Z + 斜杠下缘缺口（与官方轮廓区分），几何来自 packages/ui/src/assets/brand/zcode-libre-mark.svg。 */}
+        <svg viewBox="0 0 256 256" fill="none" focusable="false">
+          <defs>
+            <linearGradient id="zcodeLibreShareMark" x1="0" y1="0" x2="0.85" y2="1">
+              <stop offset="0" stopColor="#5EEAD4" />
+              <stop offset="0.45" stopColor="#38BDF8" />
+              <stop offset="1" stopColor="#6366F1" />
+            </linearGradient>
+            <mask
+              id="zcodeLibreShareNotch"
+              maskUnits="userSpaceOnUse"
+              maskContentUnits="userSpaceOnUse"
+              x="0"
+              y="0"
+              width="256"
+              height="256"
+            >
+              <rect x="0" y="0" width="256" height="256" fill="#fff" />
+              <path d="M188 113L146 173L138 119Z" fill="#000" />
+            </mask>
+          </defs>
+          <g mask="url(#zcodeLibreShareNotch)">
+            <g transform="translate(0 19)" fill="url(#zcodeLibreShareMark)">
+              <path d="M134.4 0.130152L116.48 25.6022C113.665 29.5699 109.054 32.0019 104.064 32.0019H6.3999V0C6.3999 0.130149 134.4 0.130152 134.4 0.130152Z" />
+              <path d="M256 0.130127L102.401 217.732H0L153.599 0.130127H256Z" />
+              <path d="M121.601 217.732L139.65 192.134C142.465 188.166 147.076 185.734 152.067 185.734H249.604V217.736H121.601V217.732Z" />
+            </g>
+          </g>
+        </svg>
+      </span>
+      <span data-share-brand-wordmark="true">ZCode-Libre</span>
+    </>
   );
 }
 
@@ -297,12 +328,15 @@ export function ConversationShareLandingPage({
   locale,
   theme,
   onThemeChange,
+  manageHref,
 }: {
   shareCode: string;
   preview: ConversationSharePreview;
   locale?: ConversationShareLandingLocale;
   theme?: Theme;
   onThemeChange?: (theme: Theme) => void;
+  /** 已登录时显示「管理我的分享」入口；放在元信息行，不改变顶部栏的连续几何轨道。 */
+  manageHref?: string;
 }) {
   const resolvedLocale = localeOf(locale);
   const copy = COPY[resolvedLocale];
@@ -441,10 +475,10 @@ export function ConversationShareLandingPage({
                 <div
                   ref={brandRef}
                   data-share-brand="true"
-                  className="shrink-0 text-ui-lg font-semibold text-foreground"
+                  className="flex shrink-0 items-center gap-2 text-foreground"
                   aria-label="ZCode-Libre"
                 >
-                  ZCode-Libre
+                  <ShareBrandMark />
                 </div>
                 <h1
                   ref={titleRef}
@@ -558,6 +592,15 @@ export function ConversationShareLandingPage({
               // 「2026年9月3日 11:55 · 1 artifact」这种中英混排。
               <span aria-label={artifactCountLabel}>· {artifactCountLabel}</span>
             ) : null}
+            {manageHref ? (
+              <a
+                data-share-manage-link="true"
+                className="ml-auto text-brand underline-offset-2 hover:underline"
+                href={manageHref}
+              >
+                {copy.manageShares}
+              </a>
+            ) : null}
           </div>
         </ShareContentInset>
         {importLink && showContinueHelp ? (
@@ -619,18 +662,21 @@ export function ConversationShareLandingStatus({
   locale,
   onLogin,
   onRetry,
+  loginCopy,
 }: {
   state: Exclude<ConversationShareLandingState, { kind: "ready" }>;
   locale?: ConversationShareLandingLocale;
-  onLogin?: (provider: WebOAuthProviderId) => void;
+  onLogin?: WebRegionalLoginActionsProps["onLogin"];
   onRetry?: () => void;
+  /** 管理页复用同一登录卡片，只替换标题与说明。 */
+  loginCopy?: { title: string; description: string };
 }) {
   const copy = COPY[localeOf(locale)];
   const content =
     state.kind === "loading"
       ? { title: copy.loading, description: copy.loadingDescription }
       : state.kind === "login_required"
-        ? { title: copy.loginTitle, description: copy.loginDescription }
+        ? (loginCopy ?? { title: copy.loginTitle, description: copy.loginDescription })
         : state.error === "rate_limited"
           ? { title: copy.rateLimitedTitle, description: copy.rateLimitedDescription }
           : state.error === "feature_disabled"
@@ -642,15 +688,17 @@ export function ConversationShareLandingStatus({
                 }
               : state.error === "expired"
                 ? { title: copy.expiredTitle, description: copy.expiredDescription }
-                : state.error === "not_found"
-                  ? { title: copy.notFoundTitle, description: copy.notFoundDescription }
-                  : state.error === "unsupported_schema_version"
-                    ? { title: copy.outdatedTitle, description: copy.outdatedDescription }
-                    : state.error === "invalid_contract"
-                      ? { title: copy.invalidTitle, description: copy.invalidDescription }
-                      : state.error === "authentication_required"
-                        ? { title: copy.loginTitle, description: copy.loginDescription }
-                        : { title: copy.networkTitle, description: copy.networkDescription };
+                : state.error === "revoked"
+                  ? { title: copy.revokedTitle, description: copy.revokedDescription }
+                  : state.error === "not_found"
+                    ? { title: copy.notFoundTitle, description: copy.notFoundDescription }
+                    : state.error === "unsupported_schema_version"
+                      ? { title: copy.outdatedTitle, description: copy.outdatedDescription }
+                      : state.error === "invalid_contract"
+                        ? { title: copy.invalidTitle, description: copy.invalidDescription }
+                        : state.error === "authentication_required"
+                          ? { title: copy.loginTitle, description: copy.loginDescription }
+                          : { title: copy.networkTitle, description: copy.networkDescription };
   const showLogin =
     state.kind === "login_required" ||
     (state.kind === "error" && state.error === "authentication_required");
@@ -668,6 +716,7 @@ export function ConversationShareLandingStatus({
     !(
       state.kind === "error" &&
       (state.error === "expired" ||
+        state.error === "revoked" ||
         state.error === "unsupported_schema_version" ||
         state.error === "feature_disabled" ||
         state.error === "not_found" ||
@@ -702,28 +751,9 @@ export function ConversationShareLandingStatus({
             {copy.notFoundAccountHint}
           </p>
         ) : null}
-        {/*
-          两个 provider 竖排全宽，对齐桌面端登录卡片（图标 + 文案 + 区域徽标）。
-          必须两个都给：private 分享的 owner 身份是 provider 特定的，页面无法预先知道
-          这份分享属于哪一边——猜错就等于把用户挡在自己的分享外面。
-        */}
         {showLogin && onLogin ? (
-          <div className="mt-5 space-y-2">
-            {SHARE_LOGIN_PROVIDERS.map((provider) => (
-              <button
-                key={provider}
-                type="button"
-                data-share-login-provider={provider}
-                className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-ui-base text-primary-foreground"
-                onClick={() => onLogin(provider)}
-              >
-                {renderOAuthProviderIcon(provider, "size-4")}
-                <span className="min-w-0 truncate">{copy.loginWith[provider]}</span>
-                <span className="ml-1 inline-flex h-5 shrink-0 items-center rounded-full border border-primary-foreground/30 px-2 text-ui-xs font-medium leading-none text-primary-foreground/60">
-                  {copy.loginRegion[provider]}
-                </span>
-              </button>
-            ))}
+          <div className="mt-5">
+            <WebRegionalLoginActions onLogin={onLogin} locale={locale} />
           </div>
         ) : null}
         {canRetry || isNotFound ? (
@@ -760,16 +790,18 @@ export function ConversationShareLandingLoader({
   onLogout,
   locale,
   theme,
+  manageHref,
 }: {
   shareCode: string;
   client: {
     getPreview: (shareCode: string, accessToken?: string) => Promise<ConversationSharePreview>;
   };
   getAccessToken?: () => string | null;
-  onLogin?: (provider: WebOAuthProviderId) => void;
+  onLogin?: WebRegionalLoginActionsProps["onLogin"];
   onLogout?: () => void;
   locale?: ConversationShareLandingLocale;
   theme?: Theme;
+  manageHref?: string;
 }) {
   const [state, setState] = useState<ConversationShareLandingState>({ kind: "loading" });
   const [activeTheme, setActiveTheme] = useState<Theme>(theme ?? "zai-light");
@@ -831,6 +863,7 @@ export function ConversationShareLandingLoader({
         locale={locale}
         theme={activeTheme}
         onThemeChange={handleThemeChange}
+        manageHref={getAccessToken?.() ? manageHref : undefined}
       />
     );
   return (

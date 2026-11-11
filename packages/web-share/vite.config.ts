@@ -44,8 +44,54 @@ export default defineConfig(({ mode }) => {
         },
         { find: "@zcode/shared", replacement: resolve(REPO_ROOT, "packages/shared/src/index.ts") },
         { find: "@", replacement: resolve(REPO_ROOT, "packages/ui/src") },
-        // Share 镜像不安装 @zcode/ui（它会带入 services/rpc 闭包），子路径导入必须显式指向源码。
-        { find: "@zcode/ui/useTheme", replacement: resolve(REPO_ROOT, "packages/ui/src/useTheme.ts") },
+        // Docker 只给 web-share 安装依赖，复用的 Web/UI 源文件找不到同级依赖链接。
+        // 根入口必须精确匹配，避免把 shared/mcp-apps 等子路径改写成 index.ts/mcp-apps。
+        {
+          find: /^@zcode\/shared$/,
+          replacement: resolve(REPO_ROOT, "packages/shared/src/index.ts"),
+        },
+        // Bugfix：message.tsx 的文件链接菜单静态引用 useWorkspaceServices / file-menu，二者值导入
+        // @zcode/rpc，分享只读时间线因此带上 rpc；镜像未安装它，Docker 构建解析失败。rpc 无三方依赖，
+        // 分享页没有 services 时也不会走到该分支，所以直接指向源码（Dockerfile 同步复制 rpc/src）。
+        {
+          find: /^@zcode\/rpc$/,
+          replacement: resolve(REPO_ROOT, "packages/rpc/src/index.ts"),
+        },
+        // Bugfix：shared/app-control 值导入 session-control 契约；镜像只复制该包源码（唯一三方依赖 zod 已由 shared
+        // 安装），未登记别名时 Docker 构建解析失败。
+        {
+          find: /^@zcode\/session-control\/contracts$/,
+          replacement: resolve(REPO_ROOT, "packages/session-control/src/contract.ts"),
+        },
+        // Share 镜像不安装 @zcode/ui（它会带入 services 闭包），子路径导入必须显式指向源码。
+        {
+          find: "@zcode/ui/useTheme",
+          replacement: resolve(REPO_ROOT, "packages/ui/src/useTheme.ts"),
+        },
+        // 只读时间线的协议子路径同时是 shareBuildBoundary 守卫的准入声明。
+        {
+          find: "@zcode/shared/zcode-protocol-v4",
+          replacement: resolve(REPO_ROOT, "packages/shared/src/zcode-protocol-v4/index.ts"),
+        },
+        // Bugfix：test-ids 改为只从子路径导入后，reasoning.tsx、ToolSummaryRow.tsx 等 share 闭包
+        // 文件引用了它；镜像没有 packages/ui 的依赖链接，未登记别名时 Docker 构建解析失败。
+        {
+          find: "@zcode/shared/test-ids",
+          replacement: resolve(REPO_ROOT, "packages/shared/src/test-ids.ts"),
+        },
+        // 分享管理页复用的基础控件；只依赖 radix-ui / cva / lucide，均在 share-ui 依赖闭包内。
+        {
+          find: "@zcode/ui/button",
+          replacement: resolve(REPO_ROOT, "packages/ui/src/components/ui/button.tsx"),
+        },
+        {
+          find: "@zcode/ui/dropdown-menu",
+          replacement: resolve(REPO_ROOT, "packages/ui/src/components/ui/dropdown-menu.tsx"),
+        },
+        {
+          find: "@zcode/ui/alert-dialog",
+          replacement: resolve(REPO_ROOT, "packages/ui/src/components/ui/alert-dialog.tsx"),
+        },
         {
           find: "@zcode/ui/conversation-share-readonly",
           replacement: resolve(REPO_ROOT, "packages/share-ui/src/index.ts"),

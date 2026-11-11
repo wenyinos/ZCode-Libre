@@ -67,10 +67,27 @@ function epochSeconds(year: number, month: number, day: number, hour = 0): numbe
 function makeCredentialService(
   loadValue: (key: string) => string | null = () => null,
 ): ICredentialService {
+  // Bug 原因：上游 v3.18.0 把匿名反馈身份改成凭据库里的 access token（saveIfAbsent 签发），
+  // list() 先读该键，读不到就直接返回空列表且不发请求。旧 mock 只把 value 返回、不落盘，
+  // 于是 create 之后 list.items 恒为 []。这里用内存 Map 复现真实读写语义。
+  const stored = new Map<string, string>();
   return {
-    load: vi.fn(async (key: string) => loadValue(key)),
-    save: vi.fn(async () => {}),
-    delete: vi.fn(async () => {}),
+    load: vi.fn(async (key: string) => loadValue(key) ?? stored.get(key) ?? null),
+    save: vi.fn(async (key: string, value: string) => {
+      stored.set(key, value);
+    }),
+    delete: vi.fn(async (key: string) => {
+      stored.delete(key);
+    }),
+    saveIfAbsent: vi.fn(async (key: string, value: string) => {
+      const existing = loadValue(key) ?? stored.get(key);
+      if (existing) return existing;
+      stored.set(key, value);
+      return value;
+    }),
+    deleteIfEquals: vi.fn(async (key: string, expected: string) => {
+      if (stored.get(key) === expected) stored.delete(key);
+    }),
   };
 }
 
@@ -94,6 +111,12 @@ function makeFetchApiClient(): ApiClient {
     request: (input, init) => fetch(input, init),
   };
 }
+
+// 上游改为由调用方显式传入鉴权头：FeedbackHttpClient 不再自己回退 getAuthHeaders。
+const TEST_AUTH_HEADERS = {
+  Authorization: "Bearer test-jwt",
+  "X-Device-Mid": "desktop-device-mid-test",
+};
 
 function makeClient(
   baseUrl = "https://zcode.z.ai/api/v1",
@@ -154,18 +177,21 @@ describe("FeedbackHttpClient", () => {
     });
 
     await expect(
-      client.create({
-        title: "ticket",
-        description: "desc",
-        type: "bug",
-        severity: "P2-中",
-        locale: "en-US",
-        device: {
-          appVersion: "1.2.3",
-          osPlatform: "darwin",
-          osVersion: "23.1.0",
+      client.create(
+        {
+          title: "ticket",
+          description: "desc",
+          type: "bug",
+          severity: "P2-中",
+          locale: "en-US",
+          device: {
+            appVersion: "1.2.3",
+            osPlatform: "darwin",
+            osVersion: "23.1.0",
+          },
         },
-      }),
+        TEST_AUTH_HEADERS,
+      ),
     ).resolves.toMatchObject({ id: "fbk_1" });
 
     expect(apiClient.request).toHaveBeenCalledTimes(1);
@@ -198,12 +224,11 @@ describe("FeedbackHttpClient", () => {
 
       expect(String(url)).toBe("https://zcode.z.ai/api/v1/feedback/ticket");
       expect(headers.Authorization).toBe("Bearer test-jwt");
-      expect(headers["X-Device-Mid"]).toBe("desktop-device-mid-test");
+      // 上游不再通过 HTTP 头或请求体传 device_mid，匿名身份改由 access token 关联。
       expect(headers["Accept-Language"]).toBe("en-US");
       expect(headers["x-request-id"]).toMatch(REQUEST_ID_PATTERN);
       expect(body).toMatchObject({
         title: "ticket",
-        device_mid: "desktop-device-mid-test",
         content: {
           description: "desc",
           category: "bug",
@@ -247,15 +272,18 @@ describe("FeedbackHttpClient", () => {
       agentFramework: "zcode-agent",
     };
 
-    const ticket = await makeClient().create({
-      title: "ticket",
-      description: "desc",
-      type: "bug",
-      severity: "P2-中",
-      contact: "me@example.com",
-      locale: "en-US",
-      device,
-    });
+    const ticket = await makeClient().create(
+      {
+        title: "ticket",
+        description: "desc",
+        type: "bug",
+        severity: "P2-中",
+        contact: "me@example.com",
+        locale: "en-US",
+        device,
+      },
+      TEST_AUTH_HEADERS,
+    );
 
     expect(ticket).toMatchObject({
       id: "fbk_1",
@@ -562,7 +590,7 @@ describe("FeedbackHttpClient", () => {
     });
 
     await expect(
-      client.create({ title: "连接超时", description: "重试后提交成功", type: "bug" }),
+      client.create({ title: "连接超时", description: "重试后提交成功", type: "bug" }, TEST_AUTH_HEADERS),
     ).resolves.toMatchObject({ id: "fbk_connect_timeout_retry" });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -596,7 +624,7 @@ describe("FeedbackHttpClient", () => {
     });
 
     await expect(
-      client.create({ title: "连接重置", description: "不能重复创建", type: "bug" }),
+      client.create({ title: "连接重置", description: "不能重复创建", type: "bug" }, TEST_AUTH_HEADERS),
     ).rejects.toThrow("fetch failed");
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -616,7 +644,7 @@ describe("FeedbackHttpClient", () => {
     });
 
     await expect(
-      client.create({ title: "响应超时", description: "不能重复创建", type: "bug" }),
+      client.create({ title: "响应超时", description: "不能重复创建", type: "bug" }, TEST_AUTH_HEADERS),
     ).rejects.toThrow("fetch failed");
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -643,7 +671,7 @@ describe("FeedbackHttpClient", () => {
     });
 
     await expect(
-      client.create({ title: "持续建连超时", description: "三次后失败", type: "bug" }),
+      client.create({ title: "持续建连超时", description: "三次后失败", type: "bug" }, TEST_AUTH_HEADERS),
     ).rejects.toThrow("fetch failed");
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(logger.warn).toHaveBeenCalledWith(
@@ -726,6 +754,7 @@ describe("FeedbackHttpClient", () => {
         "shot.png",
         "image/png",
         {
+          authHeaders: TEST_AUTH_HEADERS,
           messageId: "msg_5",
           onUploadProgress: (event) => progressEvents.push(event),
         },
@@ -818,7 +847,7 @@ describe("FeedbackHttpClient", () => {
 
     try {
       await expect(
-        client.uploadFile("fbk_large", "log", filePath, "one-gib.zip", "application/zip"),
+        client.uploadFile("fbk_large", "log", filePath, "one-gib.zip", "application/zip", { authHeaders: TEST_AUTH_HEADERS }),
       ).rejects.toThrow(`Feedback attachment exceeds max size ${ONE_GIB_BYTES - 1}`);
       expect(apiClient.request).toHaveBeenCalledTimes(1);
       expect(apiClient.request).toHaveBeenCalledWith(
@@ -857,7 +886,7 @@ describe("FeedbackHttpClient", () => {
 
     try {
       await expect(
-        client.uploadFile("fbk_large", "log", filePath, "too-large.zip", "application/zip"),
+        client.uploadFile("fbk_large", "log", filePath, "too-large.zip", "application/zip", { authHeaders: TEST_AUTH_HEADERS }),
       ).rejects.toThrow(`Feedback attachment exceeds max size ${ONE_GIB_BYTES}`);
       expect(apiClient.request).not.toHaveBeenCalled();
     } finally {
@@ -886,7 +915,7 @@ describe("FeedbackHttpClient", () => {
 
     try {
       await expect(
-        client.uploadFile("fbk_large", "image", filePath, "too-large.png", "image/png"),
+        client.uploadFile("fbk_large", "image", filePath, "too-large.png", "image/png", { authHeaders: TEST_AUTH_HEADERS }),
       ).rejects.toThrow("Feedback attachment exceeds max size 104857600");
       expect(apiClient.request).not.toHaveBeenCalled();
     } finally {
@@ -989,21 +1018,51 @@ describe("createFeedbackService", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("uses the host device_mid for anonymous tickets and local ticket storage", async () => {
+  it("creates anonymous tickets without sending device_mid and stores them locally", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "feedback-service-"));
     setDataBaseDir(tempDir);
     const createdAt = epochSeconds(2026, 6, 25, 12);
     const hostDeviceMid = "desktop-device-mid-001";
-    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+    const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
       const headers = init?.headers as Record<string, string>;
+      // 匿名首单会先签发 access token，再带 token 创建工单。
+      if (String(url).endsWith("/feedback/access-token")) {
+        expect(headers.Authorization).toBeUndefined();
+        return new Response(
+          JSON.stringify({ code: 0, msg: "ok", data: { access_token: "anon-access-token" } }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
       const body = JSON.parse(String(init?.body ?? "{}")) as {
         device_mid?: string;
         environment?: Record<string, unknown>;
       };
+      // Bug 原因：request() 把 init 原样透传给 fetch，list() 的 init 是 undefined，
+      // 真实 fetch 默认 GET 但 init.method 为空，只判断 "GET" 会漏掉列表请求。
+      if (!init?.method || init?.method === "GET") {
+        return new Response(
+          JSON.stringify({
+            code: 0,
+            msg: "ok",
+            data: {
+              items: [
+                {
+                  ticket_id: "fbk_anon",
+                  title: "匿名反馈",
+                  status: "submitted",
+                  created_at: createdAt,
+                },
+              ],
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
       expect(headers.Authorization).toBeUndefined();
-      expect(headers["X-Device-Mid"]).toBe(hostDeviceMid);
+      // 匿名身份改由 access token 关联，device_mid 不再随请求头或请求体发送。
+      expect(headers["X-Device-Mid"]).toBeUndefined();
       expect(headers["X-Feedback-Client-Id"]).toBeUndefined();
-      expect(body.device_mid).toBe(hostDeviceMid);
+      expect(body.device_mid).toBeUndefined();
       expect(body.environment?.app_version).toEqual(expect.any(String));
       expect(body.environment?.os_version).toBe(release());
       expect(String(body.environment?.os_version ?? "").length).toBeLessThanOrEqual(64);
@@ -1038,8 +1097,12 @@ describe("createFeedbackService", () => {
       await service.create({ title: "匿名反馈", description: "desc", type: "bug" });
       const list = await service.list({ mine: true });
 
-      const headers = fetchMock.mock.calls[0]?.[1]?.headers as Record<string, string>;
-      expect(headers["X-Device-Mid"]).toBe(hostDeviceMid);
+      const ticketCall = fetchMock.mock.calls.find(([url]) =>
+        String(url).endsWith("/feedback/ticket"),
+      );
+      const headers = ticketCall?.[1]?.headers as Record<string, string>;
+      // 上游移除 device_mid 传输，匿名请求只带 access token。
+      expect(headers["X-Device-Mid"]).toBeUndefined();
       expect(credentialService.save).not.toHaveBeenCalled();
       expect(list.items).toEqual([
         expect.objectContaining({
@@ -1049,7 +1112,8 @@ describe("createFeedbackService", () => {
           status: "已提交",
         }),
       ]);
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      // 签发 access token + 创建工单 + 列表查询三次请求。
+      expect(fetchMock).toHaveBeenCalledTimes(3);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -1063,7 +1127,8 @@ describe("createFeedbackService", () => {
       const headers = init?.headers as Record<string, string>;
       expect(String(url)).toBe("https://zcode.z.ai/api/v1/feedback/ticket");
       expect(headers.Authorization).toBe("Bearer shared-backend-jwt");
-      expect(headers["X-Device-Mid"]).toBe("desktop-device-mid-222");
+      // 上游移除 device_mid 传输，登录态列表只带 JWT。
+      expect(headers["X-Device-Mid"]).toBeUndefined();
       expect(headers["X-Feedback-Client-Id"]).toBeUndefined();
       return new Response(
         JSON.stringify({

@@ -1,6 +1,9 @@
 import type { OAuthProviderId } from "@zcode/shared";
 import { createBigModelProviderRuntimeConfig } from "./providers/bigmodelProviderConfig.js";
-import { createZaiProviderRuntimeConfig } from "./providers/zaiProviderConfig.js";
+import {
+  createZaiProviderRuntimeConfig,
+  createZaiCnProviderRuntimeConfig,
+} from "./providers/zaiProviderConfig.js";
 
 /** Provider 运行时配置（仅 host process 可见） */
 export interface OAuthProviderRuntimeConfig {
@@ -35,6 +38,7 @@ export function createOAuthRuntimeConfig(
     providers: [
       createBigModelProviderRuntimeConfig(env, options.signInEnabled),
       createZaiProviderRuntimeConfig(env, options.signInEnabled),
+      createZaiCnProviderRuntimeConfig(env, options.signInEnabled),
     ],
   };
 }

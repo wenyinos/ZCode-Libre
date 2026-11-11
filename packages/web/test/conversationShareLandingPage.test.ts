@@ -250,8 +250,13 @@ describe("ConversationShareLandingPage", () => {
   });
 
   it.each([
-    ["zh-CN", "账号数据不互通", "回到首页"],
-    ["en-US", "do not share account data", "Back to home"],
+    // 上游把 not_found 提示从“账号数据不互通”改为区域/账号一致性说明。
+    ["zh-CN", "请确认所选区域和账号与分享者授予访问权限的账号一致", "回到首页"],
+    [
+      "en-US",
+      "Check that your account and region match the account granted access by the author",
+      "Back to home",
+    ],
   ] as const)(
     "offers account guidance and home navigation for not_found in %s",
     (locale, hint, home) => {

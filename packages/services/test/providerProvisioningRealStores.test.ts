@@ -211,7 +211,8 @@ describe("R3A-PRV-08/09 正式磁盘Store与Registry事务", () => {
         }) as never);
       };
       if (stage === "settings") inject(fixture.settings, "update");
-      if (stage === "credentials") inject(fixture.credentials, "save");
+      // 上游把凭据提交改为批量 updateMany，故障注入点同步调整。
+      if (stage === "credentials") inject(fixture.credentials, "updateMany");
       if (stage === "personal") inject(fixture.personalRepository, "update");
       const result = await fixture.target.apply(envelope(`fail-${stage}`, "new-value"));
       expect(result).toMatchObject({ status: "failed", rolledBack: true });

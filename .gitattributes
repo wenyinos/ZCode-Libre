@@ -25,3 +25,9 @@ third-party/inventory.json linguist-generated=true
 # Windows runner 默认 core.autocrlf=true 会把 LF 换成 CRLF，哈希随即漂移、构建失败，
 # 所以这一批文件必须按字节检出，不做任何换行转换。上游只覆盖 vendor/**，本分支放宽到整个 assets/**。
 apps/zcode-cli/packages/visualize-plugin/skills/visualize/assets/** -text -whitespace
+
+# design 内置插件：第三方设计资源保持上游原字节（许可登记按原文哈希校验）；
+# SessionStart hook 是 sh/cmd 双写法脚本，CRLF 会让 sh 解析失败，固定 LF。
+apps/zcode-cli/packages/design-plugin/skills/design/design-resources/** -text -whitespace linguist-vendored=true
+apps/zcode-cli/packages/design-plugin/hooks/design-rules text eol=lf
+apps/zcode-cli/packages/design-plugin/hooks/run-hook.cmd text eol=lf

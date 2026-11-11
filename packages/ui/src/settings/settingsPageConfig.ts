@@ -1,11 +1,13 @@
 import {
   Archive,
+  Share2,
   Folders,
   Monitor,
   ShieldCheck,
   Moon,
   Settings,
   Settings2,
+  SlidersHorizontal,
   Package,
   Bot,
   Palette,
@@ -88,6 +90,12 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     id: "personalization",
     icon: User,
     titleId: "settings.personalization.title",
+    groupId: "agentCapabilities",
+  },
+  {
+    id: "agentBehavior",
+    icon: SlidersHorizontal,
+    titleId: "settings.agentBehavior.title",
     groupId: "agentCapabilities",
   },
   {
@@ -217,6 +225,13 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     titleId: "archives.nav",
     groupId: "dataAndStats",
   },
+  // 分享管理排在归档管理之后，仅桌面端（docs/conversation-share-v1.md「设置页分享管理」）。
+  {
+    id: "shares",
+    icon: Share2,
+    titleId: "conversationShare.manage.nav",
+    groupId: "dataAndStats",
+  },
   // 暂时隐藏设置页里的 Migration 入口，只保留页面实现，后续可以直接恢复这一项。
   // {
   //   id: "migration",
@@ -275,7 +290,11 @@ export const SETTINGS_SECTION_GROUPS = BASE_SETTINGS_SECTION_GROUPS.map((group) 
 export type { SettingsSectionId };
 
 /** 依赖本机 Source Server 管理与设备连接的设置页，Web 与手机远控不显示。 */
-const DESKTOP_ONLY_SETTINGS_SECTIONS = new Set<SettingsSectionId>(["remoteDevices", "dataSync"]);
+const DESKTOP_ONLY_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
+  "remoteDevices",
+  "dataSync",
+  "shares",
+]);
 
 export function isSettingsSectionAvailable(
   section: SettingsSectionId,

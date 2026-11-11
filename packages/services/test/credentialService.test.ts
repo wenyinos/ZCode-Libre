@@ -26,7 +26,7 @@ function makeTempHome(): string {
 
 async function createCredentialServiceInHome(
   home: string,
-  onDidMutate?: (event: { operation: "save" | "delete"; key: string }) => void,
+  onDidMutate?: (event: { operation: "save" | "delete"; keys: readonly string[] }) => void,
 ): Promise<ICredentialService> {
   process.env.HOME = home;
   vi.resetModules();
@@ -54,9 +54,10 @@ describe("credentialService encryption", () => {
     await service.save("account-provider:demo:api-key", "secret");
     await service.delete("account-provider:demo:api-key");
 
+    // 上游把变更事件改为批量 keys，避免逐 key 触发多次通知。
     expect(onDidMutate.mock.calls).toEqual([
-      [{ operation: "save", key: "account-provider:demo:api-key" }],
-      [{ operation: "delete", key: "account-provider:demo:api-key" }],
+      [{ operation: "save", keys: ["account-provider:demo:api-key"] }],
+      [{ operation: "delete", keys: ["account-provider:demo:api-key"] }],
     ]);
   });
 
@@ -72,7 +73,7 @@ describe("credentialService encryption", () => {
     const storedValue = rawStore[credentialKey];
 
     expect(storedValue).toBeDefined();
-    expect(storedValue).toMatch(/^enc:v1:/);
+    expect(storedValue).toMatch(/^enc:v2:/);
     expect(storedValue).not.toContain("plain-access-token");
     await expect(service.load(credentialKey)).resolves.toBe("plain-access-token");
   });
@@ -86,7 +87,7 @@ describe("credentialService encryption", () => {
 
     const credentialsFile = join(home, ".zcode", "v2", "credentials.json");
     const rawStore = JSON.parse(readFileSync(credentialsFile, "utf-8")) as Record<string, string>;
-    expect(rawStore[credentialKey]).toMatch(/^enc:v1:/);
+    expect(rawStore[credentialKey]).toMatch(/^enc:v2:/);
     await expect(service.load(credentialKey)).resolves.toBe("");
   });
 

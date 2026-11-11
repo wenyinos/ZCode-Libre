@@ -98,6 +98,7 @@ ZCode-Libre 是 [ZCode](https://github.com/zai-org/ZCode) 的社区分支，遵�
 
 ## 更新
 
+- **2026-11-11**：同步上游 ZCode v3.18.0。
 - **2026-11-03**：同步上游 ZCode v3.17.2。
 - **2026-10-30**：同步上游 ZCode v3.17.1。
 - 2026-10-18：修复冷启动不显示主窗口（同步 v3.15.1 时桌面 Main 丢了一处 shared 导入，启动期 ReferenceError 中断建窗，应用只剩托盘）。

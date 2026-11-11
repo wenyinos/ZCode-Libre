@@ -97,7 +97,12 @@ it("附件文件名不能越出临时目录，上传后清理暂存数据", asyn
     });
   try {
     const service = createFeedbackService({
-      credentialService: { load: async () => null, save: async () => {}, delete: async () => {} },
+      // 上游收紧上传鉴权：没有 JWT 或匿名 access token 的请求直接拒绝，这里提供登录态 JWT。
+      credentialService: {
+        load: async (key: string) => (key === "zcodejwttoken" ? "test-jwt" : null),
+        save: async () => {},
+        delete: async () => {},
+      },
       oauthService: {} as IOAuthService,
       apiClient: { request: vi.fn() },
     });

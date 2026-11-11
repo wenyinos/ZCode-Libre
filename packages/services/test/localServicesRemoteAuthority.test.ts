@@ -343,6 +343,8 @@ describe("createLocalServices remote authority", () => {
           providerFamilyDomainUpdatedAt: before.providerFamilyDomainUpdatedAt ?? 0,
         },
       );
+      // 上游账号材料以 active_provider 为入口，缺少它会被判定为未登录。
+      await credentialService.save("oauth:active_provider", "zai");
       await credentialService.save(
         "oauth:zai:user_info",
         JSON.stringify({ id: "account-a", username: "a", displayName: "Account A" }),

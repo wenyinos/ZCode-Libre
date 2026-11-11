@@ -15,6 +15,36 @@ import {
 } from "../src/coding-plan-subscription/bigmodelCodingPlanSubscriptionProvider.js";
 import { ZaiCodingPlanSubscriptionProvider } from "../src/coding-plan-subscription/zaiCodingPlanSubscriptionProvider.js";
 import { createCodingPlanSubscriptionService } from "../src/coding-plan-subscription/codingPlanSubscriptionService.js";
+import type { OAuthAccountMaterial } from "../src/oauth/repo/oauthCredentialRepo.js";
+
+/**
+ * 上游把账号材料读取抽成必填依赖 loadOAuthAccountMaterial。
+ * 测试沿用 credentialService.load 的 mock 提供 token，这里统一派生账号材料，保持旧断言语义。
+ */
+function withAccountMaterial<T extends Record<string, unknown>>(
+  options: T,
+): T & { loadOAuthAccountMaterial: (family: "zai" | "bigmodel") => Promise<OAuthAccountMaterial | null> } {
+  const credentialService = (options as { credentialService?: { load: (key: string) => Promise<string | null> } })
+    .credentialService;
+  return {
+    // 显式传入的 loadOAuthAccountMaterial 优先，供需要精确控制 token 状态的用例覆盖。
+    loadOAuthAccountMaterial: async (family) => {
+      const key = family === "zai" ? "oauth:zai:access_token" : "oauth:bigmodel:access_token";
+      const token = credentialService ? await credentialService.load(key) : null;
+      if (!token) return null;
+      return {
+        family,
+        loginProvider: family,
+        zcodeUserId: "test-user",
+        sessionRevision: null,
+        accountIdentity: "test-user",
+        accessToken: token,
+        zcodeJwtToken: null,
+      };
+    },
+    ...options,
+  };
+}
 
 function createJsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -70,7 +100,7 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         throw new Error("mock mode must not request remote client config");
       }),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: { load: vi.fn() },
       resolveOffPeakModelSelectionView: async () =>
@@ -84,7 +114,7 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
             },
           ],
         }) as never,
-    });
+    }));
 
     await expect(provider.getOffPeakClientConfig({ forceRefresh: true })).resolves.toMatchObject({
       enabled: true,
@@ -135,12 +165,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(async (key: string) => (key === "zcodejwttoken" ? "zcode-jwt" : null)),
       },
-    });
+    }));
 
     await expect(provider.getManualClaimPlanPreviews()).resolves.toEqual({
       serverTime: 1_788_000_123_000,
@@ -180,10 +210,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: { load: vi.fn(async () => null) },
-    });
+    }));
 
     await expect(provider.getManualClaimPlanPreviews()).resolves.toEqual({
       plans: [],
@@ -195,7 +225,7 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
   });
 
   it("保留手动领取失败 code 但忽略顶层 msg", async () => {
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient: {
         request: vi.fn(async () =>
           createJsonResponse({
@@ -206,7 +236,7 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         ),
       },
       credentialService: { load: vi.fn(async () => "zcode-jwt") },
-    });
+    }));
 
     await expect(
       provider.claimManualPlan({
@@ -216,7 +246,7 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
   });
 
   it("保留领取额度耗尽响应中的 plan 结束时间供 UI 生成日期提示", async () => {
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient: {
         request: vi.fn(async () =>
           createJsonResponse({
@@ -230,7 +260,7 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         ),
       },
       credentialService: { load: vi.fn(async () => "zcode-jwt") },
-    });
+    }));
 
     await expect(
       provider.claimManualPlan({
@@ -247,7 +277,7 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
 
   it.each([1005, "1005"])("领取失败 %s 原样传递 data.message 并忽略 msg", async (code) => {
     const message = "今日额度已领完。\n<b>请下次再来</b>";
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient: {
         request: vi.fn(async () =>
           createJsonResponse({
@@ -258,7 +288,7 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         ),
       },
       credentialService: { load: vi.fn(async () => "zcode-jwt") },
-    });
+    }));
     await expect(
       provider.claimManualPlan({
         planId: "weekend",
@@ -274,7 +304,7 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
   it.each([undefined, null, 42, "", "  "])(
     "领取失败不使用 msg 兜底：message=%s",
     async (message) => {
-      const provider = new BigModelCodingPlanSubscriptionProvider({
+      const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
         apiClient: {
           request: vi.fn(async () =>
             createJsonResponse({
@@ -285,7 +315,7 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
           ),
         },
         credentialService: { load: vi.fn(async () => "zcode-jwt") },
-      });
+      }));
       const result = await provider.claimManualPlan({
         planId: "weekend",
       });
@@ -302,10 +332,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
           data: { configs: { modelContextBudget: { strategy } } },
         }),
       );
-      const provider = new BigModelCodingPlanSubscriptionProvider({
+      const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
         apiClient: { request },
         credentialService: { load: vi.fn() },
-      });
+      }));
       // 由其他消费者填充真实共享缓存；预算不能再读出旧算法或发起刷新。
       await provider.getForceUpdateConfig();
       request.mockClear();
@@ -317,10 +347,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
   it("配置永不返回时预算立即完成，不发请求也不启动超时器", async () => {
     vi.useFakeTimers();
     const request = vi.fn(() => new Promise<Response>(() => {}));
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient: { request },
       credentialService: { load: vi.fn() },
-    });
+    }));
     let value: string | undefined;
     void provider.getModelContextBudgetStrategy().then((result) => {
       value = result;
@@ -350,12 +380,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(async (key) => (key === "oauth:bigmodel:access_token" ? "oauth-token" : null)),
       },
-    });
+    }));
 
     const result = await provider.batchPreview();
 
@@ -386,10 +416,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createBigModelCredentialService(),
-    });
+    }));
 
     await provider.batchPreview();
 
@@ -405,12 +435,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
     const apiClient: ApiClient = {
       request: vi.fn(),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(async () => null),
       },
-    });
+    }));
 
     await expect(provider.batchPreview()).rejects.toThrow("bigmodel_oauth_required");
     expect(apiClient.request).not.toHaveBeenCalled();
@@ -420,7 +450,7 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
     const apiClient: ApiClient = {
       request: vi.fn(),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(async (key) =>
@@ -429,7 +459,17 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
             : null,
         ),
       },
-    });
+      // 污染态：access token 与 zcode JWT 相同，服务边界必须拒绝发送业务请求。
+      loadOAuthAccountMaterial: async () => ({
+        family: "bigmodel",
+        loginProvider: "bigmodel",
+        zcodeUserId: "test-user",
+        sessionRevision: null,
+        accountIdentity: "test-user",
+        accessToken: "stale-zcode-jwt",
+        zcodeJwtToken: "stale-zcode-jwt",
+      }),
+    }));
 
     await expect(provider.batchPreview()).rejects.toThrow("bigmodel_oauth_required");
     expect(apiClient.request).not.toHaveBeenCalled();
@@ -439,10 +479,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
     const apiClient: ApiClient = {
       request: vi.fn(async () => createHtmlErrorResponse()),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createBigModelCredentialService(),
-    });
+    }));
 
     await expect(
       provider.preview({
@@ -456,12 +496,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
     const apiClient: ApiClient = {
       request: vi.fn(async () => createZaiBatchPreviewResponse()),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(async (key) => (key === "oauth:zai:access_token" ? "zai-business-jwt" : null)),
       },
-    });
+    }));
 
     const result = await provider.batchPreview({
       providerId: BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan,
@@ -517,12 +557,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         });
       }),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(async (key) => (key === "oauth:zai:access_token" ? "zai-business-jwt" : null)),
       },
-    });
+    }));
 
     await provider.batchPreview({
       providerId: BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan,
@@ -575,12 +615,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
     const apiClient: ApiClient = {
       request: vi.fn(),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(async () => null),
       },
-    });
+    }));
 
     await expect(
       provider.batchPreview({
@@ -619,7 +659,7 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
             : {}),
         };
         const load = vi.fn();
-        const provider = new BigModelCodingPlanSubscriptionProvider({
+        const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
           apiClient: {
             request: vi.fn(async () =>
               createJsonResponse({
@@ -634,7 +674,7 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
             ),
           },
           credentialService: { load },
-        });
+        }));
         for (const result of [
           await provider.getStaticProducts(),
           await provider.getStaticTeamProducts(),
@@ -648,7 +688,9 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
           );
           expect(Object.hasOwn(result, legacyId)).toBe(false);
         }
-        expect(load).not.toHaveBeenCalled();
+        // 静态目录不需要 OAuth 业务 token；client/configs 仍会可选读取 zcode JWT 做鉴权。
+        expect(load).not.toHaveBeenCalledWith("oauth:bigmodel:access_token");
+        expect(load).not.toHaveBeenCalledWith("oauth:zai:access_token");
       },
     );
   });
@@ -679,12 +721,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(),
       },
-    });
+    }));
 
     const result = await provider.getStaticProducts();
 
@@ -735,10 +777,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: { load: vi.fn() },
-    });
+    }));
 
     const result = await provider.getStaticTeamProducts();
 
@@ -764,10 +806,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: { load: vi.fn() },
-    });
+    }));
 
     await expect(provider.getStaticTeamProducts()).rejects.toThrow(
       "invalid Coding Plan team products",
@@ -799,10 +841,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: { load: vi.fn() },
-    });
+    }));
 
     await expect(provider.getStaticTeamProducts()).rejects.toThrow(
       "invalid Coding Plan team products",
@@ -835,10 +877,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: { load: vi.fn() },
-    });
+    }));
 
     await expect(provider.getStaticTeamProducts()).rejects.toThrow(
       "invalid Coding Plan team products",
@@ -875,12 +917,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(),
       },
-    });
+    }));
 
     await expect(provider.getForceUpdateConfig()).resolves.toEqual({
       minimalVersion: "4.0.0",
@@ -905,12 +947,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(),
       },
-    });
+    }));
 
     await expect(provider.getForceUpdateConfig()).resolves.toBeNull();
   });
@@ -931,12 +973,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(),
       },
-    });
+    }));
 
     await expect(provider.getForceUpdateConfig()).resolves.toBeNull();
   });
@@ -967,12 +1009,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(),
       },
-    });
+    }));
 
     const result = await provider.getStartPlanPreview();
 
@@ -1022,12 +1064,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(),
       },
-    });
+    }));
 
     await expect(provider.getBillingDiscount()).resolves.toEqual({
       "zh-CN": {
@@ -1055,12 +1097,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(),
       },
-    });
+    }));
 
     await expect(provider.getBillingDiscount()).resolves.toBeUndefined();
   });
@@ -1075,16 +1117,18 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
           }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(),
       },
-    });
+    }));
 
     const previewPromise = provider.getStartPlanPreview();
     const productsPromise = provider.getStaticProducts();
     const discountPromise = provider.getBillingDiscount();
+    // 首次配置请求现在先异步解析可选 JWT，必须等请求真正发出后再注入响应。
+    await vi.waitFor(() => expect(apiClient.request).toHaveBeenCalledTimes(1));
     resolveRequest?.(
       createJsonResponse({
         code: 0,
@@ -1190,12 +1234,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
           }),
         ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(),
       },
-    });
+    }));
 
     await expect(provider.getBillingDiscount()).resolves.toEqual({
       "zh-CN": { badgeBody: "第一版" },
@@ -1237,10 +1281,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
       ),
     };
     const credentialService = { load: vi.fn() };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService,
-    });
+    }));
 
     const result = await provider.getEnterprisePricing({
       authenticated: false,
@@ -1265,10 +1309,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createBigModelCredentialService("oauth-token"),
-    });
+    }));
 
     await provider.getEnterprisePricing({ authenticated: true });
 
@@ -1331,10 +1375,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
           }),
         ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createBigModelCredentialService("oauth-token"),
-    });
+    }));
 
     const result = await provider.getEnterprisePricing({ authenticated: true });
 
@@ -1410,10 +1454,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
           }),
         ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createBigModelCredentialService("oauth-token"),
-    });
+    }));
 
     const result = await provider.getEnterprisePricing({ authenticated: true });
 
@@ -1491,10 +1535,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
           }),
         ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createBigModelCredentialService("oauth-token"),
-    });
+    }));
 
     const result = await provider.getEnterprisePricing({ authenticated: true });
 
@@ -1597,10 +1641,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         throw new Error(`unexpected request: ${url}`);
       }),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createBigModelCredentialService("oauth-token"),
-    });
+    }));
 
     const result = await provider.getEnterprisePricing({ authenticated: true });
 
@@ -1695,10 +1739,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         throw new Error(`unexpected request: ${url}`);
       }),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createBigModelCredentialService("oauth-token"),
-    });
+    }));
 
     const result = await provider.getEnterprisePricing({ authenticated: true });
 
@@ -1781,10 +1825,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         throw new Error(`unexpected request: ${url}`);
       }),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createBigModelCredentialService("oauth-token"),
-    });
+    }));
 
     const result = await provider.getEnterprisePricing({ authenticated: true });
 
@@ -1837,10 +1881,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
           }),
         ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createBigModelCredentialService("oauth-token"),
-    });
+    }));
 
     await provider.getEnterprisePricing({ authenticated: false });
     await provider.getEnterprisePricing({ authenticated: true });
@@ -1893,10 +1937,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
           }),
         ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createBigModelCredentialService("oauth-token"),
-    });
+    }));
 
     const estimate = await provider.calculateEnterpriseOrder({
       productId: "enterprise-lite-monthly",
@@ -1976,10 +2020,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createBigModelCredentialService("oauth-token"),
-    });
+    }));
 
     await expect(provider.getEnterpriseBalance()).resolves.toEqual({
       giveBalance: 1000,
@@ -2011,10 +2055,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createBigModelCredentialService(),
-    });
+    }));
 
     await provider.createSign({ bizId: "biz-1" });
 
@@ -2041,10 +2085,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createBigModelCredentialService(),
-    });
+    }));
 
     await provider.updateSign({ bizId: "biz-2" });
 
@@ -2070,10 +2114,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createBigModelCredentialService(),
-    });
+    }));
 
     await provider.preview({
       productId: "product-1",
@@ -2104,12 +2148,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         });
       }),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(async (key) => (key === "oauth:zai:access_token" ? "zai-business-jwt" : null)),
       },
-    });
+    }));
 
     await provider.preview({
       providerId: BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan,
@@ -2142,12 +2186,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
     const apiClient: ApiClient = {
       request: vi.fn(),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(async () => "zai-business-jwt"),
       },
-    });
+    }));
 
     await expect(
       provider.createSign({
@@ -2171,12 +2215,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         });
       }),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(async () => "zai-business-jwt"),
       },
-    });
+    }));
 
     await provider.payStripe({
       providerId: BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan,
@@ -2232,12 +2276,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         });
       }),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(async () => "zai-business-jwt"),
       },
-    });
+    }));
 
     await provider.bindStripeCard({
       providerId: BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan,
@@ -2284,12 +2328,12 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         });
       }),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: {
         load: vi.fn(async () => "zai-business-jwt"),
       },
-    });
+    }));
 
     await provider.createPaypalSetupToken({
       providerId: BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan,
@@ -2333,10 +2377,10 @@ describe("BigModelCodingPlanSubscriptionProvider", () => {
         }),
       ),
     };
-    const provider = new BigModelCodingPlanSubscriptionProvider({
+    const provider = new BigModelCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createBigModelCredentialService(),
-    });
+    }));
 
     const result = await provider.productInfo({ productId: "product-lite" });
 
@@ -2391,10 +2435,10 @@ describe("ZaiCodingPlanSubscriptionProvider (family-aware Team Plan)", () => {
         }),
       ),
     };
-    const provider = new ZaiCodingPlanSubscriptionProvider({
+    const provider = new ZaiCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: { load: vi.fn() },
-    });
+    }));
 
     const result = await provider.getEnterprisePricing({
       authenticated: false,
@@ -2412,10 +2456,10 @@ describe("ZaiCodingPlanSubscriptionProvider (family-aware Team Plan)", () => {
     const apiClient: ApiClient = {
       request: vi.fn(async () => createJsonResponse({ code: 200, data: { productList: [] } })),
     };
-    const provider = new ZaiCodingPlanSubscriptionProvider({
+    const provider = new ZaiCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createZaiCredentialService("zai-business-jwt"),
-    });
+    }));
 
     await provider.getEnterprisePricing({ authenticated: true });
 
@@ -2441,10 +2485,10 @@ describe("ZaiCodingPlanSubscriptionProvider (family-aware Team Plan)", () => {
     const apiClient: ApiClient = {
       request: vi.fn(async () => createJsonResponse({ code: 200, data: { productList: [] } })),
     };
-    const provider = new ZaiCodingPlanSubscriptionProvider({
+    const provider = new ZaiCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createZaiCredentialService(),
-    });
+    }));
 
     await provider.getEnterprisePricing({ authenticated: true });
 
@@ -2456,10 +2500,10 @@ describe("ZaiCodingPlanSubscriptionProvider (family-aware Team Plan)", () => {
 
   it("getEnterprisePricing 缺少 zai OAuth token 时抛 zai_oauth_required 且不请求", async () => {
     const apiClient: ApiClient = { request: vi.fn() };
-    const provider = new ZaiCodingPlanSubscriptionProvider({
+    const provider = new ZaiCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: { load: vi.fn(async () => null) },
-    });
+    }));
 
     await expect(provider.getEnterprisePricing({ authenticated: true })).rejects.toThrow(
       "zai_oauth_required",
@@ -2520,10 +2564,10 @@ describe("ZaiCodingPlanSubscriptionProvider (family-aware Team Plan)", () => {
         throw new Error(`unexpected request: ${url}`);
       }),
     };
-    const provider = new ZaiCodingPlanSubscriptionProvider({
+    const provider = new ZaiCodingPlanSubscriptionProvider(withAccountMaterial({
       apiClient,
       credentialService: createZaiCredentialService("zai-token"),
-    });
+    }));
 
     const result = await provider.getEnterprisePricing({ authenticated: true });
 
@@ -2565,10 +2609,10 @@ describe("createCodingPlanSubscriptionService (family routing)", () => {
         return createJsonResponse({ code: 200, data: { productList: [] } });
       }),
     };
-    const service = createCodingPlanSubscriptionService({
+    const service = createCodingPlanSubscriptionService(withAccountMaterial({
       apiClient,
       credentialService: createCredentialService(),
-    });
+    }));
 
     await service.getEnterprisePricing({ authenticated: true });
 
@@ -2579,10 +2623,10 @@ describe("createCodingPlanSubscriptionService (family routing)", () => {
     const apiClient: ApiClient = {
       request: vi.fn(async () => createJsonResponse({ code: 200, data: { productList: [] } })),
     };
-    const service = createCodingPlanSubscriptionService({
+    const service = createCodingPlanSubscriptionService(withAccountMaterial({
       apiClient,
       credentialService: createCredentialService(),
-    });
+    }));
 
     await service.getEnterprisePricing({
       authenticated: true,
@@ -2602,10 +2646,10 @@ describe("createCodingPlanSubscriptionService (family routing)", () => {
     const apiClient: ApiClient = {
       request: vi.fn(async () => createJsonResponse({ code: 200, data: { productList: [] } })),
     };
-    const service = createCodingPlanSubscriptionService({
+    const service = createCodingPlanSubscriptionService(withAccountMaterial({
       apiClient,
       credentialService: createCredentialService(),
-    });
+    }));
 
     await service.getEnterprisePricing({ authenticated: true, family: "zai" });
 
@@ -2627,10 +2671,10 @@ describe("createCodingPlanSubscriptionService (family routing)", () => {
         }),
       ),
     };
-    const service = createCodingPlanSubscriptionService({
+    const service = createCodingPlanSubscriptionService(withAccountMaterial({
       apiClient,
       credentialService: createCredentialService(),
-    });
+    }));
 
     await service.getEnterpriseBalance();
 

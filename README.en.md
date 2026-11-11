@@ -98,6 +98,7 @@ Use the **standard API** template in Settings → Model Providers when you want 
 
 ## Updates
 
+- **2026-11-11**: Synced upstream ZCode v3.18.0.
 - **2026-11-03**: Synced upstream ZCode v3.17.2.
 - **2026-10-30**: Synced upstream ZCode v3.17.1.
 - 2026-10-18: Fixed the missing main window on cold start (the v3.15.1 sync dropped a shared import in the desktop Main bundle, so a startup ReferenceError aborted window creation and left only the tray).

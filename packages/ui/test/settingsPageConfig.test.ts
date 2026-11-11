@@ -51,6 +51,7 @@ describe("settingsPageConfig", () => {
         id: "agentCapabilities",
         sections: [
           "personalization",
+          "agentBehavior",
           "memory",
           "subagents",
           "plugin",
@@ -62,7 +63,7 @@ describe("settingsPageConfig", () => {
       },
       {
         id: "dataAndStats",
-        sections: ["dataSync", "usage", "projects", "personalPlan", "archives"],
+        sections: ["dataSync", "usage", "projects", "personalPlan", "archives", "shares"],
       },
     ]);
     expect(settingsSections.map((section) => section.id)).toEqual([
@@ -70,6 +71,7 @@ describe("settingsPageConfig", () => {
       "appearance",
       "modelProvider",
       "personalization",
+      "agentBehavior",
       "memory",
       "subagents",
       "plugin",
@@ -86,6 +88,7 @@ describe("settingsPageConfig", () => {
       "projects",
       "personalPlan",
       "archives",
+      "shares",
     ]);
   });
 

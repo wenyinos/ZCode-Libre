@@ -65,7 +65,7 @@ describe("本地缓存恢复的原子边界", () => {
     for (const [name, value] of Object.entries(f.healthy))
       if (name !== key) expect(after[name]).toBe(value);
     expect(after[key]).toBeUndefined();
-    expect(f.onDidMutate.mock.calls).toEqual([[{ operation: "delete", key }]]);
+    expect(f.onDidMutate.mock.calls).toEqual([[{ operation: "delete", keys: [key] }]]);
   });
 
   it("另一写入先修复时，锁内重读返回修复值，不删除新记录", async () => {
