@@ -3,18 +3,10 @@ import { test } from "node:test";
 import { resolveRuntimeHostBuild, verifyRuntimeHostPe } from "../build-windows-runtime-host.mjs";
 
 test("Windows builds both supported architectures with the matching MSVC target", () => {
-  assert.deepEqual(resolveRuntimeHostBuild("x64", "win32").configureArgs, [
-    "-G",
-    "Visual Studio 17 2022",
-    "-A",
-    "x64",
-  ]);
-  assert.deepEqual(resolveRuntimeHostBuild("arm64", "win32").configureArgs, [
-    "-G",
-    "Visual Studio 17 2022",
-    "-A",
-    "ARM64",
-  ]);
+  // 生成器交给 CMake 按 runner 上已装的 VS 自动选择：windows-latest 已是
+  // VS 18 / CMake 4.4.5 镜像，硬编码 VS 17 2022 会让准备构建资源阶段直接失败。
+  assert.deepEqual(resolveRuntimeHostBuild("x64", "win32").configureArgs, ["-A", "x64"]);
+  assert.deepEqual(resolveRuntimeHostBuild("arm64", "win32").configureArgs, ["-A", "ARM64"]);
   assert.throws(() => resolveRuntimeHostBuild("ia32", "win32"), /architecture/);
 });
 test("cross builds explicitly select a Windows compiler", () => {

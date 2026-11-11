@@ -16,9 +16,13 @@ export function resolveRuntimeHostBuild(
   if (arch !== "x64" && arch !== "arm64")
     throw new Error(`Unsupported runtime host architecture: ${arch}`);
   return {
+    // Bug 原因：上游硬编码 "Visual Studio 17 2022"，而 windows-latest 已换成
+    // windows-2025-vs2026 镜像（VS 18 / CMake 4.4.5），CMake 找不到该生成器实例，
+    // prepare:windows-runtime-host 在 CI 上直接失败。不指定 -G，由 CMake 按机器上
+    // 已安装的 VS 自动选生成器，不再绑定具体 VS 版本；-A 仍指定目标架构。
     configureArgs:
       hostPlatform === "win32"
-        ? ["-G", "Visual Studio 17 2022", "-A", arch === "arm64" ? "ARM64" : "x64"]
+        ? ["-A", arch === "arm64" ? "ARM64" : "x64"]
         : [
             "-DCMAKE_SYSTEM_NAME=Windows",
             `-DCMAKE_CXX_COMPILER=${compiler || (arch === "arm64" ? "aarch64-w64-mingw32-clang++" : "x86_64-w64-mingw32-g++")}`,
