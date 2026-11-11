@@ -63,7 +63,7 @@ describe("settingsPageConfig", () => {
       },
       {
         id: "dataAndStats",
-        sections: ["dataSync", "usage", "projects", "personalPlan", "archives", "shares"],
+        sections: ["dataSync", "usage", "projects", "personalPlan", "archives"],
       },
     ]);
     expect(settingsSections.map((section) => section.id)).toEqual([
@@ -88,7 +88,6 @@ describe("settingsPageConfig", () => {
       "projects",
       "personalPlan",
       "archives",
-      "shares",
     ]);
   });
 

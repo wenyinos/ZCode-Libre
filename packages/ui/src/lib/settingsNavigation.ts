@@ -53,6 +53,10 @@ const HIDDEN_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
   // 工作区搜索（.zcodeignore）设置入口先隐藏：规则文件仍生效并可手动编辑，
   // 编辑页代码保留，放开时从这里移除即可。
   "workspaceFileSearch",
+  // 上游 v3.18.0 新增「分享管理」设置分区，依赖官方账号登录；本分支会话分享、
+  // 官方账号登录与官方账号派生凭据均已关闭，该入口永远停在「登录后管理分享」，
+  // 是死入口。页面代码保留，策略真放开时从这里移除即可恢复。
+  "shares",
 ]);
 
 export interface SettingsSectionIntentEventDetail {

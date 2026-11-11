@@ -51,7 +51,7 @@ pnpm lint
 
 - `package.json` 的 `version` **等于本次同步的上游发布版本号**：同步上游 v3.16.2，本分支就发 `3.16.2`，不要再自造与上游对不上的号。
 - 本分支自己的补丁 / 特性发布，在该号之上继续 `patch +1`（上游 `3.16.2` → 下一次自研发布 `3.16.3`）；等下一次同步上游新版本时重新对齐上游号，继续这个规则。
-- 历史：`3.15.1` → 自研补丁 `3.15.2`、`3.15.3`；本次同步上游跃迁到 `3.16.2`，版本号随之对齐。
+- 历史：`3.15.1` → 自研补丁 `3.15.2`、`3.15.3`；同步上游跃迁到 `3.16.2` 时对齐上游号；`3.18.0`（对齐上游 v3.18.0）→ 自研补丁 `3.18.1`（隐藏「分享管理」死入口）。
 - 合并上游时 `package.json` 的 `version` 冲突：**取上游的值**（与旧规则相反）；合并后跑 `node -e "console.log(require('./package.json').version)"` 确认。
 - 与上游同号意味着 **tag 名也同名**。抓取上游一律 `--no-tags`（见开头）；打本分支 tag 前先 `git tag -d <同名>` 删掉本地那条上游 tag（只删本地 ref，上游提交仍可由 `upstream/main` 可达），再把新 tag 推到 `origin`，绝不推 `upstream`。
 - 必须是**标准 semver 三段式**。四段式（如 `3.14.3.1`）会让应用内更新检测失效：`packages/desktop/src/main/githubReleaseUpdates.ts` 用 `semver.coerce` 解析，`3.14.3.1` 被截断成 `3.14.3`，与上一版比较会判定为"已是最新"，连续的四段版本之间也无法排序。
@@ -174,6 +174,9 @@ pnpm lint
 | `packages/services/src/client-config/clientConfigService.ts` | `createDisabledClientConfigService` 返回空快照；插件商店排序、漏洞报告链接与插件推荐不再读取上游公开配置 |
 | `packages/services/src/coding-plan-subscription/bigmodelCodingPlanSubscriptionProvider.ts` | `getClientConfigs()` 在策略关闭时返回空配置；套餐列表、StartPlanCard、闲时任务与动态工作流灰度不再请求 `/api/v1/client/configs` |
 | `packages/services/src/client-scenes/clientScenesService.ts` | `createDisabledClientScenesService` 返回空列表，不请求 `/api/v1/client/scenes`；草稿建议提示与自动化模板保持为空 |
+| `packages/ui/src/lib/settingsNavigation.ts` | 上游 v3.18.0 新增的「分享管理」设置分区加入 `HIDDEN_SETTINGS_SECTIONS`：会话分享与官方账号登录/凭据均已关闭，该入口永远停在「登录后管理分享」 |
+
+**分享管理入口（2026-11-12）**：上游 v3.18.0 在设置页「数据与统计」新增 `shares` 分区（`packages/ui/src/settings/settingsPageConfig.ts` 的 `BASE_SETTINGS_SECTIONS`，渲染于 `SettingsPage.tsx`），页面要求用创建分享时的账号登录。本分支 `conversationShare` / `officialAccountLogin` / `officialAccountCredentials` 三项全关，登录不可能完成，是个死入口；因此只在 `HIDDEN_SETTINGS_SECTIONS` 里隐藏菜单项，页面代码与 `shares` id 全部保留。`resolveSettingsSection()` 会把直达或「上次停留分区」的意图回退到常规设置，`SettingsPage` 的 `activeSectionMeta` 兜底也不会渲染。同步时须同步更新 `packages/ui/test/settingsPageConfig.test.ts` 里 `dataAndStats` 分组与 `settingsSections` 列表两处断言。策略真放开时从该 Set 移除 `"shares"` 即可恢复。
 
 **刻意没有改的**：`DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS` 里是 browser-use、documents、pdf、spreadsheets 等**内置能力插件**，清空会让用户失去全部本地功能，因此保留；`computer-use` 本就默认关闭。
 
