@@ -1,0 +1,56 @@
+name: 补发 macOS 产物
+
+# macOS runner 偶发排队被取消时，单独构建 macOS arm64 并直接补传到指定 Release。
+# 不跑其他平台、不复用整条发布链；目标 tag 由触发时指定。
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要补发 macOS 产物的 Release tag（如 v3.18.0）"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    name: Build & upload macOS arm64
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 准备构建资源
+        run: pnpm bootstrap
+
+      - name: 打包 macOS arm64
+        env:
+          ZCODE_ENV: production
+        run: pnpm bundle:desktop -- --os mac --arch arm64
+
+      - name: 上传到指定 Release 并补齐校验和
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          cd packages/desktop/dist
+          files=(*.dmg *.zip)
+          ((${#files[@]} > 0)) || { echo "::error::未产出 macOS 安装包"; exit 1; }
+          ls -lh "${files[@]}"
+          gh release upload "$TAG" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+          work="$(mktemp -d)"
+          gh release download "$TAG" --pattern checksums.txt --dir "$work" --repo "$GITHUB_REPOSITORY"
+          sha256sum "${files[@]}" >> "$work/checksums.txt"
+          gh release upload "$TAG" "$work/checksums.txt" --clobber --repo "$GITHUB_REPOSITORY"
