@@ -1,7 +1,9 @@
 name: Upstream watch
 
 # 「跟随上游」是本分支的定位之一，但不能靠人想起来 git fetch upstream。
-# 每天查一次上游 main：有新提交就开一个 issue（已开着就更新正文），不碰代码、不发版。
+# 每天查一次上游：只有上游打出新版本 tag（v*）且该提交还没合入时才开 issue
+# （已开着就更新正文），不碰代码、不发版。上游 main 上的日常提交不再单独提醒——
+# 上游会持续往 main 同步源码，按提交提醒会产生大量噪音，按发布 tag 提醒才有行动价值。
 on:
   schedule:
     # UTC 02:00，北京时间上午 10 点。
@@ -18,7 +20,7 @@ concurrency:
 
 jobs:
   watch:
-    name: 检查上游是否前进
+    name: 检查上游是否发布新版本
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,20 +34,48 @@ jobs:
 
       # --no-tags：上游与本仓库共用 v3.14.x 这类 tag 名但指向不同提交，
       # 带 tags 抓取会让本地 tag 撞名，之后按 tag 的比对会算错。
-      - name: 取上游历史
+      # 上游 tag 单独放进 refs/upstream/tags/*，既不撞名也能判断是否已合入。
+      - name: 取上游历史与标签
         run: |
           git remote add upstream https://github.com/zai-org/ZCode.git 2>/dev/null || true
           git fetch --no-tags upstream main
+          git fetch --no-tags upstream '+refs/tags/*:refs/upstream/tags/*'
 
-      - name: 统计未合入的上游提交
-        id: count
-        run: echo "count=$(git rev-list --count HEAD..upstream/main)" >> "$GITHUB_OUTPUT"
+      # 判断口径：上游 tag 指向的提交已在本分支历史里 = 已合入，不再提醒；
+      # 未合入的 v* tag 才会触发 issue（例如上游发布 v3.18.1 而本分支还没同步）。
+      - name: 统计未合入的上游版本标签
+        id: tags
+        run: |
+          unmerged=""
+          for ref in $(git for-each-ref --format='%(refname)' refs/upstream/tags); do
+            tag="${ref#refs/upstream/tags/}"
+            case "$tag" in v*) ;; *) continue ;; esac
+            commit=$(git rev-parse "${ref}^{commit}")
+            if git merge-base --is-ancestor "$commit" HEAD; then
+              continue
+            fi
+            unmerged="${unmerged}${tag}"$'\n'
+          done
+          unmerged=$(printf '%s' "$unmerged" | sort -V)
+          count=$(printf '%s' "$unmerged" | grep -c . || true)
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          {
+            echo "list<<EOF"
+            echo "$unmerged"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "未合入的上游版本标签（$count）："
+          echo "$unmerged"
 
       - name: 生成审计报告
-        if: steps.count.outputs.count != '0'
+        if: steps.tags.outputs.count != '0'
         run: |
           {
-            echo "上游 main 有 ${{ steps.count.outputs.count }} 个提交尚未合入。"
+            echo "上游发布了尚未合入本分支的版本标签："
+            echo
+            echo "${{ steps.tags.outputs.list }}" | sed '/^$/d' | sed 's/^/- /'
+            echo
+            echo "上游 main 还有 $(git rev-list --count HEAD..upstream/main) 个提交尚未合入。"
             echo
             echo '```'
             node scripts/audit-upstream-sync.mjs
@@ -62,10 +92,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          count="${{ steps.count.outputs.count }}"
+          count="${{ steps.tags.outputs.count }}"
           label="upstream-sync"
           gh label create "$label" --repo "${{ github.repository }}" \
-            --description "上游有新提交待评估" --color "0E8A16" 2>/dev/null || true
+            --description "上游有新版本标签待同步" --color "0E8A16" 2>/dev/null || true
 
           existing=$(gh issue list --repo "${{ github.repository }}" \
             --label "$label" --state open --json number --jq '.[0].number')
@@ -74,15 +104,16 @@ jobs:
             # 合入后自动收尾，避免 issue 越攒越多。
             if [ -n "$existing" ]; then
               gh issue comment "$existing" --repo "${{ github.repository }}" \
-                --body "上游提交已全部合入，关闭本 issue。"
+                --body "上游版本标签已全部合入，关闭本 issue。"
               gh issue close "$existing" --repo "${{ github.repository }}"
             else
-              echo "上游无新提交。"
+              echo "上游没有未合入的新版本标签。"
             fi
             exit 0
           fi
 
-          title="上游有未合入的提交（${count} 个）"
+          latest=$(printf '%s' "${{ steps.tags.outputs.list }}" | sed '/^$/d' | tail -1)
+          title="上游发布新版本 ${latest}（共 ${count} 个 tag 未合入）"
           if [ -n "$existing" ]; then
             gh issue edit "$existing" --repo "${{ github.repository }}" \
               --title "$title" --body-file issue-body.md
