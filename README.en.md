@@ -98,6 +98,7 @@ Use the **standard API** template in Settings → Model Providers when you want 
 
 ## Updates
 
+- **2026-11-13**: Synced upstream ZCode v3.18.1 (Windows runtime host and installer process handling).
 - **2026-11-11**: Synced upstream ZCode v3.18.0.
 - **2026-11-03**: Synced upstream ZCode v3.17.2.
 - **2026-10-30**: Synced upstream ZCode v3.17.1.

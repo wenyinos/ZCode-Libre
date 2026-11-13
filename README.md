@@ -98,6 +98,7 @@ ZCode-Libre 是 [ZCode](https://github.com/zai-org/ZCode) 的社区分支，遵�
 
 ## 更新
 
+- **2026-11-13**：同步上游 ZCode v3.18.1（Windows 运行时宿主与安装器进程处理）。
 - **2026-11-11**：同步上游 ZCode v3.18.0。
 - **2026-11-03**：同步上游 ZCode v3.17.2。
 - **2026-10-30**：同步上游 ZCode v3.17.1。
