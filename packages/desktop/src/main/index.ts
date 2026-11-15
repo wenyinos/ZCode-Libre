@@ -977,12 +977,18 @@ const webRemoteControlLocalAssetsDir =
   process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_ASSETS_DIR"]?.trim();
 const webRemoteControlLocalPairCode =
   process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_PAIR_CODE"]?.trim() || "123456";
+// 二维码地址可选：用于在 Wi-Fi 与 ZeroTier 之间选择手机可达的那一个。
+const webRemoteControlLocalPreferredAddress =
+  process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_ADDRESS"]?.trim();
 const webRemoteControlLocalRelayPromise =
   webRemoteControlLocalMode && webRemoteControlLocalAssetsDir
     ? createWebRemoteControlLocalRelay({
         assetsDir: webRemoteControlLocalAssetsDir,
         deviceMid,
         pairCode: webRemoteControlLocalPairCode,
+        ...(webRemoteControlLocalPreferredAddress
+          ? { preferredAddress: webRemoteControlLocalPreferredAddress }
+          : {}),
         logger,
       })
     : undefined;

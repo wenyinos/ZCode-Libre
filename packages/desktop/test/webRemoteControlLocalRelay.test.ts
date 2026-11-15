@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { WebSocket } from "ws";
 import {
+  classifyWebRemoteControlLocalAddress,
   createWebRemoteControlLocalRelay,
   type WebRemoteControlLocalRelay,
 } from "../src/main/webRemoteControlLocalRelay.js";
@@ -89,6 +90,29 @@ function nextMessage(socket: WebSocket, type: string): Promise<Record<string, un
     socket.on("message", onMessage);
   });
 }
+
+describe("webRemoteControlLocalRelay addresses", () => {
+  it("classifies physical, ZeroTier, virtual and public addresses", () => {
+    expect(classifyWebRemoteControlLocalAddress("wlp0s20f3", "192.168.8.110")).toBe(
+      "physical",
+    );
+    expect(classifyWebRemoteControlLocalAddress("enp3s0", "10.0.0.5")).toBe(
+      "physical",
+    );
+    expect(classifyWebRemoteControlLocalAddress("ztwdjpjed2", "192.168.192.10")).toBe(
+      "zerotier",
+    );
+    expect(classifyWebRemoteControlLocalAddress("docker0", "172.17.0.1")).toBe(
+      "virtual",
+    );
+    expect(classifyWebRemoteControlLocalAddress("tailscale0", "100.100.1.2")).toBe(
+      "virtual",
+    );
+    expect(classifyWebRemoteControlLocalAddress("eth0", "203.0.113.9")).toBe(
+      "public",
+    );
+  });
+});
 
 describe("webRemoteControlLocalRelay", () => {
   it("pairs once and rejects pair code reuse", async () => {

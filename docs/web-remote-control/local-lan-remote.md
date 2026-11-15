@@ -289,7 +289,7 @@ Local Relay 只实现手机与桌面都需要的子集，消息 schema 直接复
 | ---- | ------------------------------------------------- | ------------------------- | ---- |
 | P0   | Local Relay + 静态托管 + 固定配对码，仅 loopback  | LLR-01 的本地等价用例通过 | 完成（2026-11-15） |
 | P1   | 配对码、来源过滤、token 撤销、single terminal     | LLR-04/05/06/09/10 通过   | 完成（2026-11-15） |
-| P2   | 多网卡地址选择、ZeroTier、地址变化处理            | LLR-02/03/11 通过         | 未开始 |
+| P2   | 多网卡地址选择、ZeroTier、地址变化处理            | LLR-02/03/11 通过         | 部分完成（2026-11-15） |
 | P3   | 静态资源打包进桌面、设置 UI、真机验收、文档与测试 | 全部用例通过              | 未开始 |
 
 ### 实施记录
@@ -306,6 +306,13 @@ P1（2026-11-15）：
 - 已实测：手机首次配对、刷新重连、停止后旧 sessionToken 返回 401、停止后配对码可重新使用、第 6 次错误请求返回 429。
 
 P1 未覆盖：非私有来源的真实拒绝（需要外部主机模拟）、双手机替换的浏览器验收；P2 再补。
+
+P2（2026-11-15，部分完成）：
+
+- 地址枚举与分类：`listWebRemoteControlLocalAddresses()` 返回全部 IPv4，按 `physical > zerotier > virtual > public` 排序；`classifyWebRemoteControlLocalAddress()` 识别 `zt*`/`zerotier*`、`docker*`/`veth*`/`br-*`/`vmnet*`/`tailscale*`/`tun*` 等虚拟网卡。
+- 首选地址：`createWebRemoteControlLocalRelay({ preferredAddress })`；env `ZCODE_WEB_REMOTE_CONTROL_LOCAL_ADDRESS` 可选择二维码地址，缺失时按优先级自动选择，公网地址默认不选。
+- 已验证：本机同时有 Wi-Fi（`192.168.8.110`）与 ZeroTier（`192.168.192.10`）时，指定 ZeroTier 地址后二维码与手机连接均使用该地址，配对和 bridge 正常。
+- 未完成：远控对话框内的地址选择 UI、运行中地址变化（ZeroTier 掉线/切换）的自动刷新与提示；按计划留到 P3。
 
 ## 已确认决策
 

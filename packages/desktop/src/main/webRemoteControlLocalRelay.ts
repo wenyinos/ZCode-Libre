@@ -40,6 +40,8 @@ export interface WebRemoteControlLocalRelayOptions {
   pairCode: string;
   port?: number;
   host?: string;
+  /** 二维码使用的首选地址（如 ZeroTier 的 192.168.192.10）；缺失时按网卡优先级选择。 */
+  preferredAddress?: string;
   logger: {
     info: (...args: unknown[]) => void;
     warn: (...args: unknown[]) => void;
@@ -51,6 +53,8 @@ export interface WebRemoteControlLocalRelay {
   /** 当前二维码与手机访问使用的源，形如 http://192.168.8.110:47821。 */
   readonly origin: string;
   readonly port: number;
+  /** 全部可用 IPv4 地址（含 ZeroTier），按优先级排序；监听本身覆盖所有网卡。 */
+  readonly addresses: WebRemoteControlLocalAddress[];
   readonly relayWsUrl: string;
   readonly remoteUrl: string;
   readonly deviceSid: string;
@@ -104,7 +108,10 @@ export function createWebRemoteControlLocalRelay(
       typeof address === "object" && address
         ? address.port
         : (options.port ?? LOCAL_RELAY_PORT);
-    return { origin: `http://${selectLanAddress()}:${port}`, port };
+    return {
+      origin: `http://${selectLanAddress(options.preferredAddress)}:${port}`,
+      port,
+    };
   }
 
   function deviceView(): WebRemoteControlRelayV2Device {
@@ -170,16 +177,7 @@ export function createWebRemoteControlLocalRelay(
       ? address.slice("::ffff:".length)
       : address;
     if (ip === "127.0.0.1" || ip === "::1") return true;
-    const octets = ip.split(".").map(Number);
-    if (octets.length !== 4 || octets.some((value) => !Number.isInteger(value)))
-      return false;
-    const [a = -1, b = -1] = octets;
-    return (
-      a === 10 ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      (a === 100 && b >= 64 && b <= 127)
-    );
+    return isPrivateIpv4(ip);
   }
 
   function serveStatic(pathname: string, response: ServerResponse) {
@@ -507,12 +505,16 @@ export function createWebRemoteControlLocalRelay(
       options.host ?? "0.0.0.0",
       () => {
         const { origin, port } = resolveListeningAddress();
+        const addresses = listWebRemoteControlLocalAddresses();
         options.logger.info(
-          `[web-remote-control] local relay listening origin=${origin} assets=${options.assetsDir}`,
+          `[web-remote-control] local relay listening origin=${origin} addresses=${addresses
+            .map((item) => `${item.interfaceName}:${item.address}:${item.kind}`)
+            .join(",")} assets=${options.assetsDir}`,
         );
         resolveRelay({
           origin,
           port,
+          addresses,
           relayWsUrl:
             origin.replace(/^http:/, "ws:") +
             WEB_REMOTE_CONTROL_RELAY_V2_WS_PATH,
@@ -551,20 +553,93 @@ export function createWebRemoteControlLocalRelay(
   });
 }
 
-/** 第一个非 loopback 的私有 IPv4 地址；没有可用地址时退回 loopback，方便本机调试。 */
-function selectLanAddress(): string {
-  const interfaces = networkInterfaces();
-  const candidates: string[] = [];
-  for (const [name, addresses] of Object.entries(interfaces)) {
-    if (name.startsWith("docker") || name.startsWith("veth")) continue;
+export type WebRemoteControlLocalAddressKind =
+  | "physical"
+  | "zerotier"
+  | "virtual"
+  | "public";
+
+function isPrivateIpv4(ip: string): boolean {
+  const octets = ip.split(".").map(Number);
+  if (octets.length !== 4 || octets.some((value) => !Number.isInteger(value))) {
+    return false;
+  }
+  const [a = -1, b = -1] = octets;
+  return (
+    a === 10 ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 100 && b >= 64 && b <= 127)
+  );
+}
+
+export interface WebRemoteControlLocalAddress {
+  address: string;
+  interfaceName: string;
+  kind: WebRemoteControlLocalAddressKind;
+}
+
+export function classifyWebRemoteControlLocalAddress(
+  interfaceName: string,
+  address: string,
+): WebRemoteControlLocalAddressKind {
+  const name = interfaceName.toLowerCase();
+  if (name.startsWith("zt") || name.startsWith("zerotier")) return "zerotier";
+  if (
+    name.startsWith("docker") ||
+    name.startsWith("veth") ||
+    name.startsWith("br-") ||
+    name.startsWith("vmnet") ||
+    name.startsWith("tailscale") ||
+    name.startsWith("tun") ||
+    name.startsWith("utun")
+  ) {
+    return "virtual";
+  }
+  return isPrivateIpv4(address) ? "physical" : "public";
+}
+
+/** 全部可用 IPv4 地址，按 物理网卡 > ZeroTier > 其他虚拟网卡 > 公网 排序。 */
+export function listWebRemoteControlLocalAddresses(): WebRemoteControlLocalAddress[] {
+  const order: Record<WebRemoteControlLocalAddressKind, number> = {
+    physical: 0,
+    zerotier: 1,
+    virtual: 2,
+    public: 3,
+  };
+  const result: WebRemoteControlLocalAddress[] = [];
+  for (const [interfaceName, addresses] of Object.entries(networkInterfaces())) {
     for (const address of addresses ?? []) {
       if (address.family !== "IPv4" || address.internal) continue;
-      candidates.push(address.address);
+      result.push({
+        address: address.address,
+        interfaceName,
+        kind: classifyWebRemoteControlLocalAddress(
+          interfaceName,
+          address.address,
+        ),
+      });
     }
   }
+  return result.sort((left, right) => order[left.kind] - order[right.kind]);
+}
+
+/**
+ * 二维码使用的地址：显式首选 > 物理网卡 > ZeroTier > 虚拟网卡；公网地址默认不选。
+ * 监听仍是 0.0.0.0，所有网卡同时可达，这里只决定二维码里写哪一个。
+ */
+function selectLanAddress(preferred?: string): string {
+  const addresses = listWebRemoteControlLocalAddresses();
+  const preferredAddress = preferred?.trim();
+  if (preferredAddress) {
+    const matched = addresses.find(
+      (item) => item.address === preferredAddress,
+    );
+    if (matched) return matched.address;
+  }
   return (
-    candidates.find((address) => address.startsWith("192.168.")) ??
-    candidates[0] ??
+    addresses.find((item) => item.kind !== "public")?.address ??
+    addresses[0]?.address ??
     "127.0.0.1"
   );
 }
