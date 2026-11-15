@@ -8,6 +8,10 @@ import {
 import { networkInterfaces } from "node:os";
 import { extname, join, normalize, resolve } from "node:path";
 import { WebSocket, WebSocketServer } from "ws";
+import type {
+  WebRemoteControlLocalAddress,
+  WebRemoteControlLocalAddressKind,
+} from "@zcode/shared";
 import {
   parseWebRemoteControlRelayV2HttpRequest,
   parseWebRemoteControlRelayV2OutgoingMessage,
@@ -557,12 +561,6 @@ export function createWebRemoteControlLocalRelay(
   });
 }
 
-export type WebRemoteControlLocalAddressKind =
-  | "physical"
-  | "zerotier"
-  | "virtual"
-  | "public";
-
 function isPrivateIpv4(ip: string): boolean {
   const octets = ip.split(".").map(Number);
   if (octets.length !== 4 || octets.some((value) => !Number.isInteger(value))) {
@@ -575,12 +573,6 @@ function isPrivateIpv4(ip: string): boolean {
     (a === 192 && b === 168) ||
     (a === 100 && b >= 64 && b <= 127)
   );
-}
-
-export interface WebRemoteControlLocalAddress {
-  address: string;
-  interfaceName: string;
-  kind: WebRemoteControlLocalAddressKind;
 }
 
 export function classifyWebRemoteControlLocalAddress(

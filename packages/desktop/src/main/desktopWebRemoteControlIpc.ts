@@ -9,6 +9,7 @@ import {
   type WebRemoteControlAuthStateChange,
   type TelemetryEventPayload,
   type WebRemoteControlContext,
+  type WebRemoteControlLocalState,
   type WebRemoteControlStartResult,
   type WebRemoteControlStatus,
 } from "@zcode/shared";
@@ -29,9 +30,16 @@ export interface WebRemoteControlIpcManager {
   getStatus(windowId: number): WebRemoteControlStatus;
 }
 
+export interface WebRemoteControlLocalRelayIpc {
+  getState(windowId: number): Promise<WebRemoteControlLocalState>;
+  setEnabled(windowId: number, enabled: boolean): Promise<WebRemoteControlLocalState>;
+  setAddress(windowId: number, address: string | null): Promise<WebRemoteControlLocalState>;
+}
+
 interface WebRemoteControlIpcDependencies {
   reportRemoteUsageEvent: (rendererId: number, event: TelemetryEventPayload) => void;
   webRemoteControlManager: WebRemoteControlIpcManager;
+  localRelay?: WebRemoteControlLocalRelayIpc;
 }
 
 function reportRemoteUsageEventSafely(
@@ -137,4 +145,40 @@ export function registerWebRemoteControlIpcHandlers(
       ? dependencies.webRemoteControlManager.getStatus(win.id)
       : { status: "idle" as const };
   });
+
+  const localRelayDisabledState = (): WebRemoteControlLocalState => ({
+    enabled: false,
+    running: false,
+    addresses: [],
+  });
+  ipcMain.handle(PlatformChannels.GetWebRemoteControlLocalState, (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return win && dependencies.localRelay
+      ? dependencies.localRelay.getState(win.id)
+      : localRelayDisabledState();
+  });
+  ipcMain.handle(
+    PlatformChannels.SetWebRemoteControlLocalEnabled,
+    (event, enabled: unknown) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win || !dependencies.localRelay || typeof enabled !== "boolean") {
+        return localRelayDisabledState();
+      }
+      return dependencies.localRelay.setEnabled(win.id, enabled);
+    },
+  );
+  ipcMain.handle(
+    PlatformChannels.SetWebRemoteControlLocalAddress,
+    (event, address: unknown) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (
+        !win ||
+        !dependencies.localRelay ||
+        (address !== null && typeof address !== "string")
+      ) {
+        return localRelayDisabledState();
+      }
+      return dependencies.localRelay.setAddress(win.id, address);
+    },
+  );
 }

@@ -10,6 +10,7 @@ export type SettingsSectionId =
   | "modelProvider"
   | "remoteDevices"
   | "dataSync"
+  | "localRemote"
   | "personalization"
   | "memory"
   | "plugin"

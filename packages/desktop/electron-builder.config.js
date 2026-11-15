@@ -886,6 +886,11 @@ export default {
       from: "build/icon.png",
       to: "icon.png",
     },
+    {
+      // 局域网手机远控页面：由 prepare:remote-v4 构建，本地 relay 同源托管。
+      from: "bundled-resources/remote/v4",
+      to: "remote/v4",
+    },
     ...(targetPlatform.os === "linux"
       ? [
           {

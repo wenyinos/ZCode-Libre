@@ -172,8 +172,10 @@ interface WindowControlRuntime {
 }
 
 interface WebRemoteControlManagerDependencies {
-  /** 局域网模式：不消费官方登录状态，signed-out 通知不能把远控置为 auth-required。 */
+  /** 局域网模式（env 强制）：不消费官方登录状态，signed-out 通知不能把远控置为 auth-required。 */
   localMode?: boolean;
+  /** 局域网模式（设置页开关）；与 localMode 任一为真即视为本地模式。 */
+  isLocalModeEnabled?: () => Promise<boolean>;
   /** 本地模式下用户停止远控时撤销 relay 的配对码、sessionToken 与连接。 */
   onLocalRelayStopped?: () => void;
   /** 当前界面语言（Main 的 currentApplicationLocale），用于 ZCode endpoint 请求的 X-Client-Language。 */
@@ -2074,7 +2076,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       change: WebRemoteControlAuthStateChange,
     ): Promise<void> {
       // 本地模式没有官方登录事实，桌面 renderer 的 signed-out 不能撤销本地远控。
-      if (dependencies.localMode) return;
+      if (dependencies.localMode || (await dependencies.isLocalModeEnabled?.())) return;
       const revision = ++authNotificationRevision;
       if (change.state === "signed-in") {
         const login = await dependencies.getLogin();

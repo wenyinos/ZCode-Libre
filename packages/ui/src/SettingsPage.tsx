@@ -82,6 +82,7 @@ import { ModelProviderSection } from "@/settings/ModelProviderSection.js";
 import { useCodingPlanUpgradeDialog } from "@/settings/CodingPlanUpgradeDialogProvider.js";
 import { useEnterpriseCodingPlanProducts } from "@/settings/model-provider-section/useEnterpriseCodingPlanProducts.js";
 import { UsageStatsSection, type UsageStatsSectionTab } from "@/settings/UsageStatsSection.js";
+import { LocalRemoteSettingsSection } from "@/settings/LocalRemoteSettingsSection.js";
 import { ProviderBalancePanel } from "@/settings/usage-stats/ProviderBalancePanel.js";
 import { VendorServicesSection } from "@/settings/VendorServicesSection.js";
 import {
@@ -2156,6 +2157,8 @@ export function SettingsPage({
                             />
                           ) : activeSection === "personalPlan" ? (
                             <ProviderBalancePanel />
+                          ) : activeSection === "localRemote" ? (
+                            <LocalRemoteSettingsSection />
                           ) : activeSection === "projects" ? (
                             <ProjectManagement />
                           ) : activeSection === "archives" ? (

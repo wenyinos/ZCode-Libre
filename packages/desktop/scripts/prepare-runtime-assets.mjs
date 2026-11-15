@@ -31,6 +31,8 @@ const shouldPrepareMacosWindowBounds = target.os === "darwin";
 // 运行时由 app 的 Electron Node runtime 执行。Source Server 资源由独立 stage:remote-assets 入口负责。
 const localRuntimeScripts = [
   "prepare:agent-bundle",
+  // 手机远控静态页面：本地 relay 从 resources/remote/v4 同源托管。
+  "prepare:remote-v4",
   ...(target.os === "win32" ? ["prepare:windows-runtime-host"] : []),
   ...(shouldPrepareWindowsCuaHelper ? ["prepare:windows-cua-helper"] : []),
   ...(nativeSearchReleasePlan.enabled ? ["prepare:native-search"] : []),

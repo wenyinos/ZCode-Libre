@@ -962,3 +962,28 @@ export type RelayDesktopControlEvent =
   | WebRemoteControlWorkspaceControlResponse
   | WebRemoteControlWindowControlRequest
   | WebRemoteControlWindowControlResponse;
+
+/** 局域网远控可用的本机 IPv4 地址类别；顺序即二维码默认优先级。 */
+export type WebRemoteControlLocalAddressKind =
+  | "physical"
+  | "zerotier"
+  | "virtual"
+  | "public";
+
+export interface WebRemoteControlLocalAddress {
+  address: string;
+  interfaceName: string;
+  kind: WebRemoteControlLocalAddressKind;
+}
+
+/** 设置页「局域网远控」分区展示的状态；不包含官方账号或云端 relay 信息。 */
+export interface WebRemoteControlLocalState {
+  enabled: boolean;
+  running: boolean;
+  origin?: string;
+  pairCode?: string;
+  qrUrl?: string;
+  preferredAddress?: string;
+  addresses: WebRemoteControlLocalAddress[];
+  error?: string;
+}

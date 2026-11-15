@@ -77,6 +77,17 @@ export function createWebPlatform(options?: {
       Promise.resolve<WebRemoteControlStatus>({
         status: "idle",
       }),
+    // 局域网远控由桌面 main 提供，Web 端只保留统一接口。
+    getWebRemoteControlLocalState: () =>
+      Promise.resolve({
+        enabled: false,
+        running: false,
+        addresses: [],
+      }),
+    setWebRemoteControlLocalEnabled: () =>
+      Promise.reject(new Error("Local remote control can only be configured from desktop")),
+    setWebRemoteControlLocalAddress: () =>
+      Promise.reject(new Error("Local remote control can only be configured from desktop")),
     disposeRemoteSession: () => Promise.resolve(),
     isDockerAvailable: () =>
       platformProxy

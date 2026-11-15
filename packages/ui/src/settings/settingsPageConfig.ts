@@ -15,6 +15,7 @@ import {
   Sun,
   BarChart3,
   Wallet,
+  Smartphone,
   Terminal,
   AlarmClock,
   Anchor,
@@ -217,6 +218,13 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     id: "personalPlan",
     icon: Wallet,
     titleId: "settings.personalPlan.title",
+    groupId: "dataAndStats",
+  },
+  {
+    // ZCode-Libre：局域网手机远控的开关与地址选择；云端远控仍从主界面按钮进入。
+    id: "localRemote",
+    icon: Smartphone,
+    titleId: "settings.localRemote.title",
     groupId: "dataAndStats",
   },
   {

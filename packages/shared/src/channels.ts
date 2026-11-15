@@ -285,6 +285,12 @@ export const PlatformChannels = {
   StopWebRemoteControl: "zcode:stop-web-remote-control",
   /** 查询当前窗口的 Web 远程控制状态 */
   GetWebRemoteControlStatus: "zcode:get-web-remote-control-status",
+  /** 查询局域网远控状态 */
+  GetWebRemoteControlLocalState: "zcode:get-web-remote-control-local-state",
+  /** 开关局域网远控 */
+  SetWebRemoteControlLocalEnabled: "zcode:set-web-remote-control-local-enabled",
+  /** 选择局域网远控二维码地址 */
+  SetWebRemoteControlLocalAddress: "zcode:set-web-remote-control-local-address",
   /** Renderer → Main：OAuth 会话变化通知，不携带凭据 */
   WebRemoteControlAuthStateChanged: "zcode:web-remote-control-auth-state-changed",
   /** Main → Renderer：当前窗口 Web 远程控制状态变化 */
@@ -970,6 +976,18 @@ export interface PlatformChannelMap {
   [PlatformChannels.GetWebRemoteControlStatus]: {
     request: void;
     response: WebRemoteControlStatus;
+  };
+  [PlatformChannels.GetWebRemoteControlLocalState]: {
+    request: void;
+    response: import("./web-remote-control.js").WebRemoteControlLocalState;
+  };
+  [PlatformChannels.SetWebRemoteControlLocalEnabled]: {
+    request: boolean;
+    response: import("./web-remote-control.js").WebRemoteControlLocalState;
+  };
+  [PlatformChannels.SetWebRemoteControlLocalAddress]: {
+    request: string | null;
+    response: import("./web-remote-control.js").WebRemoteControlLocalState;
   };
   [PlatformChannels.WebRemoteControlStatusChanged]: {
     request: WebRemoteControlStatus;

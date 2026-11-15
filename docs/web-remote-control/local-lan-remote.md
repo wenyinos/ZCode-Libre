@@ -290,7 +290,7 @@ Local Relay 只实现手机与桌面都需要的子集，消息 schema 直接复
 | P0   | Local Relay + 静态托管 + 固定配对码，仅 loopback  | LLR-01 的本地等价用例通过 | 完成（2026-11-15） |
 | P1   | 配对码、来源过滤、token 撤销、single terminal     | LLR-04/05/06/09/10 通过   | 完成（2026-11-15） |
 | P2   | 多网卡地址选择、ZeroTier、地址变化处理            | LLR-02/03/11 通过         | 部分完成（2026-11-15） |
-| P3   | 静态资源打包进桌面、设置 UI、真机验收、文档与测试 | 全部用例通过              | 部分完成（2026-11-15） |
+| P3   | 静态资源打包进桌面、设置 UI、真机验收、文档与测试 | 全部用例通过              | 完成（2026-11-15，真机待验收） |
 
 ### 实施记录
 
@@ -314,11 +314,15 @@ P2（2026-11-15，部分完成）：
 - 已验证：本机同时有 Wi-Fi（`192.168.8.110`）与 ZeroTier（`192.168.192.10`）时，指定 ZeroTier 地址后二维码与手机连接均使用该地址，配对和 bridge 正常。
 - 未完成：远控对话框内的地址选择 UI、运行中地址变化（ZeroTier 掉线/切换）的自动刷新与提示；按计划留到 P3。
 
-P3（2026-11-15，部分完成）：
+P3（2026-11-15，完成，真机待验收）：
 
 - `deviceSid` 持久化：设置新增 `webRemoteControlLocalDeviceSid`；首次启动生成后写入设置，之后 relay 复用同一 SID，桌面重启不会让手机旧链接失效。relay 选项新增 `deviceSid`。
-- 回归测试增加「复用已持久化 deviceSid」用例。
-- 未完成：静态资源打包进桌面、设置 UI（本地模式开关/地址选择/配对码展示）、真机与预览版验收。
+- 静态资源打包：`node scripts/build-remote-v4-assets.mjs` 构建 `/remote/v4` 到 `packages/desktop/bundled-resources/remote/v4`，`prepare:runtime-assets` 自动执行，electron-builder 以 `extraResources` 发布到 `resources/remote/v4`；开发态读取 `app.getAppPath()/bundled-resources/remote/v4`，打包态读取 `process.resourcesPath/remote/v4`，不再要求手动设置 assets 目录。
+- 设置 UI：设置页「数据与统计」新增「局域网远控」分区（`LocalRemoteSettingsSection`）：开关（`webRemoteControlLocalModeEnabled`）、二维码地址选择（`webRemoteControlLocalPreferredAddress`）、relay 状态与配对码展示。远控本身仍从主界面「移动端远程控制」对话框启动。
+- 平台接口：`getWebRemoteControlLocalState` / `setWebRemoteControlLocalEnabled` / `setWebRemoteControlLocalAddress` 经 `IPlatformService`、preload、IPC 与 renderer 适配层接通；Web 端保留空实现。
+- 已验证：设置页开关开启后 relay 监听 47821；地址切到 ZeroTier 后对话框二维码变为 `192.168.192.10`；手机连接配对、bridge active；关闭开关后远控停止。
+- 回归测试增加「复用已持久化 deviceSid」用例；设置分区顺序断言同步更新。
+- 未完成：真实手机与预览版安装包验收（需要用户在现场执行 LLR-01/02/09）。
 
 ## 已确认决策
 

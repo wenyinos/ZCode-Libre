@@ -4074,6 +4074,28 @@ const enUS: Record<string, string> = {
   "settings.usageDescription":
     "Review rough activity and model usage aggregated from local sessions.",
   "settings.personalPlan.title": "Personal plan",
+  "settings.localRemote.title": "Local network remote",
+  "settings.localRemote.enabled": "Enable local network remote control",
+  "settings.localRemote.enabled.description":
+    "Phones connect directly to this machine without the cloud relay or an official account sign-in.",
+  "settings.localRemote.status.label": "Local relay status",
+  "settings.localRemote.status.running": "Running — a phone can connect using the address below.",
+  "settings.localRemote.status.stopped":
+    'Stopped — start it from the "Mobile remote control" button in the main window.',
+  "settings.localRemote.origin": "Address",
+  "settings.localRemote.pairCode": "Pairing code",
+  "settings.localRemote.refresh": "Refresh",
+  "settings.localRemote.address.title": "QR code address",
+  "settings.localRemote.address.description":
+    "The relay listens on every interface; this only picks the address embedded in the QR code. Choose the ZeroTier address when the phone is on a different network.",
+  "settings.localRemote.address.auto": "Automatic",
+  "settings.localRemote.address.none": "No usable address found",
+  "settings.localRemote.address.kind.physical": "Physical",
+  "settings.localRemote.address.kind.zerotier": "ZeroTier",
+  "settings.localRemote.address.kind.virtual": "Virtual",
+  "settings.localRemote.address.kind.public": "Public",
+  "settings.localRemote.hint":
+    "After enabling, use the phone icon in the main window to get the QR code. The phone must reach one of the listed addresses; for ZeroTier, join the same virtual network first.",
   "resourceManager.storage.summaryTotal": "Total used by ZCode-Libre",
   "resourceManager.storage.scanning": "Calculating…",
   "resourceManager.storage.lastScanned": "Last calculated {time}",

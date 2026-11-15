@@ -54,6 +54,7 @@ import {
 import { randomUUID } from "node:crypto";
 import type { UtilityProcess as ElectronUtilityProcess } from "electron";
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { homedir, hostname } from "node:os";
 import {
@@ -100,6 +101,7 @@ import {
   shouldEnableE2ETestBridge,
   type UpdateStatePayload,
   type TelemetryEventPayload,
+  type WebRemoteControlLocalState,
   HostMessageTypes,
   InternalChannels,
 } from "@zcode/shared";
@@ -145,8 +147,10 @@ import {
 import { createWebRemoteControlManager } from "./webRemoteControlManager.js";
 import {
   createWebRemoteControlLocalRelay,
+  listWebRemoteControlLocalAddresses,
   type WebRemoteControlLocalRelay,
 } from "./webRemoteControlLocalRelay.js";
+import type { WebRemoteControlLocalRelayIpc } from "./desktopWebRemoteControlIpc.js";
 import { readBootstrapApplicationLocale } from "./desktopApplicationLocaleBootstrap.js";
 import {
   createMobileLogSink,
@@ -977,31 +981,47 @@ const webRemoteControlUrlEnvOverride = process.env["ZCODE_WEB_REMOTE_CONTROL_URL
 const webRemoteControlLocalMode =
   process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_MODE"]?.trim() === "1";
 const webRemoteControlLocalAssetsDir =
-  process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_ASSETS_DIR"]?.trim();
+  process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_ASSETS_DIR"]?.trim() ||
+  (() => {
+    // 打包态读 resources/remote/v4；开发态读 bundled-resources（prepare:remote-v4 产出）。
+    const bundled = app.isPackaged
+      ? join(process.resourcesPath, "remote/v4")
+      : join(app.getAppPath(), "bundled-resources/remote/v4");
+    return existsSync(bundled) ? bundled : undefined;
+  })();
 const webRemoteControlLocalPairCode =
   process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_PAIR_CODE"]?.trim() || "123456";
 // 二维码地址可选：用于在 Wi-Fi 与 ZeroTier 之间选择手机可达的那一个。
 const webRemoteControlLocalPreferredAddress =
   process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_ADDRESS"]?.trim();
-const webRemoteControlLocalRelayEnabled = Boolean(
+const webRemoteControlLocalEnvEnabled = Boolean(
   webRemoteControlLocalMode && webRemoteControlLocalAssetsDir,
 );
 let webRemoteControlLocalRelayPromise: Promise<WebRemoteControlLocalRelay> | undefined;
 
+/** env 或设置页开关任一开启即使用本地 relay。 */
+async function isWebRemoteControlLocalModeEnabled(): Promise<boolean> {
+  if (webRemoteControlLocalEnvEnabled) return true;
+  return (await mainSettingService.get()).webRemoteControlLocalModeEnabled === true;
+}
+
 // 懒启动：先读设置里的本地设备 SID，保证桌面重启后手机旧链接仍可认证。
-function getWebRemoteControlLocalRelay(): Promise<WebRemoteControlLocalRelay> | undefined {
-  if (!webRemoteControlLocalRelayEnabled || !webRemoteControlLocalAssetsDir) return undefined;
+async function getWebRemoteControlLocalRelay(): Promise<WebRemoteControlLocalRelay | undefined> {
+  const assetsDir = webRemoteControlLocalAssetsDir;
+  if (!assetsDir) return undefined;
+  if (!(await isWebRemoteControlLocalModeEnabled())) return undefined;
   webRemoteControlLocalRelayPromise ??= (async () => {
-    const persistedDeviceSid = (await mainSettingService.get())
-      .webRemoteControlLocalDeviceSid?.trim();
+    const settings = await mainSettingService.get();
+    const persistedDeviceSid = settings.webRemoteControlLocalDeviceSid?.trim();
+    const preferredAddress =
+      webRemoteControlLocalPreferredAddress ??
+      settings.webRemoteControlLocalPreferredAddress?.trim();
     const relay = await createWebRemoteControlLocalRelay({
-      assetsDir: webRemoteControlLocalAssetsDir,
+      assetsDir,
       deviceMid,
       pairCode: webRemoteControlLocalPairCode,
       ...(persistedDeviceSid ? { deviceSid: persistedDeviceSid } : {}),
-      ...(webRemoteControlLocalPreferredAddress
-        ? { preferredAddress: webRemoteControlLocalPreferredAddress }
-        : {}),
+      ...(preferredAddress ? { preferredAddress } : {}),
       logger,
     });
     if (!persistedDeviceSid) {
@@ -1013,6 +1033,68 @@ function getWebRemoteControlLocalRelay(): Promise<WebRemoteControlLocalRelay> | 
   })();
   return webRemoteControlLocalRelayPromise;
 }
+
+async function getWebRemoteControlLocalState(windowId: number): Promise<WebRemoteControlLocalState> {
+  const enabled = await isWebRemoteControlLocalModeEnabled();
+  const addresses = listWebRemoteControlLocalAddresses();
+  const preferredAddress = (await mainSettingService.get())
+    .webRemoteControlLocalPreferredAddress?.trim();
+  if (!enabled) {
+    return {
+      enabled: false,
+      running: false,
+      addresses,
+      ...(preferredAddress ? { preferredAddress } : {}),
+    };
+  }
+  const relay = await getWebRemoteControlLocalRelay();
+  if (!relay) {
+    return {
+      enabled: true,
+      running: false,
+      addresses,
+      error: "assets-missing",
+      ...(preferredAddress ? { preferredAddress } : {}),
+    };
+  }
+  const status = webRemoteControlManager.getStatus(windowId);
+  return {
+    enabled: true,
+    running: Boolean(status.qrUrl),
+    origin: relay.origin,
+    pairCode: relay.pairCode,
+    ...(status.qrUrl ? { qrUrl: status.qrUrl } : {}),
+    ...(preferredAddress ? { preferredAddress } : {}),
+    addresses: relay.addresses,
+  };
+}
+
+const webRemoteControlLocalRelayController: WebRemoteControlLocalRelayIpc = {
+  getState: getWebRemoteControlLocalState,
+  async setEnabled(windowId, enabled) {
+    // 先保留旧 relay 引用：关闭开关后懒启动函数不会再返回它。
+    const previousRelay = webRemoteControlLocalRelayPromise;
+    await mainSettingService.update({ webRemoteControlLocalModeEnabled: enabled });
+    if (!enabled) {
+      await webRemoteControlManager.stop(windowId).catch(() => undefined);
+      const relay = await previousRelay?.catch(() => undefined);
+      relay?.revokeAll();
+    }
+    return getWebRemoteControlLocalState(windowId);
+  },
+  async setAddress(windowId, address) {
+    await mainSettingService.update({
+      webRemoteControlLocalPreferredAddress: address ?? undefined,
+    });
+    // origin 变化需要重建 relay；先停止远控并关闭旧监听，再按新地址懒启动。
+    await webRemoteControlManager.stop(windowId).catch(() => undefined);
+    const previousRelay = webRemoteControlLocalRelayPromise;
+    webRemoteControlLocalRelayPromise = undefined;
+    const relay = await previousRelay?.catch(() => undefined);
+    await relay?.close();
+    return getWebRemoteControlLocalState(windowId);
+  },
+};
 
 function extractOpenWorkspacePathFromDeepLinkUrl(url: string): string | null {
   try {
@@ -1048,16 +1130,16 @@ function getMobileLogSink(): MobileLogSink {
 }
 
 const webRemoteControlManager = createWebRemoteControlManager({
-  localMode: webRemoteControlLocalRelayEnabled,
+  localMode: webRemoteControlLocalEnvEnabled,
+  isLocalModeEnabled: isWebRemoteControlLocalModeEnabled,
   onLocalRelayStopped: () => {
-    void getWebRemoteControlLocalRelay()?.then((relay) => relay.revokeAll());
+    void getWebRemoteControlLocalRelay().then((relay) => relay?.revokeAll());
   },
   mobileLogSink: { append: (target, events) => getMobileLogSink().append(target, events) },
   getEndpointUrls: async () => {
-    const localRelay = getWebRemoteControlLocalRelay();
-    if (localRelay) {
-      // 本地模式：页面、token 与 ws2 同源，手机端按 window.location.origin 推导。
-      const relay = await localRelay;
+    // 本地模式：页面、token 与 ws2 同源，手机端按 window.location.origin 推导。
+    const relay = await getWebRemoteControlLocalRelay();
+    if (relay) {
       const derived = buildZCodeEndpointUrls(relay.origin, {
         appVersion: webRemoteControlAppVersion,
       });
@@ -1087,9 +1169,8 @@ const webRemoteControlManager = createWebRemoteControlManager({
   appVersion: webRemoteControlAppVersion,
   getLogin: async () => {
     // 本地模式没有官方账号；device 端使用 relay 预生成的稳定 sessionToken。
-    const localRelay = getWebRemoteControlLocalRelay();
-    if (localRelay) {
-      const relay = await localRelay;
+    const relay = await getWebRemoteControlLocalRelay();
+    if (relay) {
       return { userId: "local", jwt: relay.sessionToken };
     }
     const userId = await loadRemoteControlUserId();
@@ -1105,7 +1186,7 @@ const webRemoteControlManager = createWebRemoteControlManager({
   startupRestoreStorageProvider: {
     load: async () => {
       // 本地模式用占位目标触发首次自动恢复；restorePreviouslyEnabled 会回退到窗口首个工作区。
-      if (webRemoteControlLocalRelayEnabled) return { workspacePath: "__local_lan__" };
+      if (await isWebRemoteControlLocalModeEnabled()) return { workspacePath: "__local_lan__" };
       return (await mainSettingService.get()).webRemoteControlLastEnabledContext;
     },
     save: async (context) => {
@@ -2691,6 +2772,7 @@ app.whenReady().then(async () => {
     },
     finalArmsCustomEventE2EEnabled: shouldEnableE2ETestBridge(process.env),
     webRemoteControlManager,
+    webRemoteControlLocalRelay: webRemoteControlLocalRelayController,
     createRemoteWorkspaceSession: remoteSessionManager.createRemoteWorkspaceSession,
     getRemoteConnectionStats: remoteSessionManager.getRemoteConnectionStats,
     disposeRemoteWorkspaceSession: remoteSessionManager.disposeRemoteWorkspaceSession,

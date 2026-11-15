@@ -454,6 +454,10 @@ export interface AppSettings {
   };
   /** 局域网远控的本地设备 SID；持久化后桌面重启不会让手机旧链接失效。 */
   webRemoteControlLocalDeviceSid?: string;
+  /** 设置页开关：启用后远控使用桌面内置 relay，而不是云端 Relay V2。 */
+  webRemoteControlLocalModeEnabled?: boolean;
+  /** 二维码首选地址（如 ZeroTier）；缺失时按网卡优先级自动选择。 */
+  webRemoteControlLocalPreferredAddress?: string;
   /** 设置页里的临时 endpoint override；正式/测试默认 base url 由 ZCODE_BASE_URL env 管理。 */
   zcodeEndpointOrigin?: string;
 }

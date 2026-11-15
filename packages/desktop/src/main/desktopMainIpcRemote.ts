@@ -218,6 +218,7 @@ export function registerRemoteIpcHandlers(options: {
   /** 仅由 VITE_ZCODE_E2E_STORE_BRIDGE + test runner 双门禁打开。 */
   finalArmsCustomEventE2EEnabled?: boolean;
   webRemoteControlManager: WebRemoteControlIpcManager;
+  webRemoteControlLocalRelay?: import("./desktopWebRemoteControlIpc.js").WebRemoteControlLocalRelayIpc;
   createRemoteWorkspaceSession: (
     win: BrowserWindow,
     target: RemoteTarget,
@@ -332,6 +333,9 @@ export function registerRemoteIpcHandlers(options: {
   registerWebRemoteControlIpcHandlers({
     reportRemoteUsageEvent,
     webRemoteControlManager: options.webRemoteControlManager,
+    ...(options.webRemoteControlLocalRelay
+      ? { localRelay: options.webRemoteControlLocalRelay }
+      : {}),
   });
 
   ipcMain.on(PlatformChannels.OAuthRegisterState, (event, payload: unknown) => {
