@@ -1851,6 +1851,10 @@ global:
   acceptedUpstreamSnapshot: scripts/architecture/upstream-snapshot.json
 
 exceptions:
+  - id: local-lan-remote-firewall-helper-new-file
+    rule: unmanaged-new-file
+    paths: [packages/desktop/src/main/firewallAccess.ts]
+    reason: 本分支局域网远控的只读防火墙检测与手动命令提示（docs/web-remote-control/local-lan-remote.md）；不修改系统防火墙，接管整个 desktop 未受管模块不在本次范围内。
   - id: local-lan-remote-relay-new-file
     rule: unmanaged-new-file
     paths: [packages/desktop/src/main/webRemoteControlLocalRelay.ts]
