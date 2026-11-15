@@ -989,19 +989,18 @@ const webRemoteControlLocalAssetsDir =
       : join(app.getAppPath(), "bundled-resources/remote/v4");
     return existsSync(bundled) ? bundled : undefined;
   })();
+// 调试时可固定配对码；正式运行每次启动随机生成。
 const webRemoteControlLocalPairCode =
-  process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_PAIR_CODE"]?.trim() || "123456";
+  process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_PAIR_CODE"]?.trim();
 // 二维码地址可选：用于在 Wi-Fi 与 ZeroTier 之间选择手机可达的那一个。
 const webRemoteControlLocalPreferredAddress =
   process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_ADDRESS"]?.trim();
 const webRemoteControlLocalModeEnabled = Boolean(webRemoteControlLocalAssetsDir);
 let webRemoteControlLocalRelayPromise: Promise<WebRemoteControlLocalRelay> | undefined;
-let webRemoteControlLocalFirewallInfo: FirewallSetupInfo | undefined;
 
-async function resolveLocalFirewallInfo(): Promise<FirewallSetupInfo> {
-  webRemoteControlLocalFirewallInfo ??=
-    await inspectFirewall(WEB_REMOTE_CONTROL_LOCAL_RELAY_PORT);
-  return webRemoteControlLocalFirewallInfo;
+// 每次读取都重新检测：用户可能在应用运行期间改了防火墙规则。
+function resolveLocalFirewallInfo(): Promise<FirewallSetupInfo> {
+  return inspectFirewall(WEB_REMOTE_CONTROL_LOCAL_RELAY_PORT);
 }
 
 // 懒启动：先读设置里的本地设备 SID，保证桌面重启后手机旧链接仍可认证。
@@ -1026,7 +1025,7 @@ async function getWebRemoteControlLocalRelay(): Promise<WebRemoteControlLocalRel
     const relay = await createWebRemoteControlLocalRelay({
       assetsDir,
       deviceMid,
-      pairCode: webRemoteControlLocalPairCode,
+      ...(webRemoteControlLocalPairCode ? { pairCode: webRemoteControlLocalPairCode } : {}),
       ...(persistedDeviceSid ? { deviceSid: persistedDeviceSid } : {}),
       ...(preferredAddress ? { preferredAddress } : {}),
       logger,
@@ -1074,6 +1073,10 @@ async function getWebRemoteControlLocalState(windowId: number): Promise<WebRemot
     };
   }
   const status = webRemoteControlManager.getStatus(windowId);
+  const originAddress = relay.origin.replace(/^http:\/\//, "").split(":")[0];
+  const addressAvailable = addresses.some(
+    (item) => item.address === originAddress,
+  );
   return {
     enabled: true,
     running: Boolean(status.qrUrl),
@@ -1082,12 +1085,34 @@ async function getWebRemoteControlLocalState(windowId: number): Promise<WebRemot
     ...(status.qrUrl ? { qrUrl: status.qrUrl } : {}),
     ...(preferredAddress ? { preferredAddress } : {}),
     addresses: relay.addresses,
+    ...(addressAvailable ? {} : { addressUnavailable: true }),
     ...firewallFields,
   };
 }
 
 const webRemoteControlLocalRelayController: WebRemoteControlLocalRelayIpc = {
   getState: getWebRemoteControlLocalState,
+  async refreshPairing(windowId) {
+    const relay = await getWebRemoteControlLocalRelay();
+    if (!relay) return getWebRemoteControlLocalState(windowId);
+    relay.refreshPairing();
+    // 二维码由 manager 在 start 时生成；重启 runtime 才能带上新配对码。
+    const status = webRemoteControlManager.getStatus(windowId);
+    if (status.workspacePath) {
+      const context = {
+        workspacePath: status.workspacePath,
+        ...(status.workspaceIdentity
+          ? { workspaceIdentity: status.workspaceIdentity }
+          : {}),
+        ...(status.remoteSessionId
+          ? { remoteSessionId: status.remoteSessionId }
+          : {}),
+      };
+      const authorization = webRemoteControlManager.authorizeStart(windowId, context);
+      await webRemoteControlManager.startAuthorized(windowId, context, authorization);
+    }
+    return getWebRemoteControlLocalState(windowId);
+  },
   async setAddress(windowId, address) {
     await mainSettingService.update({
       webRemoteControlLocalPreferredAddress: address ?? undefined,

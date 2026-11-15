@@ -3165,6 +3165,8 @@ const enUS: Record<string, string> = {
   "webRemoteControl.copyLink.copied": "Remote control link copied",
   "webRemoteControl.copyLinkFailed": "Could not copy remote control link: {error}",
   "webRemoteControl.refreshQr": "Refresh QR",
+  "webRemoteControl.addressUnavailable":
+    "The current QR address is no longer available. Choose another network interface.",
   "webRemoteControl.refreshQr.confirmTitle": "Refresh QR code?",
   "webRemoteControl.refreshQr.confirmDescription":
     "Refreshing will invalidate any remote control links that were copied or scanned before. Connected phones will need to scan the new QR code.",

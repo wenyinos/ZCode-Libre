@@ -289,6 +289,8 @@ export const PlatformChannels = {
   GetWebRemoteControlLocalState: "zcode:get-web-remote-control-local-state",
   /** 选择局域网远控二维码地址 */
   SetWebRemoteControlLocalAddress: "zcode:set-web-remote-control-local-address",
+  /** 刷新局域网远控配对码与二维码 */
+  RefreshWebRemoteControlLocalPairing: "zcode:refresh-web-remote-control-local-pairing",
   /** Renderer → Main：OAuth 会话变化通知，不携带凭据 */
   WebRemoteControlAuthStateChanged: "zcode:web-remote-control-auth-state-changed",
   /** Main → Renderer：当前窗口 Web 远程控制状态变化 */
@@ -981,6 +983,10 @@ export interface PlatformChannelMap {
   };
   [PlatformChannels.SetWebRemoteControlLocalAddress]: {
     request: string | null;
+    response: import("./web-remote-control.js").WebRemoteControlLocalState;
+  };
+  [PlatformChannels.RefreshWebRemoteControlLocalPairing]: {
+    request: void;
     response: import("./web-remote-control.js").WebRemoteControlLocalState;
   };
   [PlatformChannels.WebRemoteControlStatusChanged]: {

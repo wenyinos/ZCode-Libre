@@ -52,7 +52,11 @@ export function createWebRemoteControlV2TokenClient(
             redirect: "error",
           },
         );
-        if (response.status === 401) throw new WebRemoteControlV2ConnectionError("auth-required");
+        if (response.status === 401) {
+          // 本地模式下 401 表示 sessionToken 已被桌面撤销；清掉它，刷新后重新配对。
+          if (localStore?.getSessionToken()) localStore.setSessionToken("");
+          throw new WebRemoteControlV2ConnectionError("auth-required");
+        }
         if (!response.ok)
           throw new WebRemoteControlV2ConnectionError("relay-unavailable", response.status >= 500);
         // 读取正文也可能断网或超时，必须交给外层网络重试；只有完整但非法的 JSON 才是终态。

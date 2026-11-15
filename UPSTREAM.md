@@ -310,7 +310,7 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 
 新增文件：
 
-- `packages/desktop/src/main/webRemoteControlLocalRelay.ts`：本地 Relay V2 子集，实现 `POST/GET /api/v1/remote/device`、`POST /api/v1/remote/token`、`WS /api/v1/remote/ws2` 与 `/remote/v4/*` 静态托管；监听 `0.0.0.0:47821`，一次覆盖全部 IPv4 网卡（含 ZeroTier `zt*`）；只接受 RFC1918 / `100.64/10` / loopback 来源；device/terminal 配对状态机与 owner 替换沿用 Relay V2 语义。P1 起：配对码在远控生命周期内有效，每次配对签发独立 `sessionToken`（第二台手机可用同一二维码替换第一台）；token 接口只接受有效配对码或有效 `sessionToken`；连续 5 次错误按来源暂停 60 秒；`revokeAll()` 在停止远控时撤销全部 token、配对状态与已配对连接。P2 起：`listWebRemoteControlLocalAddresses()` 枚举全部 IPv4 并按 `physical > zerotier > virtual > public` 排序，`classifyWebRemoteControlLocalAddress()` 按接口名识别 ZeroTier 与虚拟网卡，`preferredAddress` 决定二维码使用哪个地址（监听不变）。
+- `packages/desktop/src/main/webRemoteControlLocalRelay.ts`：本地 Relay V2 子集，实现 `POST/GET /api/v1/remote/device`、`POST /api/v1/remote/token`、`WS /api/v1/remote/ws2` 与 `/remote/v4/*` 静态托管；监听 `0.0.0.0:47821`，一次覆盖全部 IPv4 网卡（含 ZeroTier `zt*`）；只接受 RFC1918 / `100.64/10` / loopback 来源；device/terminal 配对状态机与 owner 替换沿用 Relay V2 语义。配对码每次启动随机生成 6 位数字（可用 `ZCODE_WEB_REMOTE_CONTROL_LOCAL_PAIR_CODE` 固定），在远控生命周期内有效，每次配对签发独立 `sessionToken`（第二台手机可用同一二维码替换第一台）；`refreshPairing()` 轮换配对码并撤销手机 token/连接。token 接口只接受有效配对码或有效 `sessionToken`；连续 5 次错误按来源暂停 60 秒；`revokeAll()` 在停止远控时撤销全部 token、配对状态与已配对连接。`listWebRemoteControlLocalAddresses()` 枚举全部 IPv4 并按 `physical > zerotier > virtual > public` 排序，`classifyWebRemoteControlLocalAddress()` 按接口名识别 ZeroTier 与虚拟网卡，`preferredAddress` 决定二维码使用哪个地址（监听不变）。
 - `packages/web/src/web-remote-control/adapters/webRemoteControlLocalToken.ts`：手机端本地模式判定（URL 带 `pair` 或页面在私有地址）与 `sessionToken` 的 localStorage 读写。
 - `packages/ui/src/settings/LocalRemoteSettingsSection.tsx`：设置页「局域网远控」分区（地址选择、relay 状态与配对码；没有启用开关）。
 - `scripts/build-remote-v4-assets.mjs`：构建 `/remote/v4` 到 `packages/desktop/bundled-resources/remote/v4`，供 `prepare:runtime-assets` 与 electron-builder 打包。
@@ -322,19 +322,19 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 
 - `packages/desktop/src/main/index.ts`：本地 relay 始终启用（只要 `/remote/v4` 资源存在）；可选 `ZCODE_WEB_REMOTE_CONTROL_LOCAL_ASSETS_DIR=<构建出的 /remote/v4 目录>`，`ZCODE_WEB_REMOTE_CONTROL_LOCAL_PAIR_CODE`（默认 `123456`）与 `ZCODE_WEB_REMOTE_CONTROL_LOCAL_ADDRESS`（二维码首选地址，例如 ZeroTier 的 `192.168.192.10`）。`getEndpointUrls` 返回同源 origin，`getLogin` 返回 `{userId:"local", jwt:<relay.sessionToken>}`，启动恢复用 `workspacePath:"__local_lan__"` 占位触发窗口首个工作区；向 manager 传入 `localMode` 与 `onLocalRelayStopped`（调用 `relay.revokeAll()`）。
 - `packages/desktop/src/main/webRemoteControlManager.ts`：依赖接口新增 `localMode?: boolean` 与 `onLocalRelayStopped?: () => void`；`notifyAuthStateChanged` 在本地模式下直接返回，避免桌面 renderer 的 signed-out 把远控置为 `auth-required`（本分支未登录是常态）；`stop()` 在释放 runtime 后调用 `onLocalRelayStopped`。
-- `packages/web/src/web-remote-control/adapters/webRemoteControlV2Token.ts`：token 客户端新增可选 `localStore`；本地模式优先用 `sessionToken`，首次用配对码，响应中的 `sessionToken` 写回本地存储；云端模式保持原 JWT 路径。
-- `packages/web/src/main.tsx`：本地模式判定后创建 `createWebRemoteControlLocalTokenStore(...)`，同一实例同时注入 token 客户端与 entry 的内存 auth 哨兵（跳过登录门禁，不写 localStorage）。
+- `packages/web/src/web-remote-control/adapters/webRemoteControlV2Token.ts`：token 客户端新增可选 `localStore`；本地模式优先用 `sessionToken`，首次用配对码，响应中的 `sessionToken` 写回本地存储；401 时清除失效的 sessionToken；云端模式保持原 JWT 路径。
+- `packages/web/src/main.tsx`：本地模式判定后创建 `createWebRemoteControlLocalTokenStore(...)`，同一实例同时注入 token 客户端与 entry 的内存 auth 哨兵（跳过登录门禁，不写 localStorage）；本地模式下 `onView({kind:"login"})` 改为「配对已失效，请重新扫码」失败页，不显示官方登录页。
 - `packages/web/src/web-remote-control/index.ts`：导出本地 token store。
 - `scripts/engineering-test-files.json`：登记 relay 回归测试。
 - `packages/shared/src/protocol.ts` 与 `packages/shared/src/validationAppSettings.ts`：设置新增可选 `webRemoteControlLocalDeviceSid`、`webRemoteControlLocalPreferredAddress`。
-- `packages/shared/src/web-remote-control.ts`、`packages/shared/src/platform.ts`、`packages/shared/src/channels.ts`：新增 `WebRemoteControlLocalState` / `WebRemoteControlLocalAddress` 类型与 `getWebRemoteControlLocalState` / `setWebRemoteControlLocalAddress` 两个平台方法与 IPC 通道。
+- `packages/shared/src/web-remote-control.ts`、`packages/shared/src/platform.ts`、`packages/shared/src/channels.ts`：新增 `WebRemoteControlLocalState` / `WebRemoteControlLocalAddress` 类型与 `getWebRemoteControlLocalState` / `setWebRemoteControlLocalAddress` / `refreshWebRemoteControlLocalPairing` 三个平台方法与 IPC 通道。
 - `packages/desktop/src/preload/index.ts`、`packages/desktop/src/renderer/src/desktopPlatform.ts`、`packages/desktop/src/main/desktopWebRemoteControlIpc.ts`、`packages/desktop/src/main/desktopMainIpcRemote.ts`：两个本地远控方法的 preload、renderer 适配与 IPC 接线。
 - `packages/web/src/platform/index.ts`：Web 端对两个方法提供空实现（局域网远控只能从桌面配置）。
 - `packages/ui/src/lib/settingsNavigation.ts`、`packages/ui/src/settings/settingsPageConfig.ts`、`packages/ui/src/SettingsPage.tsx`、`packages/ui/src/i18n/locales/{zh-CN,en-US}.ts`：新增 `localRemote` 设置分区、渲染分支与双语文案。
-- `packages/ui/src/web-remote-control/WebRemoteControlDialog.tsx`：本地模式下读取 `getWebRemoteControlLocalState()`，在二维码下方展示防火墙状态与当前平台的手动放行命令（可复制）；端口已放行时不显示。
+- `packages/ui/src/web-remote-control/WebRemoteControlDialog.tsx`：本地模式下读取 `getWebRemoteControlLocalState()`，在二维码下方展示「刷新二维码」按钮（轮换配对码并重建 runtime）、地址失效提示，以及防火墙状态与当前平台的手动放行命令（可复制）；端口已放行时不显示命令。
 - `packages/ui/test/settingsPageConfig.test.ts`：分区顺序断言加入 `localRemote`。
 - `packages/desktop/package.json`、`packages/desktop/scripts/prepare-runtime-assets.mjs`、`packages/desktop/electron-builder.config.js`：新增 `prepare:remote-v4`，并把 `bundled-resources/remote/v4` 作为 `extraResources` 发布到 `resources/remote/v4`。
-- `packages/desktop/src/main/index.ts`（P3 追加）：本地 relay 懒启动、始终启用；新增 `getWebRemoteControlLocalState` 与 `setAddress` 控制器；打包态 assets 默认 `process.resourcesPath/remote/v4`。
+- `packages/desktop/src/main/index.ts`（P3 追加）：本地 relay 懒启动、始终启用；新增 `getWebRemoteControlLocalState` / `refreshPairing` / `setAddress` 控制器；防火墙状态每次按需重新检测；二维码地址失效时返回 `addressUnavailable`；打包态 assets 默认 `process.resourcesPath/remote/v4`。
 
 已确认的实现边界：
 

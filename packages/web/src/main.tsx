@@ -454,8 +454,20 @@ const remoteEntry = new WebRemoteControlEntry({
   },
   onView: (view) => {
     if (view.kind === "callback") renderWebAuthCallbackPage();
-    else if (view.kind === "login") renderWebLoginPage();
-    else if (view.kind === "devices") {
+    else if (view.kind === "login") {
+      if (localRemoteTokenStore) {
+        // 本地配对失效（sessionToken 被撤销）：不显示官方登录页，提示重新扫码。
+        renderWebRemoteControlFailure({
+          reason: "auth-required",
+          message:
+            resolveWebRemoteControlScreenLocale(navigator.language) === "zh-CN"
+              ? "配对已失效，请重新扫描桌面二维码。"
+              : "Pairing expired. Scan the desktop QR code again.",
+        });
+      } else {
+        renderWebLoginPage();
+      }
+    } else if (view.kind === "devices") {
       document.title = "ZCode-Libre - Web Remote Control";
       root.render(
         <WebRemoteControlDeviceListPage

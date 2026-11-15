@@ -22,6 +22,7 @@ import {
   FileDown,
   LoaderCircle,
   MonitorSmartphone,
+  RefreshCw,
   Smartphone,
   Unplug,
   XIcon,
@@ -105,6 +106,8 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
   });
   const [loading, setLoading] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [localAddressUnavailable, setLocalAddressUnavailable] = useState(false);
   const [localFirewall, setLocalFirewall] = useState<{
     state: WebRemoteControlLocalFirewallState;
     commands: string[];
@@ -148,6 +151,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
           .catch(() => null);
         const localMode = Boolean(localState?.enabled);
         if (!cancelled && localState?.enabled) {
+          setLocalAddressUnavailable(Boolean(localState.addressUnavailable));
           setLocalFirewall({
             state: localState.firewall ?? "unknown",
             commands: localState.firewallCommands ?? [],
@@ -284,7 +288,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [open, platform, remoteSessionId, workspaceIdentity, workspacePath]);
+  }, [open, platform, refreshKey, remoteSessionId, workspaceIdentity, workspacePath]);
 
   useEffect(() => {
     if (!status.qrUrl) {
@@ -587,6 +591,33 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
                         </div>
                       )}
                     </div>
+                    {localFirewall ? (
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <span className="text-ui-sm text-foreground-subtle">
+                          {localAddressUnavailable
+                            ? intl.formatMessage({
+                                id: "webRemoteControl.addressUnavailable",
+                              })
+                            : null}
+                        </span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0 gap-2"
+                          disabled={loading}
+                          onClick={() => {
+                            void platform
+                              .refreshWebRemoteControlLocalPairing()
+                              .catch(() => {})
+                              .then(() => setRefreshKey((key) => key + 1));
+                          }}
+                        >
+                          <RefreshCw className="size-4" aria-hidden="true" />
+                          {intl.formatMessage({ id: "webRemoteControl.refreshQr" })}
+                        </Button>
+                      </div>
+                    ) : null}
                     {localFirewall && localFirewall.state !== "open" ? (
                       <div className="mt-3 rounded-lg border border-border bg-background-alt px-3 py-2 text-ui-base/relaxed text-foreground-subtle">
                         <p className="font-medium text-foreground">

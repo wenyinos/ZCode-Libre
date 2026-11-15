@@ -69,6 +69,8 @@ export function createDesktopPlatform(options: {
     getWebRemoteControlLocalState: () => window.zcode.getWebRemoteControlLocalState(),
     setWebRemoteControlLocalAddress: (address) =>
       window.zcode.setWebRemoteControlLocalAddress(address),
+    refreshWebRemoteControlLocalPairing: () =>
+      window.zcode.refreshWebRemoteControlLocalPairing(),
     onWebRemoteControlStatusChanged: (handler) =>
       window.zcode.onWebRemoteControlStatusChanged?.(handler) ?? (() => {}),
     disposeRemoteSession: (sessionId) => window.zcode.disposeRemoteSession(sessionId),

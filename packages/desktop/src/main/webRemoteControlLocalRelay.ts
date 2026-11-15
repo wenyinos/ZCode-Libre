@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomBytes, randomInt, randomUUID } from "node:crypto";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import {
   createServer,
@@ -42,7 +42,8 @@ interface LocalRelayConnection {
 export interface WebRemoteControlLocalRelayOptions {
   assetsDir: string;
   deviceMid: string;
-  pairCode: string;
+  /** 固定配对码（调试用）；缺失时每次启动随机生成 6 位数字。 */
+  pairCode?: string;
   port?: number;
   host?: string;
   /** 已持久化的本地设备 SID；缺失时生成新值，保证桌面重启后手机旧链接仍可认证。 */
@@ -65,7 +66,10 @@ export interface WebRemoteControlLocalRelay {
   readonly relayWsUrl: string;
   readonly remoteUrl: string;
   readonly deviceSid: string;
+  /** 当前配对码；refreshPairing() 后变化。 */
   readonly pairCode: string;
+  /** 生成新的随机配对码，撤销所有手机 sessionToken 与连接；device 端不受影响。 */
+  refreshPairing(): string;
   /** 桌面 device 端使用的稳定会话 token；手机端配对成功后获得独立 sessionToken。 */
   readonly sessionToken: string;
   /** 停止远控：撤销全部 token、配对码与已配对连接，但保留监听端口。 */
@@ -88,6 +92,7 @@ export function createWebRemoteControlLocalRelay(
     options.deviceSid?.trim() ||
     `local_${randomBytes(12).toString("hex")}`;
   const createdAt = Math.floor(now() / 1000);
+  let activePairCode = options.pairCode?.trim() || generatePairCode();
   const tokens = new Map<
     string,
     { role: WebRemoteControlRelayV2Role; expiresAt: number }
@@ -287,7 +292,7 @@ export function createWebRemoteControlLocalRelay(
           reply(response, 429, undefined, 429, "too many attempts");
           return;
         }
-        if (pairCode !== options.pairCode) {
+        if (pairCode !== activePairCode) {
           const count = (failure?.count ?? 0) + 1;
           pairFailures.set(sourceKey, {
             count: count >= 5 ? 0 : count,
@@ -516,9 +521,25 @@ export function createWebRemoteControlLocalRelay(
           relayWsUrl:
             origin.replace(/^http:/, "ws:") +
             WEB_REMOTE_CONTROL_RELAY_V2_WS_PATH,
-          remoteUrl: `${origin}${REMOTE_ROUTE}?pair=${encodeURIComponent(options.pairCode)}`,
+          get remoteUrl() {
+            return `${origin}${REMOTE_ROUTE}?pair=${encodeURIComponent(activePairCode)}`;
+          },
           deviceSid,
-          pairCode: options.pairCode,
+          get pairCode() {
+            return activePairCode;
+          },
+          refreshPairing: () => {
+            // 旧二维码立即失效；已配对手机被断开，需重新扫码。device 端 token 保留。
+            activePairCode = generatePairCode();
+            for (const token of sessionTokens) {
+              if (token !== deviceSessionToken) sessionTokens.delete(token);
+            }
+            for (const connection of connections) {
+              if (connection.role === "terminal") connection.socket.close();
+            }
+            pairFailures.clear();
+            return activePairCode;
+          },
           get sessionToken() {
             return deviceSessionToken;
           },
@@ -627,6 +648,10 @@ function selectLanAddress(preferred?: string): string {
     addresses[0]?.address ??
     "127.0.0.1"
   );
+}
+
+function generatePairCode(): string {
+  return String(randomInt(100_000, 1_000_000));
 }
 
 function mimeType(filePath: string): string {

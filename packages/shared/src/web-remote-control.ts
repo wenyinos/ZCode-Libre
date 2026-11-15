@@ -992,6 +992,8 @@ export interface WebRemoteControlLocalState {
   qrUrl?: string;
   preferredAddress?: string;
   addresses: WebRemoteControlLocalAddress[];
+  /** 当前二维码地址已不在本机网卡列表中（例如 ZeroTier 掉线）。 */
+  addressUnavailable?: boolean;
   firewall?: WebRemoteControlLocalFirewallState;
   /** 当前平台的手动放行命令；state 为 closed/unknown 时展示给用户复制执行。 */
   firewallCommands?: string[];

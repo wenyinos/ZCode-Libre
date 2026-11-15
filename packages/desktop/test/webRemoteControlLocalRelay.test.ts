@@ -230,4 +230,25 @@ describe("webRemoteControlLocalRelay", () => {
     });
     expect(relay.deviceSid).toBe("local_persisted_sid");
   });
+
+  it("generates a random pair code and rotates it on refresh", async () => {
+    const assetsDir = mkdtempSync(join(tmpdir(), "zcode-local-relay-"));
+    writeFileSync(join(assetsDir, "index.html"), "<html></html>");
+    const relay = await createWebRemoteControlLocalRelay({
+      assetsDir,
+      deviceMid: "test-device",
+      port: 0,
+      logger,
+    });
+    cleanups.push(async () => {
+      await relay.close();
+      rmSync(assetsDir, { recursive: true, force: true });
+    });
+    expect(relay.pairCode).toMatch(/^\d{6}$/);
+    const before = relay.pairCode;
+    const next = relay.refreshPairing();
+    expect(next).toMatch(/^\d{6}$/);
+    expect(next).not.toBe(before);
+    expect(relay.pairCode).toBe(next);
+  });
 });

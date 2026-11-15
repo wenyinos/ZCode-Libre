@@ -2946,6 +2946,7 @@ const zhCN: Record<string, string> = {
   "webRemoteControl.copyLink.copied": "已复制远程控制链接",
   "webRemoteControl.copyLinkFailed": "复制远程控制链接失败：{error}",
   "webRemoteControl.refreshQr": "刷新二维码",
+  "webRemoteControl.addressUnavailable": "当前二维码地址已失效，请重新选择网卡地址。",
   "webRemoteControl.refreshQr.confirmTitle": "刷新二维码？",
   "webRemoteControl.refreshQr.confirmDescription":
     "刷新后，之前复制或扫码得到的远程控制链接将失效，已连接的手机需要重新扫码。",

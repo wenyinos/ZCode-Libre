@@ -954,6 +954,9 @@ export interface IPlatformService {
   /** 选择二维码使用的网卡地址；null 表示按优先级自动选择 */
   setWebRemoteControlLocalAddress(address: string | null): Promise<WebRemoteControlLocalState>;
 
+  /** 刷新配对码并重建二维码；已配对手机需要重新扫码 */
+  refreshWebRemoteControlLocalPairing(): Promise<WebRemoteControlLocalState>;
+
   /** 桌面 OAuth 会话通知；main 独立重读凭据后决定是否恢复远控。 */
   notifyWebRemoteControlAuthStateChanged?(change: WebRemoteControlAuthStateChange): void;
 
