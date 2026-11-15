@@ -199,4 +199,22 @@ describe("webRemoteControlLocalRelay", () => {
     expect((await kicked).code).toBe("KICKED");
     for (const socket of [device, first, second]) socket.close();
   });
+
+  it("reuses a persisted device sid", async () => {
+    const assetsDir = mkdtempSync(join(tmpdir(), "zcode-local-relay-"));
+    writeFileSync(join(assetsDir, "index.html"), "<html></html>");
+    const relay = await createWebRemoteControlLocalRelay({
+      assetsDir,
+      deviceMid: "test-device",
+      pairCode: "123456",
+      port: 0,
+      deviceSid: "local_persisted_sid",
+      logger,
+    });
+    cleanups.push(async () => {
+      await relay.close();
+      rmSync(assetsDir, { recursive: true, force: true });
+    });
+    expect(relay.deviceSid).toBe("local_persisted_sid");
+  });
 });

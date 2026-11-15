@@ -40,6 +40,8 @@ export interface WebRemoteControlLocalRelayOptions {
   pairCode: string;
   port?: number;
   host?: string;
+  /** 已持久化的本地设备 SID；缺失时生成新值，保证桌面重启后手机旧链接仍可认证。 */
+  deviceSid?: string;
   /** 二维码使用的首选地址（如 ZeroTier 的 192.168.192.10）；缺失时按网卡优先级选择。 */
   preferredAddress?: string;
   logger: {
@@ -77,7 +79,9 @@ export function createWebRemoteControlLocalRelay(
   options: WebRemoteControlLocalRelayOptions,
 ): Promise<WebRemoteControlLocalRelay> {
   const now = Date.now;
-  const deviceSid = `local_${randomBytes(12).toString("hex")}`;
+  const deviceSid =
+    options.deviceSid?.trim() ||
+    `local_${randomBytes(12).toString("hex")}`;
   const createdAt = Math.floor(now() / 1000);
   const tokens = new Map<
     string,

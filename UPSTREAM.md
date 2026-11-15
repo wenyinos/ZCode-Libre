@@ -323,13 +323,14 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 - `packages/web/src/main.tsx`：创建 token 客户端时注入 `createWebRemoteControlLocalTokenStore(...)`。
 - `packages/web/src/web-remote-control/index.ts`：导出本地 token store。
 - `scripts/engineering-test-files.json`：登记 relay 回归测试。
+- `packages/shared/src/protocol.ts` 与 `packages/shared/src/validationAppSettings.ts`：设置新增可选 `webRemoteControlLocalDeviceSid`（非空字符串），用于持久化本地 relay 的设备 SID。
 
 已确认的实现边界：
 
 - 手机页面必须与本地 relay **同源加载**：`packages/web/src/main.tsx` 的 relay 地址只按 `window.location.origin` 推导，`VITE_ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL` 是未接线的死声明，不要依赖它指向其他 relay。
 - 静态页面构建：`VITE_WEB_REMOTE_CONTROL_ROUTE_PATH=/remote/v4 pnpm --filter @zcode/web exec vite build --base=/remote/v4/`。
 - 登录门禁仍由本地 relay 在 `index.html` 注入 `oauth:browser_session`（假 JWT）放行；该 JWT 不再是 relay 鉴权凭据，token 请求走配对码/`sessionToken`。P3 接设置 UI 时再考虑移除注入。
-- `deviceSid` 当前每次启动重新生成，手机旧链接会在桌面重启后失效；持久化属于 P3。
+- `deviceSid` 持久化在设置 `webRemoteControlLocalDeviceSid`，桌面重启后手机旧链接仍可认证；首次生成后不再变化。
 - 非私有来源拒绝已实现但未做真实外部主机验收；双手机替换只有单测覆盖。
 - P2 已用本机 Wi-Fi + ZeroTier 双网卡实测：指定 `ZCODE_WEB_REMOTE_CONTROL_LOCAL_ADDRESS=192.168.192.10` 后，二维码、手机访问与 bridge 全部走 ZeroTier 地址；地址选择 UI 与运行中地址变化仍待 P3。
 

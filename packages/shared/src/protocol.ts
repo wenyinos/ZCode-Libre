@@ -452,6 +452,8 @@ export interface AppSettings {
     workspaceIdentity?: string;
     initialTaskId?: string;
   };
+  /** 局域网远控的本地设备 SID；持久化后桌面重启不会让手机旧链接失效。 */
+  webRemoteControlLocalDeviceSid?: string;
   /** 设置页里的临时 endpoint override；正式/测试默认 base url 由 ZCODE_BASE_URL env 管理。 */
   zcodeEndpointOrigin?: string;
 }
