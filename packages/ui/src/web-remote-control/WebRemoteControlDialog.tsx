@@ -10,7 +10,12 @@ import {
 } from "@/web-remote-control/domain/presentation.js";
 import { memo, useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
-import { DesktopCommandIds, type BotProvider, type WebRemoteControlStatus } from "@zcode/shared";
+import {
+  DesktopCommandIds,
+  type BotProvider,
+  type WebRemoteControlLocalFirewallState,
+  type WebRemoteControlStatus,
+} from "@zcode/shared";
 import {
   Bot as BotIcon,
   CopyIcon,
@@ -100,6 +105,11 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
   });
   const [loading, setLoading] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [localFirewall, setLocalFirewall] = useState<{
+    state: WebRemoteControlLocalFirewallState;
+    commands: string[];
+    note?: string;
+  } | null>(null);
   const [botsDialogOpen, setBotsDialogOpen] = useState(false);
   const [botEntryProvider, setBotEntryProvider] = useState<RemoteControlBotProvider | null>(null);
 
@@ -160,6 +170,18 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
 
         if (!cancelled) {
           setStatus(nextStatus);
+          // 局域网模式才返回 enabled；云端模式忽略，不显示防火墙提示。
+          void platform
+            .getWebRemoteControlLocalState?.()
+            .then((localState) => {
+              if (cancelled || !localState?.enabled) return;
+              setLocalFirewall({
+                state: localState.firewall ?? "unknown",
+                commands: localState.firewallCommands ?? [],
+                ...(localState.firewallNote ? { note: localState.firewallNote } : {}),
+              });
+            })
+            .catch(() => {});
           logger.info("[WebRemoteControlDialog] Web 远程控制状态已同步", {
             workspacePath,
             workspaceIdentity: workspaceIdentity ?? "none",
@@ -556,6 +578,47 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
                         </div>
                       )}
                     </div>
+                    {localFirewall && localFirewall.state !== "open" ? (
+                      <div className="mt-3 rounded-lg border border-border bg-background-alt px-3 py-2 text-ui-base/relaxed text-foreground-subtle">
+                        <p className="font-medium text-foreground">
+                          {intl.formatMessage({
+                            id: "webRemoteControl.firewall.title",
+                          })}
+                        </p>
+                        <p className="mt-1">
+                          {intl.formatMessage({
+                            id: "webRemoteControl.firewall.description",
+                          })}
+                        </p>
+                        {localFirewall.note ? (
+                          <p className="mt-1">{localFirewall.note}</p>
+                        ) : null}
+                        {localFirewall.commands.length > 0 ? (
+                          <div className="mt-2 space-y-1">
+                            {localFirewall.commands.map((command) => (
+                              <div key={command} className="flex items-start gap-2">
+                                <code className="min-w-0 flex-1 select-all break-all rounded bg-surface px-2 py-1 font-mono text-ui-sm">
+                                  {command}
+                                </code>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="shrink-0"
+                                  onClick={() => {
+                                    void navigator.clipboard?.writeText(command);
+                                  }}
+                                >
+                                  {intl.formatMessage({
+                                    id: "webRemoteControl.firewall.copy",
+                                  })}
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </>
                 )}
               </section>

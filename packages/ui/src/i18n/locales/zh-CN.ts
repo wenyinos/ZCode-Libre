@@ -2939,6 +2939,10 @@ const zhCN: Record<string, string> = {
     "当前是 Web 远程控制模式，只支持访问桌面端当前窗口已经打开的工作区。",
   "webRemoteControl.failure.unexpectedError": "无法启动移动端远程控制，请回到桌面端重试。",
   "webRemoteControl.copyLink": "复制链接",
+  "webRemoteControl.firewall.title": "手机无法连接？",
+  "webRemoteControl.firewall.description":
+    "请确认系统防火墙已放行局域网远控端口（47821/TCP）。在终端执行以下命令后重试：",
+  "webRemoteControl.firewall.copy": "复制",
   "webRemoteControl.copyLink.copied": "已复制远程控制链接",
   "webRemoteControl.copyLinkFailed": "复制远程控制链接失败：{error}",
   "webRemoteControl.refreshQr": "刷新二维码",

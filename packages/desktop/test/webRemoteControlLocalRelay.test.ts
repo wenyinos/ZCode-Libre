@@ -115,14 +115,27 @@ describe("webRemoteControlLocalRelay addresses", () => {
 });
 
 describe("webRemoteControlLocalRelay", () => {
-  it("pairs once and rejects pair code reuse", async () => {
+  it("allows a second device to pair with the same code and revokes on stop", async () => {
     const relay = await startRelay();
     const first = await tokenRequest(relay, { role: "terminal", pairCode: "123456" });
     expect(first.status).toBe(200);
-    expect((await readTokenData(first)).sessionToken).toBeTruthy();
+    const firstSession = (await readTokenData(first)).sessionToken;
+    expect(firstSession).toBeTruthy();
 
+    // 第二台手机用同一二维码配对；配对码在远控生命周期内有效。
     const second = await tokenRequest(relay, { role: "terminal", pairCode: "123456" });
-    expect(second.status).toBe(401);
+    expect(second.status).toBe(200);
+    const secondSession = (await readTokenData(second)).sessionToken;
+    expect(secondSession).toBeTruthy();
+    expect(secondSession).not.toBe(firstSession);
+
+    relay.revokeAll();
+    expect(
+      (await tokenRequest(relay, { role: "terminal" }, firstSession)).status,
+    ).toBe(401);
+    expect(
+      (await tokenRequest(relay, { role: "terminal" }, secondSession)).status,
+    ).toBe(401);
   });
 
   it("exchanges a session token for a relay token", async () => {

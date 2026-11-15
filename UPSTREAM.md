@@ -310,11 +310,12 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 
 新增文件：
 
-- `packages/desktop/src/main/webRemoteControlLocalRelay.ts`：本地 Relay V2 子集，实现 `POST/GET /api/v1/remote/device`、`POST /api/v1/remote/token`、`WS /api/v1/remote/ws2` 与 `/remote/v4/*` 静态托管；监听 `0.0.0.0:47821`，一次覆盖全部 IPv4 网卡（含 ZeroTier `zt*`）；只接受 RFC1918 / `100.64/10` / loopback 来源；device/terminal 配对状态机与 owner 替换沿用 Relay V2 语义。P1 起：配对码一次消费，成功后签发 `sessionToken`；token 接口只接受有效配对码或有效 `sessionToken`；连续 5 次错误按来源暂停 60 秒；`revokeAll()` 在停止远控时撤销全部 token、配对状态与已配对连接。P2 起：`listWebRemoteControlLocalAddresses()` 枚举全部 IPv4 并按 `physical > zerotier > virtual > public` 排序，`classifyWebRemoteControlLocalAddress()` 按接口名识别 ZeroTier 与虚拟网卡，`preferredAddress` 决定二维码使用哪个地址（监听不变）。
+- `packages/desktop/src/main/webRemoteControlLocalRelay.ts`：本地 Relay V2 子集，实现 `POST/GET /api/v1/remote/device`、`POST /api/v1/remote/token`、`WS /api/v1/remote/ws2` 与 `/remote/v4/*` 静态托管；监听 `0.0.0.0:47821`，一次覆盖全部 IPv4 网卡（含 ZeroTier `zt*`）；只接受 RFC1918 / `100.64/10` / loopback 来源；device/terminal 配对状态机与 owner 替换沿用 Relay V2 语义。P1 起：配对码在远控生命周期内有效，每次配对签发独立 `sessionToken`（第二台手机可用同一二维码替换第一台）；token 接口只接受有效配对码或有效 `sessionToken`；连续 5 次错误按来源暂停 60 秒；`revokeAll()` 在停止远控时撤销全部 token、配对状态与已配对连接。P2 起：`listWebRemoteControlLocalAddresses()` 枚举全部 IPv4 并按 `physical > zerotier > virtual > public` 排序，`classifyWebRemoteControlLocalAddress()` 按接口名识别 ZeroTier 与虚拟网卡，`preferredAddress` 决定二维码使用哪个地址（监听不变）。
 - `packages/web/src/web-remote-control/adapters/webRemoteControlLocalToken.ts`：手机端本地模式判定（URL 带 `pair` 或页面在私有地址）与 `sessionToken` 的 localStorage 读写。
 - `packages/ui/src/settings/LocalRemoteSettingsSection.tsx`：设置页「局域网远控」分区（开关、地址选择、relay 状态与配对码）。
 - `scripts/build-remote-v4-assets.mjs`：构建 `/remote/v4` 到 `packages/desktop/bundled-resources/remote/v4`，供 `prepare:runtime-assets` 与 electron-builder 打包。
-- `packages/desktop/test/webRemoteControlLocalRelay.test.ts`：配对码一次性、sessionToken 换 token、5 次失败锁定、`revokeAll`、第二台手机 KICKED、地址分类、复用 deviceSid。
+- `packages/desktop/src/main/firewallAccess.ts`：只读检测系统防火墙端口状态，并返回当前平台的手动放行命令（Linux firewalld/ufw、macOS socketfilterfw、Windows netsh）。不做自动提权、不修改系统防火墙，也不在安装包脚本里放行。
+- `packages/desktop/test/webRemoteControlLocalRelay.test.ts`：配对码可重复配对（第二台手机替换第一台）、sessionToken 换 token、5 次失败锁定、`revokeAll`、第二台手机 KICKED、地址分类、复用 deviceSid。
 - `docs/web-remote-control/local-lan-remote.md`：设计稿、验收场景（LLR-01 ~ LLR-12）与实施记录。已确认：固定端口 47821、静态资源打包进桌面包、不做 TLS、单手机（第二台替换第一台）。
 
 修改文件：
@@ -330,6 +331,7 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 - `packages/desktop/src/preload/index.ts`、`packages/desktop/src/renderer/src/desktopPlatform.ts`、`packages/desktop/src/main/desktopWebRemoteControlIpc.ts`、`packages/desktop/src/main/desktopMainIpcRemote.ts`：三个本地远控方法的 preload、renderer 适配与 IPC 接线。
 - `packages/web/src/platform/index.ts`：Web 端对三个方法提供空实现（局域网远控只能从桌面配置）。
 - `packages/ui/src/lib/settingsNavigation.ts`、`packages/ui/src/settings/settingsPageConfig.ts`、`packages/ui/src/SettingsPage.tsx`、`packages/ui/src/i18n/locales/{zh-CN,en-US}.ts`：新增 `localRemote` 设置分区、渲染分支与双语文案。
+- `packages/ui/src/web-remote-control/WebRemoteControlDialog.tsx`：本地模式下读取 `getWebRemoteControlLocalState()`，在二维码下方展示防火墙状态与当前平台的手动放行命令（可复制）；端口已放行时不显示。
 - `packages/ui/test/settingsPageConfig.test.ts`：分区顺序断言加入 `localRemote`。
 - `packages/desktop/package.json`、`packages/desktop/scripts/prepare-runtime-assets.mjs`、`packages/desktop/electron-builder.config.js`：新增 `prepare:remote-v4`，并把 `bundled-resources/remote/v4` 作为 `extraResources` 发布到 `resources/remote/v4`。
 - `packages/desktop/src/main/index.ts`（P3 追加）：本地模式可由设置 `webRemoteControlLocalModeEnabled` 开启，env 仍可强制；`getWebRemoteControlLocalRelay` 改为懒启动并按需读设置；新增 `getWebRemoteControlLocalState` 与 `setEnabled` / `setAddress` 控制器；打包态 assets 默认 `process.resourcesPath/remote/v4`。

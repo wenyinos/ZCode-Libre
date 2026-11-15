@@ -148,8 +148,10 @@ import { createWebRemoteControlManager } from "./webRemoteControlManager.js";
 import {
   createWebRemoteControlLocalRelay,
   listWebRemoteControlLocalAddresses,
+  WEB_REMOTE_CONTROL_LOCAL_RELAY_PORT,
   type WebRemoteControlLocalRelay,
 } from "./webRemoteControlLocalRelay.js";
+import { inspectFirewall, type FirewallSetupInfo } from "./firewallAccess.js";
 import type { WebRemoteControlLocalRelayIpc } from "./desktopWebRemoteControlIpc.js";
 import { readBootstrapApplicationLocale } from "./desktopApplicationLocaleBootstrap.js";
 import {
@@ -998,6 +1000,13 @@ const webRemoteControlLocalEnvEnabled = Boolean(
   webRemoteControlLocalMode && webRemoteControlLocalAssetsDir,
 );
 let webRemoteControlLocalRelayPromise: Promise<WebRemoteControlLocalRelay> | undefined;
+let webRemoteControlLocalFirewallInfo: FirewallSetupInfo | undefined;
+
+async function resolveLocalFirewallInfo(): Promise<FirewallSetupInfo> {
+  webRemoteControlLocalFirewallInfo ??=
+    await inspectFirewall(WEB_REMOTE_CONTROL_LOCAL_RELAY_PORT);
+  return webRemoteControlLocalFirewallInfo;
+}
 
 /** env 或设置页开关任一开启即使用本地 relay。 */
 async function isWebRemoteControlLocalModeEnabled(): Promise<boolean> {
@@ -1011,6 +1020,15 @@ async function getWebRemoteControlLocalRelay(): Promise<WebRemoteControlLocalRel
   if (!assetsDir) return undefined;
   if (!(await isWebRemoteControlLocalModeEnabled())) return undefined;
   webRemoteControlLocalRelayPromise ??= (async () => {
+    // 只检测、不自动改系统防火墙；未放行时由远控对话框展示手动命令。
+    const firewall = await resolveLocalFirewallInfo();
+    if (firewall.state !== "open") {
+      logger.warn("[web-remote-control] local relay port may be blocked by firewall", {
+        port: WEB_REMOTE_CONTROL_LOCAL_RELAY_PORT,
+        state: firewall.state,
+        commands: firewall.commands,
+      });
+    }
     const settings = await mainSettingService.get();
     const persistedDeviceSid = settings.webRemoteControlLocalDeviceSid?.trim();
     const preferredAddress =
@@ -1039,12 +1057,19 @@ async function getWebRemoteControlLocalState(windowId: number): Promise<WebRemot
   const addresses = listWebRemoteControlLocalAddresses();
   const preferredAddress = (await mainSettingService.get())
     .webRemoteControlLocalPreferredAddress?.trim();
+  const firewall = await resolveLocalFirewallInfo();
+  const firewallFields = {
+    firewall: firewall.state,
+    ...(firewall.commands.length > 0 ? { firewallCommands: firewall.commands } : {}),
+    ...(firewall.note ? { firewallNote: firewall.note } : {}),
+  };
   if (!enabled) {
     return {
       enabled: false,
       running: false,
       addresses,
       ...(preferredAddress ? { preferredAddress } : {}),
+      ...firewallFields,
     };
   }
   const relay = await getWebRemoteControlLocalRelay();
@@ -1055,6 +1080,7 @@ async function getWebRemoteControlLocalState(windowId: number): Promise<WebRemot
       addresses,
       error: "assets-missing",
       ...(preferredAddress ? { preferredAddress } : {}),
+      ...firewallFields,
     };
   }
   const status = webRemoteControlManager.getStatus(windowId);
@@ -1066,6 +1092,7 @@ async function getWebRemoteControlLocalState(windowId: number): Promise<WebRemot
     ...(status.qrUrl ? { qrUrl: status.qrUrl } : {}),
     ...(preferredAddress ? { preferredAddress } : {}),
     addresses: relay.addresses,
+    ...firewallFields,
   };
 }
 

@@ -25,6 +25,7 @@ import {
 } from "@zcode/shared/web-remote-relay";
 
 const LOCAL_RELAY_PORT = 47821;
+export const WEB_REMOTE_CONTROL_LOCAL_RELAY_PORT = LOCAL_RELAY_PORT;
 const TOKEN_TTL_MS = 60_000;
 const MAX_MESSAGE_BYTES = 1_048_576;
 const REMOTE_ROUTE = "/remote/v4";
@@ -91,8 +92,8 @@ export function createWebRemoteControlLocalRelay(
     string,
     { role: WebRemoteControlRelayV2Role; expiresAt: number }
   >();
-  // P1：配对码一次性消费；配对成功后签发 sessionToken，断线重连不再要求配对码。
-  let pairCodeConsumed = false;
+  // 配对码在本次远控生命周期内有效：第二台手机可用同一二维码替换第一台。
+  // 每次配对成功签发独立 sessionToken；停止远控时由 revokeAll() 统一撤销。
   let deviceSessionToken = randomBytes(24).toString("base64url");
   const sessionTokens = new Set<string>([deviceSessionToken]);
   const pairFailures = new Map<
@@ -286,14 +287,10 @@ export function createWebRemoteControlLocalRelay(
         return;
       }
       if (pairCode) {
-        // 配对码路径：一次性消费；连续失败按来源暂停，避免暴力猜测。
+        // 配对码路径：连续失败按来源暂停，避免暴力猜测；成功后签发独立 sessionToken。
         const failure = pairFailures.get(sourceKey);
         if (failure && failure.blockedUntil > now()) {
           reply(response, 429, undefined, 429, "too many attempts");
-          return;
-        }
-        if (pairCodeConsumed) {
-          reply(response, 401, undefined, 401, "pairing already used");
           return;
         }
         if (pairCode !== options.pairCode) {
@@ -305,7 +302,6 @@ export function createWebRemoteControlLocalRelay(
           reply(response, 401, undefined, 401, "pairing failed");
           return;
         }
-        pairCodeConsumed = true;
         pairFailures.delete(sourceKey);
         const sessionToken = randomBytes(24).toString("base64url");
         sessionTokens.add(sessionToken);
@@ -538,7 +534,6 @@ export function createWebRemoteControlLocalRelay(
             sessionTokens.clear();
             deviceSessionToken = randomBytes(24).toString("base64url");
             sessionTokens.add(deviceSessionToken);
-            pairCodeConsumed = false;
             pairFailures.clear();
             tokens.clear();
             for (const connection of connections) connection.socket.close();

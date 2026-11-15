@@ -976,6 +976,13 @@ export interface WebRemoteControlLocalAddress {
   kind: WebRemoteControlLocalAddressKind;
 }
 
+/** 局域网远控端口在系统防火墙中的状态；closed 时手机通常无法连接。 */
+export type WebRemoteControlLocalFirewallState =
+  | "open"
+  | "closed"
+  | "unsupported"
+  | "unknown";
+
 /** 设置页「局域网远控」分区展示的状态；不包含官方账号或云端 relay 信息。 */
 export interface WebRemoteControlLocalState {
   enabled: boolean;
@@ -985,5 +992,10 @@ export interface WebRemoteControlLocalState {
   qrUrl?: string;
   preferredAddress?: string;
   addresses: WebRemoteControlLocalAddress[];
+  firewall?: WebRemoteControlLocalFirewallState;
+  /** 当前平台的手动放行命令；state 为 closed/unknown 时展示给用户复制执行。 */
+  firewallCommands?: string[];
+  /** 命令之外的补充说明（例如 macOS 系统设置路径）。 */
+  firewallNote?: string;
   error?: string;
 }

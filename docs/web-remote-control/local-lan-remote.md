@@ -259,7 +259,8 @@ Local Relay 只实现手机与桌面都需要的子集，消息 schema 直接复
 
 ## 安全边界
 
-- 能访问 Local Relay 且拿到配对码的人即拥有桌面 Agent 的命令执行能力。配对码必须一次性、短时、可撤销。
+- 能访问 Local Relay 且拿到配对码的人即拥有桌面 Agent 的命令执行能力。配对码在本次远控生命周期内有效，可重复配对（第二台手机替换第一台）；停止远控时撤销全部 sessionToken 与连接。连续失败按来源暂停。
+- 系统防火墙不由应用自动修改，也不在安装包里放行；运行时只检测端口状态，未放行时在远控对话框展示当前平台的手动命令（Linux firewalld/ufw、macOS socketfilterfw、Windows netsh）。
 - 默认不把 `public` 地址写入二维码；选择公网地址需要显式确认。
 - 只接受私有/CGNAT 来源；非允许来源返回 `403`。
 - 日志不记录配对码、sessionToken、完整二维码 URL；只记录地址类别、端口和失败计数。
@@ -274,7 +275,7 @@ Local Relay 只实现手机与桌面都需要的子集，消息 schema 直接复
 | LLR-02 | 手机与桌面仅通过 ZeroTier 可达 | 用 ZeroTier 地址扫码成功，业务行为与 LLR-01 一致    |
 | LLR-03 | 同时存在 Wi-Fi 与 ZeroTier     | 对话框列出两个地址；切换后二维码与链接变化          |
 | LLR-04 | 错误配对码连续 5 次            | 第 5 次后该来源暂停 60 秒，正确码在暂停期内也被拒绝 |
-| LLR-05 | 配对码复用                     | 第二次返回 `AUTH_FAILED`                            |
+| LLR-05 | 同一配对码配对第二台手机       | 第二次成功并签发独立 sessionToken；停止远控后两个 token 均失效 |
 | LLR-06 | 停止远控后使用旧 sessionToken  | token 接口返回 `AUTH_FAILED`，WS 被拒绝             |
 | LLR-07 | 手机断线 10 秒后恢复           | 不重新配对，bridge 重建后 snapshot/gap 恢复         |
 | LLR-08 | 桌面重启                       | 旧二维码与 sessionToken 失效，新配对码可重新扫码    |
