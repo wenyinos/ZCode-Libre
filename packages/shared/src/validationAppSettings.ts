@@ -615,7 +615,6 @@ const appSettingsObjectSchema = z.object({
   webRemoteControlExternalRelayDevice: webRemoteControlExternalRelayDeviceSchema.optional(),
   webRemoteControlLastEnabledContext: webRemoteControlLastEnabledContextSchema.optional(),
   webRemoteControlLocalDeviceSid: nonEmptyStringSchema.optional(),
-  webRemoteControlLocalModeEnabled: z.boolean().optional(),
   webRemoteControlLocalPreferredAddress: nonEmptyStringSchema.optional(),
   zcodeEndpointOrigin: zcodeEndpointOriginSchema.optional(),
 });
@@ -738,7 +737,6 @@ export const appSettingsPatchSchema = z.object({
   webRemoteControlExternalRelayDevice: webRemoteControlExternalRelayDeviceSchema.optional(),
   webRemoteControlLastEnabledContext: webRemoteControlLastEnabledContextSchema.optional(),
   webRemoteControlLocalDeviceSid: nonEmptyStringSchema.optional(),
-  webRemoteControlLocalModeEnabled: z.boolean().optional(),
   webRemoteControlLocalPreferredAddress: nonEmptyStringSchema.optional(),
   zcodeEndpointOrigin: zcodeEndpointOriginSchema.optional(),
 });

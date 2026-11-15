@@ -47,7 +47,7 @@ ZeroTier 场景属于同一方案：手机与桌面加入同一虚拟网络后 I
 | 术语          | 含义                                                                    |
 | ------------- | ----------------------------------------------------------------------- |
 | Local Relay   | 桌面 main 内的本地 HTTP/WS 服务，实现 Relay V2 子集                     |
-| Local Mode    | 桌面设置中的局域网远控开关；开启后不读取官方凭据                        |
+| Local Mode    | 本分支唯一的远控模式；始终启用，不读取官方凭据、不保留云端入口 |
 | Pairing Code  | 桌面生成的一次性 6 位数字，替代 JWT 完成首次配对                        |
 | Session Token | 配对成功后签发的本地 opaque token，用于重连时换取一次性 relay token     |
 | LAN Address   | 桌面枚举出的、手机可达的 IPv4 地址，二维码只携带其中一个                |
@@ -319,9 +319,9 @@ P3（2026-11-15，完成，真机待验收）：
 
 - `deviceSid` 持久化：设置新增 `webRemoteControlLocalDeviceSid`；首次启动生成后写入设置，之后 relay 复用同一 SID，桌面重启不会让手机旧链接失效。relay 选项新增 `deviceSid`。
 - 静态资源打包：`node scripts/build-remote-v4-assets.mjs` 构建 `/remote/v4` 到 `packages/desktop/bundled-resources/remote/v4`，`prepare:runtime-assets` 自动执行，electron-builder 以 `extraResources` 发布到 `resources/remote/v4`；开发态读取 `app.getAppPath()/bundled-resources/remote/v4`，打包态读取 `process.resourcesPath/remote/v4`，不再要求手动设置 assets 目录。
-- 设置 UI：设置页「数据与统计」新增「局域网远控」分区（`LocalRemoteSettingsSection`）：开关（`webRemoteControlLocalModeEnabled`）、二维码地址选择（`webRemoteControlLocalPreferredAddress`）、relay 状态与配对码展示。远控本身仍从主界面「移动端远程控制」对话框启动。
-- 平台接口：`getWebRemoteControlLocalState` / `setWebRemoteControlLocalEnabled` / `setWebRemoteControlLocalAddress` 经 `IPlatformService`、preload、IPC 与 renderer 适配层接通；Web 端保留空实现。
-- 已验证：设置页开关开启后 relay 监听 47821；地址切到 ZeroTier 后对话框二维码变为 `192.168.192.10`；手机连接配对、bridge active；关闭开关后远控停止。
+- 设置 UI：设置页「数据与统计」新增「局域网远控」分区（`LocalRemoteSettingsSection`）：二维码地址选择（`webRemoteControlLocalPreferredAddress`）、relay 状态与配对码展示；没有启用开关，本地 relay 始终启用。远控本身仍从主界面「移动端远程控制」对话框启动。
+- 平台接口：`getWebRemoteControlLocalState` / `setWebRemoteControlLocalAddress` 经 `IPlatformService`、preload、IPC 与 renderer 适配层接通；Web 端保留空实现。
+- 已验证：本地 relay 在首次启动远控时监听 47821；地址切到 ZeroTier 后对话框二维码变为 `192.168.192.10`；手机连接配对、bridge active；停止远控后 relay 撤销配对状态。
 - 回归测试增加「复用已持久化 deviceSid」用例；设置分区顺序断言同步更新。
 - 未完成：真实手机与预览版安装包验收（需要用户在现场执行 LLR-01/02/09）。
 
@@ -334,4 +334,4 @@ P3（2026-11-15，完成，真机待验收）：
 
 ## 未决问题
 
-1. **与云端模式的入口关系**：本地模式是独立开关，还是作为“连接方式”二选一展示在同一个远控对话框。
+（当前无阻塞项；真机验收见验收场景。）

@@ -67,8 +67,6 @@ export function createDesktopPlatform(options: {
     stopWebRemoteControl: () => window.zcode.stopWebRemoteControl(),
     getWebRemoteControlStatus: () => window.zcode.getWebRemoteControlStatus(),
     getWebRemoteControlLocalState: () => window.zcode.getWebRemoteControlLocalState(),
-    setWebRemoteControlLocalEnabled: (enabled) =>
-      window.zcode.setWebRemoteControlLocalEnabled(enabled),
     setWebRemoteControlLocalAddress: (address) =>
       window.zcode.setWebRemoteControlLocalAddress(address),
     onWebRemoteControlStatusChanged: (handler) =>

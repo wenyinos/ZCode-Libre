@@ -979,9 +979,7 @@ const defaultZCodeEndpointUrls = buildZCodeEndpointUrls(DEFAULT_ZCODE_ENDPOINT_O
 const webRemoteControlRelayWsEnvOverride =
   process.env["ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL"]?.trim();
 const webRemoteControlUrlEnvOverride = process.env["ZCODE_WEB_REMOTE_CONTROL_URL"]?.trim();
-// 局域网模式：显式开启时由 main 内置 relay 承担配对与静态托管，关闭时完全走云端 Relay V2。
-const webRemoteControlLocalMode =
-  process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_MODE"]?.trim() === "1";
+// 本分支没有官方账号登录，云端 Relay V2 不可用；远控始终使用 main 内置 relay。
 const webRemoteControlLocalAssetsDir =
   process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_ASSETS_DIR"]?.trim() ||
   (() => {
@@ -996,9 +994,7 @@ const webRemoteControlLocalPairCode =
 // 二维码地址可选：用于在 Wi-Fi 与 ZeroTier 之间选择手机可达的那一个。
 const webRemoteControlLocalPreferredAddress =
   process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_ADDRESS"]?.trim();
-const webRemoteControlLocalEnvEnabled = Boolean(
-  webRemoteControlLocalMode && webRemoteControlLocalAssetsDir,
-);
+const webRemoteControlLocalModeEnabled = Boolean(webRemoteControlLocalAssetsDir);
 let webRemoteControlLocalRelayPromise: Promise<WebRemoteControlLocalRelay> | undefined;
 let webRemoteControlLocalFirewallInfo: FirewallSetupInfo | undefined;
 
@@ -1008,17 +1004,10 @@ async function resolveLocalFirewallInfo(): Promise<FirewallSetupInfo> {
   return webRemoteControlLocalFirewallInfo;
 }
 
-/** env 或设置页开关任一开启即使用本地 relay。 */
-async function isWebRemoteControlLocalModeEnabled(): Promise<boolean> {
-  if (webRemoteControlLocalEnvEnabled) return true;
-  return (await mainSettingService.get()).webRemoteControlLocalModeEnabled === true;
-}
-
 // 懒启动：先读设置里的本地设备 SID，保证桌面重启后手机旧链接仍可认证。
 async function getWebRemoteControlLocalRelay(): Promise<WebRemoteControlLocalRelay | undefined> {
   const assetsDir = webRemoteControlLocalAssetsDir;
   if (!assetsDir) return undefined;
-  if (!(await isWebRemoteControlLocalModeEnabled())) return undefined;
   webRemoteControlLocalRelayPromise ??= (async () => {
     // 只检测、不自动改系统防火墙；未放行时由远控对话框展示手动命令。
     const firewall = await resolveLocalFirewallInfo();
@@ -1053,7 +1042,7 @@ async function getWebRemoteControlLocalRelay(): Promise<WebRemoteControlLocalRel
 }
 
 async function getWebRemoteControlLocalState(windowId: number): Promise<WebRemoteControlLocalState> {
-  const enabled = await isWebRemoteControlLocalModeEnabled();
+  const enabled = webRemoteControlLocalModeEnabled;
   const addresses = listWebRemoteControlLocalAddresses();
   const preferredAddress = (await mainSettingService.get())
     .webRemoteControlLocalPreferredAddress?.trim();
@@ -1068,6 +1057,7 @@ async function getWebRemoteControlLocalState(windowId: number): Promise<WebRemot
       enabled: false,
       running: false,
       addresses,
+      error: "assets-missing",
       ...(preferredAddress ? { preferredAddress } : {}),
       ...firewallFields,
     };
@@ -1098,17 +1088,6 @@ async function getWebRemoteControlLocalState(windowId: number): Promise<WebRemot
 
 const webRemoteControlLocalRelayController: WebRemoteControlLocalRelayIpc = {
   getState: getWebRemoteControlLocalState,
-  async setEnabled(windowId, enabled) {
-    // 先保留旧 relay 引用：关闭开关后懒启动函数不会再返回它。
-    const previousRelay = webRemoteControlLocalRelayPromise;
-    await mainSettingService.update({ webRemoteControlLocalModeEnabled: enabled });
-    if (!enabled) {
-      await webRemoteControlManager.stop(windowId).catch(() => undefined);
-      const relay = await previousRelay?.catch(() => undefined);
-      relay?.revokeAll();
-    }
-    return getWebRemoteControlLocalState(windowId);
-  },
   async setAddress(windowId, address) {
     await mainSettingService.update({
       webRemoteControlLocalPreferredAddress: address ?? undefined,
@@ -1157,8 +1136,8 @@ function getMobileLogSink(): MobileLogSink {
 }
 
 const webRemoteControlManager = createWebRemoteControlManager({
-  localMode: webRemoteControlLocalEnvEnabled,
-  isLocalModeEnabled: isWebRemoteControlLocalModeEnabled,
+  localMode: webRemoteControlLocalModeEnabled,
+  isLocalModeEnabled: async () => webRemoteControlLocalModeEnabled,
   onLocalRelayStopped: () => {
     void getWebRemoteControlLocalRelay().then((relay) => relay?.revokeAll());
   },
@@ -1213,7 +1192,7 @@ const webRemoteControlManager = createWebRemoteControlManager({
   startupRestoreStorageProvider: {
     load: async () => {
       // 本地模式用占位目标触发首次自动恢复；restorePreviouslyEnabled 会回退到窗口首个工作区。
-      if (await isWebRemoteControlLocalModeEnabled()) return { workspacePath: "__local_lan__" };
+      if (webRemoteControlLocalModeEnabled) return { workspacePath: "__local_lan__" };
       return (await mainSettingService.get()).webRemoteControlLastEnabledContext;
     },
     save: async (context) => {

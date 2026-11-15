@@ -5,7 +5,6 @@ import type {
   WebRemoteControlLocalState,
 } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
-import { Switch } from "@/components/ui/switch.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
@@ -75,21 +74,6 @@ export function LocalRemoteSettingsSection() {
   return (
     <div className="min-w-0 space-y-6">
       <SettingsGroupCard>
-        <SettingsRow
-          label={message("settings.localRemote.enabled")}
-          description={message("settings.localRemote.enabled.description")}
-          control={
-            <Switch
-              checked={enabled}
-              disabled={pending}
-              onCheckedChange={(checked) =>
-                void run(() =>
-                  platform.setWebRemoteControlLocalEnabled(checked),
-                )
-              }
-            />
-          }
-        />
         <SettingsRow
           label={message("settings.localRemote.status.label")}
           description={

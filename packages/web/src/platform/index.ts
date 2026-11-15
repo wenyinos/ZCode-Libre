@@ -84,8 +84,6 @@ export function createWebPlatform(options?: {
         running: false,
         addresses: [],
       }),
-    setWebRemoteControlLocalEnabled: () =>
-      Promise.reject(new Error("Local remote control can only be configured from desktop")),
     setWebRemoteControlLocalAddress: () =>
       Promise.reject(new Error("Local remote control can only be configured from desktop")),
     disposeRemoteSession: () => Promise.resolve(),

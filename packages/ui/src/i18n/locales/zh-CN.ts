@@ -3820,9 +3820,6 @@ const zhCN: Record<string, string> = {
   "settings.usageDescription": "查看会话活跃度与模型用量的粗略统计。",
   "settings.personalPlan.title": "个人套餐",
   "settings.localRemote.title": "局域网远控",
-  "settings.localRemote.enabled": "启用局域网远控",
-  "settings.localRemote.enabled.description":
-    "开启后，手机通过本机地址直接连接，不经过云端中转，也不需要登录官方账号。",
   "settings.localRemote.status.label": "本地服务状态",
   "settings.localRemote.status.running": "运行中，手机已可通过地址连接。",
   "settings.localRemote.status.stopped": "未启动；从主界面「移动端远程控制」按钮开启。",

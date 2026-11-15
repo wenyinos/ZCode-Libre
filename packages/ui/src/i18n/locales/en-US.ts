@@ -4079,9 +4079,6 @@ const enUS: Record<string, string> = {
     "Review rough activity and model usage aggregated from local sessions.",
   "settings.personalPlan.title": "Personal plan",
   "settings.localRemote.title": "Local network remote",
-  "settings.localRemote.enabled": "Enable local network remote control",
-  "settings.localRemote.enabled.description":
-    "Phones connect directly to this machine without the cloud relay or an official account sign-in.",
   "settings.localRemote.status.label": "Local relay status",
   "settings.localRemote.status.running": "Running — a phone can connect using the address below.",
   "settings.localRemote.status.stopped":

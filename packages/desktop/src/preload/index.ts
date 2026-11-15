@@ -318,8 +318,6 @@ contextBridge.exposeInMainWorld("zcode", {
   getWebRemoteControlStatus: () => ipcRenderer.invoke(PlatformChannels.GetWebRemoteControlStatus),
   getWebRemoteControlLocalState: () =>
     ipcRenderer.invoke(PlatformChannels.GetWebRemoteControlLocalState),
-  setWebRemoteControlLocalEnabled: (enabled: boolean) =>
-    ipcRenderer.invoke(PlatformChannels.SetWebRemoteControlLocalEnabled, enabled),
   setWebRemoteControlLocalAddress: (address: string | null) =>
     ipcRenderer.invoke(PlatformChannels.SetWebRemoteControlLocalAddress, address),
   onWebRemoteControlStatusChanged: (

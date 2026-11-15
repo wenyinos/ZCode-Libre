@@ -948,11 +948,8 @@ export interface IPlatformService {
   /** 查询当前窗口 Web 远程控制状态 */
   getWebRemoteControlStatus(): Promise<WebRemoteControlStatus>;
 
-  /** 查询局域网远控状态（开关、地址候选、二维码） */
+  /** 查询局域网远控状态（地址候选、二维码、防火墙） */
   getWebRemoteControlLocalState(): Promise<WebRemoteControlLocalState>;
-
-  /** 开关局域网远控；关闭时撤销配对与连接 */
-  setWebRemoteControlLocalEnabled(enabled: boolean): Promise<WebRemoteControlLocalState>;
 
   /** 选择二维码使用的网卡地址；null 表示按优先级自动选择 */
   setWebRemoteControlLocalAddress(address: string | null): Promise<WebRemoteControlLocalState>;

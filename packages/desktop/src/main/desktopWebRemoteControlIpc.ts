@@ -32,7 +32,6 @@ export interface WebRemoteControlIpcManager {
 
 export interface WebRemoteControlLocalRelayIpc {
   getState(windowId: number): Promise<WebRemoteControlLocalState>;
-  setEnabled(windowId: number, enabled: boolean): Promise<WebRemoteControlLocalState>;
   setAddress(windowId: number, address: string | null): Promise<WebRemoteControlLocalState>;
 }
 
@@ -157,16 +156,6 @@ export function registerWebRemoteControlIpcHandlers(
       ? dependencies.localRelay.getState(win.id)
       : localRelayDisabledState();
   });
-  ipcMain.handle(
-    PlatformChannels.SetWebRemoteControlLocalEnabled,
-    (event, enabled: unknown) => {
-      const win = BrowserWindow.fromWebContents(event.sender);
-      if (!win || !dependencies.localRelay || typeof enabled !== "boolean") {
-        return localRelayDisabledState();
-      }
-      return dependencies.localRelay.setEnabled(win.id, enabled);
-    },
-  );
   ipcMain.handle(
     PlatformChannels.SetWebRemoteControlLocalAddress,
     (event, address: unknown) => {

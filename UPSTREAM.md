@@ -306,13 +306,13 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 
 ### 15. 新增功能：局域网 / 虚拟局域网手机远控
 
-上游的手机远控强依赖官方账号 JWT 与云端 Relay V2；本分支已屏蔽官方登录（第 8/8b 节），因此新增一条**完全本地**的链路：桌面 main 内置 Relay V2 子集并同源托管 `/remote/v4`，手机通过局域网或 ZeroTier 虚拟局域网地址接入，不经过云端 relay、不读取官方凭据。
+上游的手机远控强依赖官方账号 JWT 与云端 Relay V2；本分支已屏蔽官方登录（第 8/8b 节），因此新增一条**完全本地**的链路：桌面 main 内置 Relay V2 子集并同源托管 `/remote/v4`，手机通过局域网或 ZeroTier 虚拟局域网地址接入，不经过云端 relay、不读取官方凭据。本分支不保留云端远控入口，**本地 relay 始终启用**，没有“本地/云端”开关。
 
 新增文件：
 
 - `packages/desktop/src/main/webRemoteControlLocalRelay.ts`：本地 Relay V2 子集，实现 `POST/GET /api/v1/remote/device`、`POST /api/v1/remote/token`、`WS /api/v1/remote/ws2` 与 `/remote/v4/*` 静态托管；监听 `0.0.0.0:47821`，一次覆盖全部 IPv4 网卡（含 ZeroTier `zt*`）；只接受 RFC1918 / `100.64/10` / loopback 来源；device/terminal 配对状态机与 owner 替换沿用 Relay V2 语义。P1 起：配对码在远控生命周期内有效，每次配对签发独立 `sessionToken`（第二台手机可用同一二维码替换第一台）；token 接口只接受有效配对码或有效 `sessionToken`；连续 5 次错误按来源暂停 60 秒；`revokeAll()` 在停止远控时撤销全部 token、配对状态与已配对连接。P2 起：`listWebRemoteControlLocalAddresses()` 枚举全部 IPv4 并按 `physical > zerotier > virtual > public` 排序，`classifyWebRemoteControlLocalAddress()` 按接口名识别 ZeroTier 与虚拟网卡，`preferredAddress` 决定二维码使用哪个地址（监听不变）。
 - `packages/web/src/web-remote-control/adapters/webRemoteControlLocalToken.ts`：手机端本地模式判定（URL 带 `pair` 或页面在私有地址）与 `sessionToken` 的 localStorage 读写。
-- `packages/ui/src/settings/LocalRemoteSettingsSection.tsx`：设置页「局域网远控」分区（开关、地址选择、relay 状态与配对码）。
+- `packages/ui/src/settings/LocalRemoteSettingsSection.tsx`：设置页「局域网远控」分区（地址选择、relay 状态与配对码；没有启用开关）。
 - `scripts/build-remote-v4-assets.mjs`：构建 `/remote/v4` 到 `packages/desktop/bundled-resources/remote/v4`，供 `prepare:runtime-assets` 与 electron-builder 打包。
 - `packages/desktop/src/main/firewallAccess.ts`：只读检测系统防火墙端口状态，并返回当前平台的手动放行命令（Linux firewalld/ufw、macOS socketfilterfw、Windows netsh）。不做自动提权、不修改系统防火墙，也不在安装包脚本里放行。
 - `packages/desktop/test/webRemoteControlLocalRelay.test.ts`：配对码可重复配对（第二台手机替换第一台）、sessionToken 换 token、5 次失败锁定、`revokeAll`、第二台手机 KICKED、地址分类、复用 deviceSid。
@@ -320,21 +320,21 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 
 修改文件：
 
-- `packages/desktop/src/main/index.ts`：新增 `ZCODE_WEB_REMOTE_CONTROL_LOCAL_MODE=1` 开关；另需 `ZCODE_WEB_REMOTE_CONTROL_LOCAL_ASSETS_DIR=<构建出的 /remote/v4 目录>`，可选 `ZCODE_WEB_REMOTE_CONTROL_LOCAL_PAIR_CODE`（默认 `123456`）与 `ZCODE_WEB_REMOTE_CONTROL_LOCAL_ADDRESS`（二维码首选地址，例如 ZeroTier 的 `192.168.192.10`）。本地模式下 `getEndpointUrls` 返回同源 origin，`getLogin` 返回 `{userId:"local", jwt:<relay.sessionToken>}`，启动恢复用 `workspacePath:"__local_lan__"` 占位触发窗口首个工作区；向 manager 传入 `localMode` 与 `onLocalRelayStopped`（调用 `relay.revokeAll()`）。
+- `packages/desktop/src/main/index.ts`：本地 relay 始终启用（只要 `/remote/v4` 资源存在）；可选 `ZCODE_WEB_REMOTE_CONTROL_LOCAL_ASSETS_DIR=<构建出的 /remote/v4 目录>`，`ZCODE_WEB_REMOTE_CONTROL_LOCAL_PAIR_CODE`（默认 `123456`）与 `ZCODE_WEB_REMOTE_CONTROL_LOCAL_ADDRESS`（二维码首选地址，例如 ZeroTier 的 `192.168.192.10`）。`getEndpointUrls` 返回同源 origin，`getLogin` 返回 `{userId:"local", jwt:<relay.sessionToken>}`，启动恢复用 `workspacePath:"__local_lan__"` 占位触发窗口首个工作区；向 manager 传入 `localMode` 与 `onLocalRelayStopped`（调用 `relay.revokeAll()`）。
 - `packages/desktop/src/main/webRemoteControlManager.ts`：依赖接口新增 `localMode?: boolean` 与 `onLocalRelayStopped?: () => void`；`notifyAuthStateChanged` 在本地模式下直接返回，避免桌面 renderer 的 signed-out 把远控置为 `auth-required`（本分支未登录是常态）；`stop()` 在释放 runtime 后调用 `onLocalRelayStopped`。
 - `packages/web/src/web-remote-control/adapters/webRemoteControlV2Token.ts`：token 客户端新增可选 `localStore`；本地模式优先用 `sessionToken`，首次用配对码，响应中的 `sessionToken` 写回本地存储；云端模式保持原 JWT 路径。
 - `packages/web/src/main.tsx`：创建 token 客户端时注入 `createWebRemoteControlLocalTokenStore(...)`。
 - `packages/web/src/web-remote-control/index.ts`：导出本地 token store。
 - `scripts/engineering-test-files.json`：登记 relay 回归测试。
-- `packages/shared/src/protocol.ts` 与 `packages/shared/src/validationAppSettings.ts`：设置新增可选 `webRemoteControlLocalDeviceSid`、`webRemoteControlLocalModeEnabled`、`webRemoteControlLocalPreferredAddress`。
-- `packages/shared/src/web-remote-control.ts`、`packages/shared/src/platform.ts`、`packages/shared/src/channels.ts`：新增 `WebRemoteControlLocalState` / `WebRemoteControlLocalAddress` 类型与 `getWebRemoteControlLocalState` / `setWebRemoteControlLocalEnabled` / `setWebRemoteControlLocalAddress` 三个平台方法与 IPC 通道。
-- `packages/desktop/src/preload/index.ts`、`packages/desktop/src/renderer/src/desktopPlatform.ts`、`packages/desktop/src/main/desktopWebRemoteControlIpc.ts`、`packages/desktop/src/main/desktopMainIpcRemote.ts`：三个本地远控方法的 preload、renderer 适配与 IPC 接线。
-- `packages/web/src/platform/index.ts`：Web 端对三个方法提供空实现（局域网远控只能从桌面配置）。
+- `packages/shared/src/protocol.ts` 与 `packages/shared/src/validationAppSettings.ts`：设置新增可选 `webRemoteControlLocalDeviceSid`、`webRemoteControlLocalPreferredAddress`。
+- `packages/shared/src/web-remote-control.ts`、`packages/shared/src/platform.ts`、`packages/shared/src/channels.ts`：新增 `WebRemoteControlLocalState` / `WebRemoteControlLocalAddress` 类型与 `getWebRemoteControlLocalState` / `setWebRemoteControlLocalAddress` 两个平台方法与 IPC 通道。
+- `packages/desktop/src/preload/index.ts`、`packages/desktop/src/renderer/src/desktopPlatform.ts`、`packages/desktop/src/main/desktopWebRemoteControlIpc.ts`、`packages/desktop/src/main/desktopMainIpcRemote.ts`：两个本地远控方法的 preload、renderer 适配与 IPC 接线。
+- `packages/web/src/platform/index.ts`：Web 端对两个方法提供空实现（局域网远控只能从桌面配置）。
 - `packages/ui/src/lib/settingsNavigation.ts`、`packages/ui/src/settings/settingsPageConfig.ts`、`packages/ui/src/SettingsPage.tsx`、`packages/ui/src/i18n/locales/{zh-CN,en-US}.ts`：新增 `localRemote` 设置分区、渲染分支与双语文案。
 - `packages/ui/src/web-remote-control/WebRemoteControlDialog.tsx`：本地模式下读取 `getWebRemoteControlLocalState()`，在二维码下方展示防火墙状态与当前平台的手动放行命令（可复制）；端口已放行时不显示。
 - `packages/ui/test/settingsPageConfig.test.ts`：分区顺序断言加入 `localRemote`。
 - `packages/desktop/package.json`、`packages/desktop/scripts/prepare-runtime-assets.mjs`、`packages/desktop/electron-builder.config.js`：新增 `prepare:remote-v4`，并把 `bundled-resources/remote/v4` 作为 `extraResources` 发布到 `resources/remote/v4`。
-- `packages/desktop/src/main/index.ts`（P3 追加）：本地模式可由设置 `webRemoteControlLocalModeEnabled` 开启，env 仍可强制；`getWebRemoteControlLocalRelay` 改为懒启动并按需读设置；新增 `getWebRemoteControlLocalState` 与 `setEnabled` / `setAddress` 控制器；打包态 assets 默认 `process.resourcesPath/remote/v4`。
+- `packages/desktop/src/main/index.ts`（P3 追加）：本地 relay 懒启动、始终启用；新增 `getWebRemoteControlLocalState` 与 `setAddress` 控制器；打包态 assets 默认 `process.resourcesPath/remote/v4`。
 
 已确认的实现边界：
 

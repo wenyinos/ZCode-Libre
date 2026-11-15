@@ -142,9 +142,30 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
       setLoading(true);
 
       try {
+        // 先读本地模式：enabled 时跳过登录门禁，并展示防火墙提示。
+        const localState = await platform
+          .getWebRemoteControlLocalState?.()
+          .catch(() => null);
+        const localMode = Boolean(localState?.enabled);
+        if (!cancelled && localState?.enabled) {
+          setLocalFirewall({
+            state: localState.firewall ?? "unknown",
+            commands: localState.firewallCommands ?? [],
+            ...(localState.firewallNote ? { note: localState.firewallNote } : {}),
+          });
+        }
         const currentStatus = await platform.getWebRemoteControlStatus();
         let nextStatus: WebRemoteControlStatus;
-        if (
+        if (localMode && currentStatus.status === "auth-required") {
+          // 本地模式不显示登录按钮：官方登录不可用，直接启动内置 relay 远控。
+          const startResult = await platform.startWebRemoteControl({
+            workspacePath,
+            workspaceIdentity,
+            remoteSessionId,
+            initialTaskId,
+          });
+          nextStatus = startResult.status === "cancelled" ? { status: "idle" } : startResult;
+        } else if (
           currentStatus.status === "auth-required" ||
           isSameWebRemoteControlTarget(
             currentStatus,
@@ -170,18 +191,6 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
 
         if (!cancelled) {
           setStatus(nextStatus);
-          // 局域网模式才返回 enabled；云端模式忽略，不显示防火墙提示。
-          void platform
-            .getWebRemoteControlLocalState?.()
-            .then((localState) => {
-              if (cancelled || !localState?.enabled) return;
-              setLocalFirewall({
-                state: localState.firewall ?? "unknown",
-                commands: localState.firewallCommands ?? [],
-                ...(localState.firewallNote ? { note: localState.firewallNote } : {}),
-              });
-            })
-            .catch(() => {});
           logger.info("[WebRemoteControlDialog] Web 远程控制状态已同步", {
             workspacePath,
             workspaceIdentity: workspaceIdentity ?? "none",
@@ -442,7 +451,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
                 data-testid="web-remote-control-scan-card"
                 className="flex min-h-[360px] flex-col rounded-xl border border-border bg-card p-4"
               >
-                {status.status === "auth-required" ? (
+                {status.status === "auth-required" && !localFirewall ? (
                   <div
                     data-testid="web-remote-control-auth-required"
                     className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-6 text-center"
