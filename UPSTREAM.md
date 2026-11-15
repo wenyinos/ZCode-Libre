@@ -304,6 +304,30 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 
 因此改用 `.github/workflows/pages.yml` 显式上传这两项，仓库 Pages 的 `build_type` 设为 `workflow`。合并前 `docs/` 只有 4 个文件，合并后 2200+；站点内容不得改回依赖 Jekyll 扫描 `docs/`。
 
+### 15. 新增功能：局域网 / 虚拟局域网手机远控
+
+上游的手机远控强依赖官方账号 JWT 与云端 Relay V2；本分支已屏蔽官方登录（第 8/8b 节），因此新增一条**完全本地**的链路：桌面 main 内置 Relay V2 子集并同源托管 `/remote/v4`，手机通过局域网或 ZeroTier 虚拟局域网地址接入，不经过云端 relay、不读取官方凭据。
+
+新增文件：
+
+- `packages/desktop/src/main/webRemoteControlLocalRelay.ts`：本地 Relay V2 子集，实现 `POST/GET /api/v1/remote/device`、`POST /api/v1/remote/token`、`WS /api/v1/remote/ws2` 与 `/remote/v4/*` 静态托管；监听 `0.0.0.0:47821`，一次覆盖全部 IPv4 网卡（含 ZeroTier `zt*`）；只接受 RFC1918 / `100.64/10` / loopback 来源；device/terminal 配对状态机与 owner 替换沿用 Relay V2 语义。
+- `docs/web-remote-control/local-lan-remote.md`：设计稿与验收场景（LLR-01 ~ LLR-12）。已确认：固定端口 47821、静态资源打包进桌面包、不做 TLS、单手机（第二台替换第一台）。
+
+修改文件：
+
+- `packages/desktop/src/main/index.ts`：新增 `ZCODE_WEB_REMOTE_CONTROL_LOCAL_MODE=1` 开关；另需 `ZCODE_WEB_REMOTE_CONTROL_LOCAL_ASSETS_DIR=<构建出的 /remote/v4 目录>`，可选 `ZCODE_WEB_REMOTE_CONTROL_LOCAL_PAIR_CODE`（默认 `123456`）。本地模式下 `getEndpointUrls` 返回同源 origin，`getLogin` 返回 `{userId:"local", jwt:"local"}`，启动恢复用 `workspacePath:"__local_lan__"` 占位触发窗口首个工作区，并向 manager 传入 `localMode`。
+- `packages/desktop/src/main/webRemoteControlManager.ts`：依赖接口新增 `localMode?: boolean`；`notifyAuthStateChanged` 在本地模式下直接返回，避免桌面 renderer 的 signed-out 把远控置为 `auth-required`（本分支未登录是常态）。
+
+已确认的实现边界：
+
+- 手机页面必须与本地 relay **同源加载**：`packages/web/src/main.tsx` 的 relay 地址只按 `window.location.origin` 推导，`VITE_ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL` 是未接线的死声明，不要依赖它指向其他 relay。
+- 静态页面构建：`VITE_WEB_REMOTE_CONTROL_ROUTE_PATH=/remote/v4 pnpm --filter @zcode/web exec vite build --base=/remote/v4/`。
+- P0 的登录态由本地 relay 在 `index.html` 注入 `oauth:browser_session`（假 JWT）实现，仅用于打通链路；P1 起改为配对码 + `sessionToken`，不再伪造官方登录。
+- token 接口在 P0 接受任意非空 Bearer；配对码校验、失败限流、停止远控撤销、手机会话 token 属于 P1，未完成前**不能当作安全边界**。
+- `deviceSid` 当前每次启动重新生成，手机旧链接会在桌面重启后失效；持久化属于 P1。
+
+同步注意：`index.ts` 与 `webRemoteControlManager.ts` 是上游高频改动文件，合并时保留上述本地分支；上游若重构 `getEndpointUrls` / `getLogin` / `startupRestoreStorageProvider`，本地模式必须同步适配。上游若给 `/remote/v4` 增加构建期 relay 覆盖变量，可考虑让本地模式复用它，但不要因此要求手机跨源访问。
+
 ## 有意保持与上游一致
 
 以下标识**不要改名**，它们是跨端契约，改动会破坏与既有服务端、协议及用户既有项目的兼容性：

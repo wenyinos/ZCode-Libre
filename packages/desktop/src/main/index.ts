@@ -143,6 +143,7 @@ import {
   resolveExplicitStartupWorkspaceBootstrap,
 } from "./startupWorkspaceDeepLinkGate.js";
 import { createWebRemoteControlManager } from "./webRemoteControlManager.js";
+import { createWebRemoteControlLocalRelay } from "./webRemoteControlLocalRelay.js";
 import { readBootstrapApplicationLocale } from "./desktopApplicationLocaleBootstrap.js";
 import {
   createMobileLogSink,
@@ -969,6 +970,22 @@ const defaultZCodeEndpointUrls = buildZCodeEndpointUrls(DEFAULT_ZCODE_ENDPOINT_O
 const webRemoteControlRelayWsEnvOverride =
   process.env["ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL"]?.trim();
 const webRemoteControlUrlEnvOverride = process.env["ZCODE_WEB_REMOTE_CONTROL_URL"]?.trim();
+// 局域网模式：显式开启时由 main 内置 relay 承担配对与静态托管，关闭时完全走云端 Relay V2。
+const webRemoteControlLocalMode =
+  process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_MODE"]?.trim() === "1";
+const webRemoteControlLocalAssetsDir =
+  process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_ASSETS_DIR"]?.trim();
+const webRemoteControlLocalPairCode =
+  process.env["ZCODE_WEB_REMOTE_CONTROL_LOCAL_PAIR_CODE"]?.trim() || "123456";
+const webRemoteControlLocalRelayPromise =
+  webRemoteControlLocalMode && webRemoteControlLocalAssetsDir
+    ? createWebRemoteControlLocalRelay({
+        assetsDir: webRemoteControlLocalAssetsDir,
+        deviceMid,
+        pairCode: webRemoteControlLocalPairCode,
+        logger,
+      })
+    : undefined;
 
 function extractOpenWorkspacePathFromDeepLinkUrl(url: string): string | null {
   try {
@@ -1004,8 +1021,17 @@ function getMobileLogSink(): MobileLogSink {
 }
 
 const webRemoteControlManager = createWebRemoteControlManager({
+  localMode: Boolean(webRemoteControlLocalRelayPromise),
   mobileLogSink: { append: (target, events) => getMobileLogSink().append(target, events) },
   getEndpointUrls: async () => {
+    if (webRemoteControlLocalRelayPromise) {
+      // 本地模式：页面、token 与 ws2 同源，手机端按 window.location.origin 推导。
+      const relay = await webRemoteControlLocalRelayPromise;
+      const derived = buildZCodeEndpointUrls(relay.origin, {
+        appVersion: webRemoteControlAppVersion,
+      });
+      return { ...derived, relayWsUrl: relay.relayWsUrl, remoteUrl: relay.remoteUrl };
+    }
     const derived = buildZCodeEndpointUrls(await resolveCurrentZCodeEndpointOrigin(), {
       appVersion: webRemoteControlAppVersion,
     });
@@ -1029,6 +1055,8 @@ const webRemoteControlManager = createWebRemoteControlManager({
   deviceName: hostname(),
   appVersion: webRemoteControlAppVersion,
   getLogin: async () => {
+    // 本地模式没有官方账号；relay 只校验配对的 WS 连接，不校验 Bearer 内容。
+    if (webRemoteControlLocalRelayPromise) return { userId: "local", jwt: "local" };
     const userId = await loadRemoteControlUserId();
     const authorization = await loadRemoteControlAuthorization(userId);
     return authorization ? { userId, jwt: authorization.slice("Bearer ".length) } : undefined;
@@ -1040,7 +1068,11 @@ const webRemoteControlManager = createWebRemoteControlManager({
     patchSettings: (patch) => mainSettingService.update(patch),
   }),
   startupRestoreStorageProvider: {
-    load: async () => (await mainSettingService.get()).webRemoteControlLastEnabledContext,
+    load: async () => {
+      // 本地模式用占位目标触发首次自动恢复；restorePreviouslyEnabled 会回退到窗口首个工作区。
+      if (webRemoteControlLocalRelayPromise) return { workspacePath: "__local_lan__" };
+      return (await mainSettingService.get()).webRemoteControlLastEnabledContext;
+    },
     save: async (context) => {
       await mainSettingService.update({
         webRemoteControlLastEnabledContext: {
