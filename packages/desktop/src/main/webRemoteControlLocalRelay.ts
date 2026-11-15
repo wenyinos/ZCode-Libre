@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
+import { createReadStream, existsSync, statSync } from "node:fs";
 import {
   createServer,
   type IncomingMessage,
@@ -221,12 +221,6 @@ export function createWebRemoteControlLocalRelay(
       "Content-Type": type,
       "Cache-Control": "no-store",
     });
-    if (extname(filePath) === ".html") {
-      response.end(
-        injectLocalSession(readFileSync(filePath, "utf8"), options.pairCode),
-      );
-      return;
-    }
     createReadStream(filePath).pipe(response);
   }
 
@@ -665,30 +659,4 @@ function mimeType(filePath: string): string {
     default:
       return "application/octet-stream";
   }
-}
-
-/**
- * 手机页面的登录门禁读取同源 localStorage；本地模式没有官方账号，
- * 在入口 HTML 首次渲染前写入一个只在本机 Relay 内有效的会话。
- */
-function injectLocalSession(html: string, pairCode: string): string {
-  const header = Buffer.from(
-    JSON.stringify({ alg: "none", typ: "JWT" }),
-  ).toString("base64url");
-  const payload = Buffer.from(
-    JSON.stringify({ sub: "local", exp: 4_102_444_800, pair: pairCode }),
-  ).toString("base64url");
-  const session = {
-    version: 1,
-    provider: "zai",
-    userInfo: { id: "local", username: "local", displayName: "Local LAN" },
-    zcodeJwtToken: `${header}.${payload}.local`,
-    revision: `local-lan-${pairCode}`,
-  };
-  const script = `<script>try{localStorage.setItem("oauth:browser_session",${JSON.stringify(
-    JSON.stringify(session),
-  )})}catch(e){}</script>`;
-  return html.includes("</head>")
-    ? html.replace("</head>", `${script}</head>`)
-    : `${script}${html}`;
 }

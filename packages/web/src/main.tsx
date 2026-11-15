@@ -401,8 +401,36 @@ const webRemoteControlStorage: Pick<Storage, "getItem" | "setItem"> = {
   setItem: (key, value) => window.localStorage.setItem(key, value),
 };
 
+const localRemoteTokenStore = (() => {
+  try {
+    return createWebRemoteControlLocalTokenStore({
+      href: window.location.href,
+      storage: window.localStorage,
+    });
+  } catch {
+    return undefined;
+  }
+})();
+
+/**
+ * 本地 relay 页面没有官方账号：给入口一个只存在于内存的哨兵会话，
+ * 跳过登录门禁；不用伪造 `oauth:browser_session`，也不写 localStorage。
+ */
+function createLocalRemoteEntryAuth() {
+  return {
+    getZCodeJwtToken: () => "local-remote",
+    getSessionRevision: () => "local-remote",
+    subscribeSessionChange: () => () => {},
+    getActiveAccount: () => null,
+    startLogin: async () => {
+      throw new Error("Official sign-in is unavailable in local remote control");
+    },
+    logout: async () => {},
+  };
+}
+
 const remoteEntry = new WebRemoteControlEntry({
-  auth: webAuthService,
+  auth: localRemoteTokenStore ? createLocalRemoteEntryAuth() : webAuthService,
   getHref: () => window.location.href,
   replaceHref: (href) => window.history.replaceState(window.history.state, "", href),
   storage: webRemoteControlStorage,
@@ -419,16 +447,7 @@ const remoteEntry = new WebRemoteControlEntry({
   token: createWebRemoteControlV2TokenClient(
     window.location.origin,
     fetch,
-    (() => {
-      try {
-        return createWebRemoteControlLocalTokenStore({
-          href: window.location.href,
-          storage: window.localStorage,
-        });
-      } catch {
-        return undefined;
-      }
-    })(),
+    localRemoteTokenStore,
   ),
   connect: (connection) => {
     void bootstrapExternalRelayWebRemoteControl(connection);

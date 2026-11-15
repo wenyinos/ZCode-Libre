@@ -230,8 +230,8 @@ Local Relay 只实现手机与桌面都需要的子集，消息 schema 直接复
 
 `packages/web/src/web-remote-control/app/webRemoteControlEntry.ts` 增加本地配对分支：
 
-1. URL 带 `pair=` 时进入本地模式，跳过 OAuth 登录门禁与设备列表。
-2. 展示配对确认页：设备名、地址、配对码来源提示；用户确认后调用 token 接口。
+1. URL 带 `pair=` 或页面位于私有地址时进入本地模式；`packages/web/src/main.tsx` 给 entry 注入内存 auth 哨兵跳过 OAuth 登录门禁（`getZCodeJwtToken` 返回 `"local-remote"`，不写 `oauth:browser_session`、不写 localStorage），token 请求走配对码/`sessionToken`。
+2. 当前直接自动配对；独立的配对确认页尚未实现。
 3. token 请求体携带 `pairCode`；配对成功后把 `sessionToken` 写入同源 localStorage。
 4. 后续 bootstrap、版本校验、workspace 选择、bridge、replayable 恢复完全复用现有实现。
 5. 重连时优先使用 `sessionToken` 换一次性 token；`401` 或 `AUTH_FAILED` 时回到配对页，提示重新扫码。
