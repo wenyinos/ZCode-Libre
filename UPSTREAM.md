@@ -347,6 +347,8 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 
 设置页相关：上游若调整 `BASE_SETTINGS_SECTIONS` 或分区顺序测试，需保留 `localRemote` 分区与 `settingsPageConfig.test.ts` 的对应断言；上游若重构 `SettingsPage.tsx` 的条件渲染链，`activeSection === "localRemote"` 分支必须保留。`electron-builder.config.js` 的 `extraResources` 中 `bundled-resources/remote/v4` 是新增项，合并时不要被上游整段覆盖；`prepare:runtime-assets` 的 `prepare:remote-v4` 同理。
 
+架构例外：`architecture-policy.yaml` 的 `exceptions` 登记了 `local-lan-remote-relay-new-file` 与 `local-lan-remote-settings-ui-new-file`（`unmanaged-new-file`，分别对应本地 relay 与设置分区）。上游同步后若 `pnpm architecture:check --changed` 重新报这两个文件，说明例外被覆盖，按原 id 补回即可。
+
 ## 有意保持与上游一致
 
 以下标识**不要改名**，它们是跨端契约，改动会破坏与既有服务端、协议及用户既有项目的兼容性：

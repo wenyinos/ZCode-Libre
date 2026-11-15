@@ -1851,6 +1851,14 @@ global:
   acceptedUpstreamSnapshot: scripts/architecture/upstream-snapshot.json
 
 exceptions:
+  - id: local-lan-remote-relay-new-file
+    rule: unmanaged-new-file
+    paths: [packages/desktop/src/main/webRemoteControlLocalRelay.ts]
+    reason: 本分支新增的局域网远控 relay 实现（docs/web-remote-control/local-lan-remote.md），只服务桌面 main 的本地配对、token 与 /remote/v4 静态托管；接管整个 desktop 未受管模块不在本次范围内。
+  - id: local-lan-remote-settings-ui-new-file
+    rule: unmanaged-new-file
+    paths: [packages/ui/src/settings/LocalRemoteSettingsSection.tsx]
+    reason: 本分支新增的局域网远控设置分区（docs/web-remote-control/local-lan-remote.md），只渲染开关、地址选择与 relay 状态；接管整个 ui 未受管模块不在本次范围内。
   - id: region-copy-suggested-prompts-edit
     rule: unmanaged-new-file
     paths: [packages/ui/src/v4/featureSuggestedPrompts.ts]
