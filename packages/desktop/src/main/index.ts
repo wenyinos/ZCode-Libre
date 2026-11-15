@@ -1022,6 +1022,9 @@ function getMobileLogSink(): MobileLogSink {
 
 const webRemoteControlManager = createWebRemoteControlManager({
   localMode: Boolean(webRemoteControlLocalRelayPromise),
+  onLocalRelayStopped: () => {
+    void webRemoteControlLocalRelayPromise?.then((relay) => relay.revokeAll());
+  },
   mobileLogSink: { append: (target, events) => getMobileLogSink().append(target, events) },
   getEndpointUrls: async () => {
     if (webRemoteControlLocalRelayPromise) {
@@ -1055,8 +1058,11 @@ const webRemoteControlManager = createWebRemoteControlManager({
   deviceName: hostname(),
   appVersion: webRemoteControlAppVersion,
   getLogin: async () => {
-    // 本地模式没有官方账号；relay 只校验配对的 WS 连接，不校验 Bearer 内容。
-    if (webRemoteControlLocalRelayPromise) return { userId: "local", jwt: "local" };
+    // 本地模式没有官方账号；device 端使用 relay 预生成的稳定 sessionToken。
+    if (webRemoteControlLocalRelayPromise) {
+      const relay = await webRemoteControlLocalRelayPromise;
+      return { userId: "local", jwt: relay.sessionToken };
+    }
     const userId = await loadRemoteControlUserId();
     const authorization = await loadRemoteControlAuthorization(userId);
     return authorization ? { userId, jwt: authorization.slice("Bearer ".length) } : undefined;

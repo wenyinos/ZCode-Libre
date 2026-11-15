@@ -174,6 +174,8 @@ interface WindowControlRuntime {
 interface WebRemoteControlManagerDependencies {
   /** 局域网模式：不消费官方登录状态，signed-out 通知不能把远控置为 auth-required。 */
   localMode?: boolean;
+  /** 本地模式下用户停止远控时撤销 relay 的配对码、sessionToken 与连接。 */
+  onLocalRelayStopped?: () => void;
   /** 当前界面语言（Main 的 currentApplicationLocale），用于 ZCode endpoint 请求的 X-Client-Language。 */
   getClientLanguage?: () => string | undefined;
   getEndpointUrls?: () => Promise<ZCodeEndpointUrls> | ZCodeEndpointUrls;
@@ -2055,6 +2057,8 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       // Bugfix: 清除自动恢复设置需要写磁盘，失败时不能阻止用户关闭当前远控连接。
       // 先释放 transport 和 attachment，再把持久化错误返回 UI，保证本次运行立即停止。
       await stopWindowRuntime(windowId, "manual-stop");
+      // 本地模式：停止后旧配对码、sessionToken 与手机连接立即失效。
+      dependencies.onLocalRelayStopped?.();
       await dependencies.startupRestoreStorageProvider.clear();
     },
 

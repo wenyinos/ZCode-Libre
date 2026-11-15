@@ -50,10 +50,15 @@ export interface WebRemoteControlLocalRelayOptions {
 export interface WebRemoteControlLocalRelay {
   /** 当前二维码与手机访问使用的源，形如 http://192.168.8.110:47821。 */
   readonly origin: string;
+  readonly port: number;
   readonly relayWsUrl: string;
   readonly remoteUrl: string;
   readonly deviceSid: string;
   readonly pairCode: string;
+  /** 桌面 device 端使用的稳定会话 token；手机端配对成功后获得独立 sessionToken。 */
+  readonly sessionToken: string;
+  /** 停止远控：撤销全部 token、配对码与已配对连接，但保留监听端口。 */
+  revokeAll(): void;
   close(): Promise<void>;
 }
 
@@ -74,6 +79,14 @@ export function createWebRemoteControlLocalRelay(
     string,
     { role: WebRemoteControlRelayV2Role; expiresAt: number }
   >();
+  // P1：配对码一次性消费；配对成功后签发 sessionToken，断线重连不再要求配对码。
+  let pairCodeConsumed = false;
+  let deviceSessionToken = randomBytes(24).toString("base64url");
+  const sessionTokens = new Set<string>([deviceSessionToken]);
+  const pairFailures = new Map<
+    string,
+    { count: number; blockedUntil: number }
+  >();
   const connections = new Set<LocalRelayConnection>();
   const owners = new Map<
     string,
@@ -85,7 +98,14 @@ export function createWebRemoteControlLocalRelay(
   });
   let closed = false;
 
-  const origin = `http://${selectLanAddress()}:${options.port ?? LOCAL_RELAY_PORT}`;
+  function resolveListeningAddress(): { origin: string; port: number } {
+    const address = server.address();
+    const port =
+      typeof address === "object" && address
+        ? address.port
+        : (options.port ?? LOCAL_RELAY_PORT);
+    return { origin: `http://${selectLanAddress()}:${port}`, port };
+  }
 
   function deviceView(): WebRemoteControlRelayV2Device {
     const online = Boolean(owners.get(deviceSid)?.device);
@@ -235,24 +255,82 @@ export function createWebRemoteControlLocalRelay(
     const authorization = request.headers.authorization
       ?.match(/^Bearer (.+)$/i)?.[1]
       ?.trim();
-    if (!authorization) {
-      reply(response, 401, undefined, 401, "unauthorized");
-      return;
-    }
+    const bodyRecord =
+      typeof body === "object" && body !== null
+        ? (body as Record<string, unknown>)
+        : undefined;
+    const pairCode =
+      typeof bodyRecord?.pairCode === "string"
+        ? bodyRecord.pairCode.trim()
+        : undefined;
+    const sourceKey = source ?? "unknown";
 
     if (
       url.pathname === WEB_REMOTE_CONTROL_RELAY_V2_HTTP.token.path &&
       request.method === "POST"
     ) {
       const parsed = parseWebRemoteControlRelayV2HttpRequest("token", body);
-      if (!parsed) {
+      const roleFromPairCode = pairCode
+        ? parseWebRemoteControlRelayV2HttpRequest("token", {
+            role: bodyRecord?.role,
+          })
+        : null;
+      if (!parsed && !roleFromPairCode) {
         reply(response, 400, undefined, 3001, "parameter error");
         return;
       }
+      if (pairCode) {
+        // 配对码路径：一次性消费；连续失败按来源暂停，避免暴力猜测。
+        const failure = pairFailures.get(sourceKey);
+        if (failure && failure.blockedUntil > now()) {
+          reply(response, 429, undefined, 429, "too many attempts");
+          return;
+        }
+        if (pairCodeConsumed) {
+          reply(response, 401, undefined, 401, "pairing already used");
+          return;
+        }
+        if (pairCode !== options.pairCode) {
+          const count = (failure?.count ?? 0) + 1;
+          pairFailures.set(sourceKey, {
+            count: count >= 5 ? 0 : count,
+            blockedUntil: count >= 5 ? now() + 60_000 : 0,
+          });
+          reply(response, 401, undefined, 401, "pairing failed");
+          return;
+        }
+        pairCodeConsumed = true;
+        pairFailures.delete(sourceKey);
+        const sessionToken = randomBytes(24).toString("base64url");
+        sessionTokens.add(sessionToken);
+        const token = randomBytes(16).toString("base64url");
+        tokens.set(token, {
+          role: roleFromPairCode!.role,
+          expiresAt: now() + TOKEN_TTL_MS,
+        });
+        response.setHeader("Cache-Control", "no-store");
+        reply(response, 200, {
+          token,
+          expires_in: TOKEN_TTL_MS / 1_000,
+          sessionToken,
+        });
+        return;
+      }
+      if (!authorization || !sessionTokens.has(authorization)) {
+        reply(response, 401, undefined, 401, "unauthorized");
+        return;
+      }
       const token = randomBytes(16).toString("base64url");
-      tokens.set(token, { role: parsed.role, expiresAt: now() + TOKEN_TTL_MS });
+      tokens.set(token, {
+        role: parsed!.role,
+        expiresAt: now() + TOKEN_TTL_MS,
+      });
       response.setHeader("Cache-Control", "no-store");
       reply(response, 200, { token, expires_in: TOKEN_TTL_MS / 1_000 });
+      return;
+    }
+    if (!authorization || !sessionTokens.has(authorization)) {
+      reply(response, 401, undefined, 401, "unauthorized");
       return;
     }
     if (
@@ -428,22 +506,41 @@ export function createWebRemoteControlLocalRelay(
       options.port ?? LOCAL_RELAY_PORT,
       options.host ?? "0.0.0.0",
       () => {
+        const { origin, port } = resolveListeningAddress();
         options.logger.info(
           `[web-remote-control] local relay listening origin=${origin} assets=${options.assetsDir}`,
         );
         resolveRelay({
           origin,
+          port,
           relayWsUrl:
             origin.replace(/^http:/, "ws:") +
             WEB_REMOTE_CONTROL_RELAY_V2_WS_PATH,
-          remoteUrl: `${origin}${REMOTE_ROUTE}`,
+          remoteUrl: `${origin}${REMOTE_ROUTE}?pair=${encodeURIComponent(options.pairCode)}`,
           deviceSid,
           pairCode: options.pairCode,
+          get sessionToken() {
+            return deviceSessionToken;
+          },
+          revokeAll: () => {
+            // 停止远控后旧 sessionToken、一次性 token、已配对连接全部失效；
+            // relay 继续监听，重新启动时可重新配对。
+            sessionTokens.clear();
+            deviceSessionToken = randomBytes(24).toString("base64url");
+            sessionTokens.add(deviceSessionToken);
+            pairCodeConsumed = false;
+            pairFailures.clear();
+            tokens.clear();
+            for (const connection of connections) connection.socket.close();
+            connections.clear();
+            owners.clear();
+          },
           close: async () => {
             closed = true;
             for (const connection of connections) connection.socket.close();
             connections.clear();
             tokens.clear();
+            sessionTokens.clear();
             owners.clear();
             await new Promise<void>((done) => server.close(() => done()));
             wsServer.close();

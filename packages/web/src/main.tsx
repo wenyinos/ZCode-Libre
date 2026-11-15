@@ -81,6 +81,7 @@ import {
   isWebRemoteControlOAuthCallback,
   type WebRemoteControlEntryConnection,
   createWebRemoteControlV2TokenClient,
+  createWebRemoteControlLocalTokenStore,
   readKnownDevices,
   createWebRemoteControlDeviceClient,
   createWebRemoteControlBridgeRecoveryRunner,
@@ -415,7 +416,20 @@ const remoteEntry = new WebRemoteControlEntry({
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   },
   loginOptions: { devReturnTo: resolveWebAuthDevReturnTo(WEB_ZAI_OAUTH_CONFIG) },
-  token: createWebRemoteControlV2TokenClient(window.location.origin),
+  token: createWebRemoteControlV2TokenClient(
+    window.location.origin,
+    fetch,
+    (() => {
+      try {
+        return createWebRemoteControlLocalTokenStore({
+          href: window.location.href,
+          storage: window.localStorage,
+        });
+      } catch {
+        return undefined;
+      }
+    })(),
+  ),
   connect: (connection) => {
     void bootstrapExternalRelayWebRemoteControl(connection);
   },
