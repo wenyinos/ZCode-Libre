@@ -31,7 +31,7 @@ jobs:
           cache: pnpm
 
       - name: 安装依赖
-        run: pnpm install --frozen-lockfile
+        run: node scripts/install-deps-with-retry.mjs
 
       # 在 Linux runner 上就能打出 macOS/Linux 通用包：pnpm 的 supportedArchitectures
       # 会安装所有平台的可选依赖，node-pty prebuild 随包携带；包内原生件只覆盖这三个

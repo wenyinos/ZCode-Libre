@@ -56,7 +56,7 @@ jobs:
           cache: pnpm
 
       - name: 安装依赖
-        run: pnpm install --frozen-lockfile
+        run: node scripts/install-deps-with-retry.mjs
 
       - name: 准备构建资源
         run: pnpm bootstrap
@@ -143,7 +143,7 @@ jobs:
           node --version && pnpm --version
 
       - name: 安装依赖
-        run: pnpm install --frozen-lockfile
+        run: node scripts/install-deps-with-retry.mjs
 
       - name: 准备构建资源
         run: pnpm bootstrap

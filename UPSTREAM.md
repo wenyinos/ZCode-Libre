@@ -345,6 +345,7 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 - 非私有来源拒绝已实现但未做真实外部主机验收；双手机替换只有单测覆盖。
 - 真机 Wi-Fi 扫码连接已确认可用（2026-11-16）；打包态 `resources/remote/v4` 尚未在本地 electron-builder 验证（本机缺 `version`、native 重建失败、打包工具下载超时），由 CI/发布流水线验证。
 - 2026-11-16 `v3.18.3` 首次构建失败：`packages/desktop/package.json` 缺少 `prepare:remote-v4` 脚本，桌面各平台在「准备构建资源」阶段报 `Command "prepare:remote-v4" not found`。修复后重发同版本。
+- 2026-11-16 重发时 `Linux-rpm-arm64` 在「安装依赖」阶段偶发 `ERR_PNPM_ENOENT`（`bundle-require` 临时目录 rename 到 `esbuild`）。Release 的安装步骤已统一改为 `scripts/install-deps-with-retry.mjs`（默认 3 次重试）。
 - P2/P3 已用本机 Wi-Fi + ZeroTier 双网卡实测：设置页切到 ZeroTier 地址后，对话框二维码、手机访问与 bridge 全部走该地址；关闭开关后远控停止。真实手机与预览版安装包验收仍需现场执行。
 
 同步注意：`index.ts` 与 `webRemoteControlManager.ts` 是上游高频改动文件，合并时保留上述本地分支；上游若重构 `getEndpointUrls` / `getLogin` / `startupRestoreStorageProvider`，本地模式必须同步适配。上游若给 `/remote/v4` 增加构建期 relay 覆盖变量，可考虑让本地模式复用它，但不要因此要求手机跨源访问。
