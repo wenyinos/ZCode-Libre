@@ -314,7 +314,7 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 - `packages/web/src/web-remote-control/adapters/webRemoteControlLocalToken.ts`：手机端本地模式判定（URL 带 `pair` 或页面在私有地址）与 `sessionToken` 的 localStorage 读写。
 - `packages/ui/src/settings/LocalRemoteSettingsSection.tsx`：设置页「局域网远控」分区（地址选择、relay 状态与配对码；没有启用开关）。
 - `scripts/build-remote-v4-assets.mjs`：构建 `/remote/v4` 到 `packages/desktop/bundled-resources/remote/v4`，供 `prepare:runtime-assets` 与 electron-builder 打包。
-- `packages/desktop/src/main/firewallAccess.ts`：只读检测系统防火墙端口状态，并返回当前平台的手动放行命令（Linux firewalld/ufw、macOS socketfilterfw、Windows netsh）。不做自动提权、不修改系统防火墙，也不在安装包脚本里放行。
+- `packages/desktop/src/main/firewallAccess.ts`：按平台返回防火墙手动放行命令（Linux firewalld/ufw、macOS socketfilterfw、Windows netsh）。**不检测、不修改系统防火墙**，也不在安装包脚本里放行；不调用 `firewall-cmd`/`ufw`（Fedora 45 上 `firewall-cmd --state` 会触发 polkit 密码提示）。
 - `packages/desktop/test/webRemoteControlLocalRelay.test.ts`：配对码可重复配对（第二台手机替换第一台）、sessionToken 换 token、5 次失败锁定、`revokeAll`、第二台手机 KICKED、地址分类、复用 deviceSid。
 - `docs/web-remote-control/local-lan-remote.md`：设计稿、验收场景（LLR-01 ~ LLR-12）与实施记录。已确认：固定端口 47821、静态资源打包进桌面包、不做 TLS、单手机（第二台替换第一台）。
 
@@ -331,10 +331,10 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 - `packages/desktop/src/preload/index.ts`、`packages/desktop/src/renderer/src/desktopPlatform.ts`、`packages/desktop/src/main/desktopWebRemoteControlIpc.ts`、`packages/desktop/src/main/desktopMainIpcRemote.ts`：两个本地远控方法的 preload、renderer 适配与 IPC 接线。
 - `packages/web/src/platform/index.ts`：Web 端对两个方法提供空实现（局域网远控只能从桌面配置）。
 - `packages/ui/src/lib/settingsNavigation.ts`、`packages/ui/src/settings/settingsPageConfig.ts`、`packages/ui/src/SettingsPage.tsx`、`packages/ui/src/i18n/locales/{zh-CN,en-US}.ts`：新增 `localRemote` 设置分区、渲染分支与双语文案。
-- `packages/ui/src/web-remote-control/WebRemoteControlDialog.tsx`：本地模式下读取 `getWebRemoteControlLocalState()`，在二维码下方展示「刷新二维码」按钮（轮换配对码并重建 runtime）、地址失效提示，以及防火墙状态与当前平台的手动放行命令（可复制）；端口已放行时不显示命令。
+- `packages/ui/src/web-remote-control/WebRemoteControlDialog.tsx`：本地模式下读取 `getWebRemoteControlLocalState()`，在二维码下方展示「刷新二维码」按钮（轮换配对码并重建 runtime）与地址失效提示；「等待手机连接」处提供「防火墙设置说明」链接，点开弹窗按平台展示手动命令（可复制）。
 - `packages/ui/test/settingsPageConfig.test.ts`：分区顺序断言加入 `localRemote`。
 - `packages/desktop/package.json`、`packages/desktop/scripts/prepare-runtime-assets.mjs`、`packages/desktop/electron-builder.config.js`：新增 `prepare:remote-v4`，并把 `bundled-resources/remote/v4` 作为 `extraResources` 发布到 `resources/remote/v4`。
-- `packages/desktop/src/main/index.ts`（P3 追加）：本地 relay 懒启动、始终启用；新增 `getWebRemoteControlLocalState` / `refreshPairing` / `setAddress` 控制器；防火墙状态每次按需重新检测；二维码地址失效时返回 `addressUnavailable`；打包态 assets 默认 `process.resourcesPath/remote/v4`。
+- `packages/desktop/src/main/index.ts`（P3 追加）：本地 relay 懒启动、始终启用；新增 `getWebRemoteControlLocalState` / `refreshPairing` / `setAddress` 控制器；不检测防火墙，只把按平台的命令放进状态；二维码地址失效时返回 `addressUnavailable`；打包态 assets 默认 `process.resourcesPath/remote/v4`。
 
 已确认的实现边界：
 

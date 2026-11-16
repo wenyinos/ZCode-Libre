@@ -151,7 +151,7 @@ import {
   WEB_REMOTE_CONTROL_LOCAL_RELAY_PORT,
   type WebRemoteControlLocalRelay,
 } from "./webRemoteControlLocalRelay.js";
-import { inspectFirewall, type FirewallSetupInfo } from "./firewallAccess.js";
+import { getFirewallSetupInfo } from "./firewallAccess.js";
 import type { WebRemoteControlLocalRelayIpc } from "./desktopWebRemoteControlIpc.js";
 import { readBootstrapApplicationLocale } from "./desktopApplicationLocaleBootstrap.js";
 import {
@@ -998,25 +998,11 @@ const webRemoteControlLocalPreferredAddress =
 const webRemoteControlLocalModeEnabled = Boolean(webRemoteControlLocalAssetsDir);
 let webRemoteControlLocalRelayPromise: Promise<WebRemoteControlLocalRelay> | undefined;
 
-// 每次读取都重新检测：用户可能在应用运行期间改了防火墙规则。
-function resolveLocalFirewallInfo(): Promise<FirewallSetupInfo> {
-  return inspectFirewall(WEB_REMOTE_CONTROL_LOCAL_RELAY_PORT);
-}
-
 // 懒启动：先读设置里的本地设备 SID，保证桌面重启后手机旧链接仍可认证。
 async function getWebRemoteControlLocalRelay(): Promise<WebRemoteControlLocalRelay | undefined> {
   const assetsDir = webRemoteControlLocalAssetsDir;
   if (!assetsDir) return undefined;
   webRemoteControlLocalRelayPromise ??= (async () => {
-    // 只检测、不自动改系统防火墙；未放行时由远控对话框展示手动命令。
-    const firewall = await resolveLocalFirewallInfo();
-    if (firewall.state !== "open") {
-      logger.warn("[web-remote-control] local relay port may be blocked by firewall", {
-        port: WEB_REMOTE_CONTROL_LOCAL_RELAY_PORT,
-        state: firewall.state,
-        commands: firewall.commands,
-      });
-    }
     const settings = await mainSettingService.get();
     const persistedDeviceSid = settings.webRemoteControlLocalDeviceSid?.trim();
     const preferredAddress =
@@ -1045,9 +1031,8 @@ async function getWebRemoteControlLocalState(windowId: number): Promise<WebRemot
   const addresses = listWebRemoteControlLocalAddresses();
   const preferredAddress = (await mainSettingService.get())
     .webRemoteControlLocalPreferredAddress?.trim();
-  const firewall = await resolveLocalFirewallInfo();
+  const firewall = getFirewallSetupInfo(WEB_REMOTE_CONTROL_LOCAL_RELAY_PORT);
   const firewallFields = {
-    firewall: firewall.state,
     ...(firewall.commands.length > 0 ? { firewallCommands: firewall.commands } : {}),
     ...(firewall.note ? { firewallNote: firewall.note } : {}),
   };

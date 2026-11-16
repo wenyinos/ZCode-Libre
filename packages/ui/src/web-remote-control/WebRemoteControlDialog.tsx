@@ -13,7 +13,6 @@ import QRCode from "qrcode";
 import {
   DesktopCommandIds,
   type BotProvider,
-  type WebRemoteControlLocalFirewallState,
   type WebRemoteControlStatus,
 } from "@zcode/shared";
 import {
@@ -108,11 +107,11 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [localAddressUnavailable, setLocalAddressUnavailable] = useState(false);
-  const [localFirewall, setLocalFirewall] = useState<{
-    state: WebRemoteControlLocalFirewallState;
+  const [localFirewallHelp, setLocalFirewallHelp] = useState<{
     commands: string[];
     note?: string;
   } | null>(null);
+  const [firewallHelpOpen, setFirewallHelpOpen] = useState(false);
   const [botsDialogOpen, setBotsDialogOpen] = useState(false);
   const [botEntryProvider, setBotEntryProvider] = useState<RemoteControlBotProvider | null>(null);
 
@@ -152,8 +151,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
         const localMode = Boolean(localState?.enabled);
         if (!cancelled && localState?.enabled) {
           setLocalAddressUnavailable(Boolean(localState.addressUnavailable));
-          setLocalFirewall({
-            state: localState.firewall ?? "unknown",
+          setLocalFirewallHelp({
             commands: localState.firewallCommands ?? [],
             ...(localState.firewallNote ? { note: localState.firewallNote } : {}),
           });
@@ -455,7 +453,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
                 data-testid="web-remote-control-scan-card"
                 className="flex min-h-[360px] flex-col rounded-xl border border-border bg-card p-4"
               >
-                {status.status === "auth-required" && !localFirewall ? (
+                {status.status === "auth-required" && !localFirewallHelp ? (
                   <div
                     data-testid="web-remote-control-auth-required"
                     className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-6 text-center"
@@ -508,6 +506,19 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
                           <div className="text-ui-base/relaxed text-foreground-subtle">
                             {statusDetail}
                           </div>
+                          {localFirewallHelp &&
+                          localFirewallHelp.commands.length > 0 &&
+                          !status.mobileConnected ? (
+                            <button
+                              type="button"
+                              className="text-left text-ui-sm text-primary underline-offset-2 hover:underline"
+                              onClick={() => setFirewallHelpOpen(true)}
+                            >
+                              {intl.formatMessage({
+                                id: "webRemoteControl.firewall.helpLink",
+                              })}
+                            </button>
+                          ) : null}
                         </div>
                         {status.mobileConnected ? (
                           <Button
@@ -591,7 +602,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
                         </div>
                       )}
                     </div>
-                    {localFirewall ? (
+                    {localFirewallHelp ? (
                       <div className="mt-3 flex items-center justify-between gap-3">
                         <span className="text-ui-sm text-foreground-subtle">
                           {localAddressUnavailable
@@ -616,47 +627,6 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
                           <RefreshCw className="size-4" aria-hidden="true" />
                           {intl.formatMessage({ id: "webRemoteControl.refreshQr" })}
                         </Button>
-                      </div>
-                    ) : null}
-                    {localFirewall && localFirewall.state !== "open" ? (
-                      <div className="mt-3 rounded-lg border border-border bg-background-alt px-3 py-2 text-ui-base/relaxed text-foreground-subtle">
-                        <p className="font-medium text-foreground">
-                          {intl.formatMessage({
-                            id: "webRemoteControl.firewall.title",
-                          })}
-                        </p>
-                        <p className="mt-1">
-                          {intl.formatMessage({
-                            id: "webRemoteControl.firewall.description",
-                          })}
-                        </p>
-                        {localFirewall.note ? (
-                          <p className="mt-1">{localFirewall.note}</p>
-                        ) : null}
-                        {localFirewall.commands.length > 0 ? (
-                          <div className="mt-2 space-y-1">
-                            {localFirewall.commands.map((command) => (
-                              <div key={command} className="flex items-start gap-2">
-                                <code className="min-w-0 flex-1 select-all break-all rounded bg-surface px-2 py-1 font-mono text-ui-sm">
-                                  {command}
-                                </code>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  className="shrink-0"
-                                  onClick={() => {
-                                    void navigator.clipboard?.writeText(command);
-                                  }}
-                                >
-                                  {intl.formatMessage({
-                                    id: "webRemoteControl.firewall.copy",
-                                  })}
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : null}
                       </div>
                     ) : null}
                   </>
@@ -746,6 +716,41 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
         onOpenChange={setBotsDialogOpen}
         entryProvider={botEntryProvider}
       />
+      <Dialog open={firewallHelpOpen} onOpenChange={setFirewallHelpOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {intl.formatMessage({ id: "webRemoteControl.firewall.title" })}
+            </DialogTitle>
+            <DialogDescription>
+              {intl.formatMessage({ id: "webRemoteControl.firewall.description" })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {localFirewallHelp?.note ? (
+              <p className="text-ui-sm text-foreground-subtle">{localFirewallHelp.note}</p>
+            ) : null}
+            {localFirewallHelp?.commands.map((command) => (
+              <div key={command} className="flex items-start gap-2">
+                <code className="min-w-0 flex-1 select-all break-all rounded bg-surface px-2 py-1 font-mono text-ui-sm">
+                  {command}
+                </code>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(command);
+                  }}
+                >
+                  {intl.formatMessage({ id: "webRemoteControl.firewall.copy" })}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 });

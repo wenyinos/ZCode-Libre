@@ -3158,9 +3158,10 @@ const enUS: Record<string, string> = {
   "webRemoteControl.failure.unexpectedError":
     "Could not start mobile remote control. Try again from desktop.",
   "webRemoteControl.copyLink": "Copy link",
-  "webRemoteControl.firewall.title": "Phone can't connect?",
+  "webRemoteControl.firewall.title": "Firewall setup",
+  "webRemoteControl.firewall.helpLink": "Phone can't connect? Check firewall setup",
   "webRemoteControl.firewall.description":
-    "Make sure the system firewall allows the local remote port (47821/TCP). Run these commands, then retry:",
+    "If the phone cannot connect, make sure the system firewall allows the local remote port (47821/TCP). Run the matching commands, then retry:",
   "webRemoteControl.firewall.copy": "Copy",
   "webRemoteControl.copyLink.copied": "Remote control link copied",
   "webRemoteControl.copyLinkFailed": "Could not copy remote control link: {error}",
