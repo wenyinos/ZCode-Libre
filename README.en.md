@@ -61,13 +61,13 @@ Both clients share the `.zcode` data root, and the applications themselves can r
 
 ## Mobile remote control (local network)
 
-This fork has no cloud relay. A phone on the same LAN (or the same ZeroTier virtual network) can connect directly, without an official account:
+This fork has no cloud relay. A phone on the same LAN (or the same ZeroTier virtual network) can connect directly, without an official account.
 
-1. Open **Settings → Data & statistics → Local network remote** and choose the QR address: automatic, Wi-Fi, or ZeroTier.
-2. Click the phone icon in the main window and scan the QR code; the page opens on the task home.
-3. If the phone cannot connect, the dialog shows the firewall command for the current OS (port 47821/TCP).
+**Use the "Mobile remote control" dialog as the entry point.** Click the phone icon in the main window, scan the QR code, or copy the full link from that dialog. Do not type `http://<address>:47821` or `/remote/v4` manually: the root path has no page, and `/remote/v4` without a pairing code reports "pairing expired".
 
-Remote control shares the same sessions and tasks as the desktop. The phone reconnects automatically after a refresh or a dropped connection; stopping remote control or clicking "Refresh QR" invalidates the old QR code.
+The "Data & statistics → Local network remote" settings section only switches the network interface used in the QR code (automatic, Wi-Fi, ZeroTier); it does not show connection details. Choose the ZeroTier address when the phone is on a different network.
+
+If the phone cannot connect, open "Phone can't connect? Check firewall setup" in the dialog and run the command for your OS to allow 47821/TCP. Stopping remote control or clicking "Refresh QR" invalidates the old QR code and paired phones.
 
 ## Telemetry and vendor services
 
