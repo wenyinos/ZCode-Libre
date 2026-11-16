@@ -59,6 +59,16 @@ Both clients share the `.zcode` data root, and the applications themselves can r
 
 **Upgrade both sides together.** Whichever updates first migrates the shared database to a newer structure; the older client usually keeps working, but a structural migration can make it fail. This fork has not touched the storage layer, so as long as both sides are on the same version line there is no issue.
 
+## Mobile remote control (local network)
+
+This fork has no cloud relay. A phone on the same LAN (or the same ZeroTier virtual network) can connect directly, without an official account:
+
+1. Open **Settings → Data & statistics → Local network remote** and choose the QR address: automatic, Wi-Fi, or ZeroTier.
+2. Click the phone icon in the main window and scan the QR code; the page opens on the task home.
+3. If the phone cannot connect, the dialog shows the firewall command for the current OS (port 47821/TCP).
+
+Remote control shares the same sessions and tasks as the desktop. The phone reconnects automatically after a refresh or a dropped connection; stopping remote control or clicking "Refresh QR" invalidates the old QR code.
+
 ## Telemetry and vendor services
 
 Telemetry and services backed by the vendor backend are **off by default**. The changes follow a "default off, keep the code" approach so upstream can still be merged cleanly; every switch is registered in [UPSTREAM.md](UPSTREAM.md).

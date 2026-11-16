@@ -337,7 +337,7 @@ P3（2026-11-15，完成，真机待验收）：
 - `pnpm verify:pre-push` 通过：工作区、Lint、文档短语、schema、架构检查均 OK；`test:engineering:affected` 因选中全量（207/207）被脚本主动跳过，未实际执行；单独运行 relay 与设置分区用例共 16 项通过。
 - 真机：Wi-Fi 扫码连接已确认可用；ZeroTier、双手机替换、桌面重启三场景按用户要求不再测试。
 - 打包态：本地 `electron-builder --linux dir` 未完成。依次受 `packages/desktop/package.json` 缺 `version`、`cpu-features` native 重建失败（Electron 44 头文件与 `-Werror` 冲突）、打包工具二进制下载超时阻塞；`dist` 未生成。`resources/remote/v4` 的打包集成需由 CI/发布流水线验证。
-- 发布：随 `v3.18.3` 发布（桌面六目标 + CLI）。
+- 发布：随 `v3.18.3` 发布（桌面六目标 + CLI）。首次构建因 `packages/desktop/package.json` 缺少 `prepare:remote-v4` 脚本失败；修复后重发同版本。
 
 ## 已确认决策
 
