@@ -85,9 +85,8 @@ Telemetry and services backed by the vendor backend are **off by default**. The 
 
 Bundled capability plugins (browser control, documents, PDF, spreadsheets, presentations) stay enabled by default — they do not depend on vendor services.
 
-### Updates
+### In-app updates
 
-- 2026-10-19: Synced upstream ZCode v3.16.2 (remote connection and source server capabilities, workspace shell refactor).
 "Help → Check for Updates" only queries this repository's GitHub Release and compares versions. It never reads the vendor update manifest the way upstream does — that manifest points at official ZCode and installing it would overwrite this fork. When a newer version exists, the dialog offers a "Go to download" button that opens the Release page in your browser, where you pick the installer for your platform.
 
 ### Connecting models with an API key
@@ -113,13 +112,20 @@ Use the **standard API** template in Settings → Model Providers when you want 
 - **2026-11-13**: Synced upstream ZCode v3.18.1 (Windows runtime host and installer process handling).
 - **2026-11-12**: Upstream re-published the v3.18.2 source; this fork bumped to v3.18.2.
 - **2026-11-11**: Synced upstream ZCode v3.18.0.
+
+<details>
+<summary>Earlier updates</summary>
+
 - **2026-11-03**: Synced upstream ZCode v3.17.2.
 - **2026-10-30**: Synced upstream ZCode v3.17.1.
+- **2026-10-19**: Synced upstream ZCode v3.16.2 (remote connection and source server capabilities, workspace shell refactor).
 - 2026-10-18: Fixed the missing main window on cold start (the v3.15.1 sync dropped a shared import in the desktop Main bundle, so a startup ReferenceError aborted window creation and left only the tray).
 - 2026-10-17: Fixed in-app update detection (a build-time flag cut off the self-hosted Release path, so the UI reported "development environment, skipping update check"), and moved the project site to an Actions deployment to avoid the upstream docs corpus.
 - 2026-10-13: Synced upstream ZCode v3.15.1 (UI plugins and Gen UI, remote workspace and agent updates).
 - 2026-09-26: Added a standalone CLI distribution (TUI + Web, covering macOS arm64 and Linux x64/arm64), released under the same version number as the desktop build.
 - 2026-09-24: Established the ZCode-Libre brand fork: independent application identity, independent data directory, a new circular mark, and a sync of the upstream v3.14.3 source.
+
+</details>
 
 ## Setup
 
