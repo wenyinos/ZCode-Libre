@@ -40,7 +40,12 @@ interface CacheEntry {
 export function createDisabledClientConfigService(): IClientConfigService {
   return {
     async getSnapshot() {
-      return { pluginStoreOrder: null, zsrcUrl: null, uiPluginRecommendations: [] };
+      return {
+        pluginStoreOrder: null,
+        zsrcUrl: null,
+        uiPluginRecommendations: [],
+        draftModelMigration: null,
+      };
     },
   };
 }

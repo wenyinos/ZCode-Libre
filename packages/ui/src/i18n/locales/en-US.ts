@@ -18,7 +18,7 @@ const enUS: Record<string, string> = {
   "preinstalledTools.deleteNotice.python":
     "Python packages added by the Agent will also be deleted.",
   "preinstalledTools.deleteAutoNotice":
-    "With automatic preinstall enabled, ZCode will download it again the next time it starts.",
+    "With automatic preinstall enabled, ZCode-Libre will download it again the next time it starts.",
   "preinstalledTools.deleteCancel": "Cancel",
   "preinstalledTools.deletionBlocked": "{name} is being used by the Agent. Please try again later.",
   "resourceManager.storage.category.preinstalledTools": "Preinstalled tools",
@@ -31,7 +31,7 @@ const enUS: Record<string, string> = {
   "preinstalledTools.agentEnabledDescription":
     "Turn this off to let the Agent use {name} already installed on this computer.",
   "preinstalledTools.autoInstallDescription":
-    "Prepare tools in the background when ZCode starts. Turning this off stops future automatic downloads. Installed tools remain available.",
+    "Prepare tools in the background when ZCode-Libre starts. Turning this off stops future automatic downloads. Installed tools remain available.",
   "preinstalledTools.remoteNotice":
     "A remote workspace is open. This dialog manages this computer and does not install tools on the remote device.",
   "preinstalledTools.download": "Download",
@@ -44,7 +44,7 @@ const enUS: Record<string, string> = {
     "For document to PDF conversion, presentation conversion, and spreadsheet formula recalculation",
   "preinstalledTools.loading": "Loading…",
   "preinstalledTools.loadFailed":
-    "Preinstalled tools could not start. Restart ZCode and try again. If the problem continues, report it via Help → Export logs.",
+    "Preinstalled tools could not start. Restart ZCode-Libre and try again. If the problem continues, report it via Help → Export logs.",
   "preinstalledTools.unavailable": "This version does not provide this tool yet.",
   "preinstalledTools.readyInfo": "Version {version} · {size} GB used",
   "preinstalledTools.downloadInfo": "Downloading {loaded} / {total} MB",
@@ -1249,7 +1249,7 @@ const enUS: Record<string, string> = {
   "conversationShare.issue.unknown":
     "Sharing failed; the cause could not be determined. Retry, and provide the error details if it persists.",
   "conversationShare.issue.unsupportedContent":
-    "Some content in turn {turnOrdinal} is in a format the share service does not support. Update ZCode, or deselect the turn and share again.",
+    "Some content in turn {turnOrdinal} is in a format the share service does not support. Update ZCode-Libre, or deselect the turn and share again.",
   "conversationShare.issue.artifactTypeRejected":
     "{artifactDisplayName} ({artifactType}) in turn {turnOrdinal} cannot be shared. Deselect the turn and try again.",
   "conversationShare.issue.artifactFormatMismatch":

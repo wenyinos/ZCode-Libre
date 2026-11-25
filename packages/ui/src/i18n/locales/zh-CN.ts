@@ -14,7 +14,7 @@ const zhCN: Record<string, string> = {
   "preinstalledTools.delete": "删除",
   "preinstalledTools.deleteTitle": "删除 {name}？",
   "preinstalledTools.deleteDescription": "将释放约 {size} GB 磁盘空间。",
-  "preinstalledTools.deleteAutoNotice": "自动预装开启时，下次启动 ZCode 会重新下载。",
+  "preinstalledTools.deleteAutoNotice": "自动预装开启时，下次启动 ZCode-Libre 会重新下载。",
   "preinstalledTools.deleteNotice.python": "Agent 额外安装的 Python 包也会删除。",
   "preinstalledTools.deleteCancel": "取消",
   "preinstalledTools.deletionBlocked": "{name} 正在被 Agent 使用，请稍后再试。",
@@ -26,7 +26,7 @@ const zhCN: Record<string, string> = {
   "preinstalledTools.agentEnabled": "Agent 使用预装版本",
   "preinstalledTools.agentEnabledDescription": "关闭后，Agent 使用这台电脑上已有的 {name}。",
   "preinstalledTools.autoInstallDescription":
-    "启动 ZCode 时自动在后台准备。关闭后不再自动下载，已安装的工具仍可使用。",
+    "启动 ZCode-Libre 时自动在后台准备。关闭后不再自动下载，已安装的工具仍可使用。",
   "preinstalledTools.remoteNotice": "当前打开的是远端工作区。这里管理的是本机，不会安装到远端。",
   "preinstalledTools.download": "下载",
   "preinstalledTools.cancel": "取消下载",
@@ -37,7 +37,7 @@ const zhCN: Record<string, string> = {
   "preinstalledTools.purpose.libreoffice": "用于文档转 PDF、PPT 转换和表格公式重算",
   "preinstalledTools.loading": "正在读取…",
   "preinstalledTools.loadFailed":
-    "预装工具未能启动。请重启 ZCode 后再试；如果仍然失败，请通过“帮助 → 导出日志”反馈问题。",
+    "预装工具未能启动。请重启 ZCode-Libre 后再试；如果仍然失败，请通过“帮助 → 导出日志”反馈问题。",
   "preinstalledTools.unavailable": "当前版本暂未提供此工具。",
   "preinstalledTools.readyInfo": "版本 {version} · 占用 {size} GB",
   "preinstalledTools.downloadInfo": "正在下载 {loaded} / {total} MB",
@@ -1135,7 +1135,7 @@ const zhCN: Record<string, string> = {
   "conversationShare.issue.unknown":
     "分享未能完成，暂时无法确定原因。请重试；若仍失败，请提供错误详情。",
   "conversationShare.issue.unsupportedContent":
-    "第 {turnOrdinal} 轮的部分内容格式与分享服务不兼容，请更新 ZCode，或取消该轮后分享。",
+    "第 {turnOrdinal} 轮的部分内容格式与分享服务不兼容，请更新 ZCode-Libre，或取消该轮后分享。",
   "conversationShare.issue.artifactTypeRejected":
     "第 {turnOrdinal} 轮的 {artifactDisplayName}（{artifactType}）暂不支持分享，请取消该轮后重试。",
   "conversationShare.issue.artifactFormatMismatch":
