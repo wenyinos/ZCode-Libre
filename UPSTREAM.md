@@ -51,7 +51,7 @@ pnpm lint
 
 - `package.json` 的 `version` **等于本次同步的上游发布版本号**：同步上游 v3.16.2，本分支就发 `3.16.2`，不要再自造与上游对不上的号。
 - 本分支自己的补丁 / 特性发布，在该号之上继续 `patch +1`（上游 `3.16.2` → 下一次自研发布 `3.16.3`）；等下一次同步上游新版本时重新对齐上游号，继续这个规则。
-- 历史：`3.15.1` → 自研补丁 `3.15.2`、`3.15.3`；同步上游跃迁到 `3.16.2` 时对齐上游号；`3.18.0`（对齐上游 v3.18.0）→ 自研补丁 `3.18.1`（隐藏「分享管理」死入口）；上游补发 v3.18.2 后自升 `3.18.2` → `3.18.3`（局域网手机远控）→ 同步上游 v3.18.2 源码后发 `3.18.4`。
+- 历史：`3.15.1` → 自研补丁 `3.15.2`、`3.15.3`；同步上游跃迁到 `3.16.2` 时对齐上游号；`3.18.0`（对齐上游 v3.18.0）→ 自研补丁 `3.18.1`（隐藏「分享管理」死入口）；上游补发 v3.18.2 后自升 `3.18.2` → `3.18.3`（局域网手机远控）→ 同步上游 v3.18.2 源码后发 `3.18.4` → 同步上游 v4.0.0 发 `4.0.0`。
 - 合并上游时 `package.json` 的 `version` 冲突：**取上游的值**（与旧规则相反）；合并后跑 `node -e "console.log(require('./package.json').version)"` 确认。
 - 与上游同号意味着 **tag 名也同名**。抓取上游一律 `--no-tags`（见开头）；打本分支 tag 前先 `git tag -d <同名>` 删掉本地那条上游 tag（只删本地 ref，上游提交仍可由 `upstream/main` 可达），再把新 tag 推到 `origin`，绝不推 `upstream`。
 - 必须是**标准 semver 三段式**。四段式（如 `3.14.3.1`）会让应用内更新检测失效：`packages/desktop/src/main/githubReleaseUpdates.ts` 用 `semver.coerce` 解析，`3.14.3.1` 被截断成 `3.14.3`，与上一版比较会判定为"已是最新"，连续的四段版本之间也无法排序。
@@ -388,6 +388,24 @@ CLI 内部显示的 `@zcode/cli` 版本（`zcode doctor` 里的 `0.16.9`）是�
 
 12. `docs/` —— 上游把规格语料与打包的 knip 文档站（含 9 个 `.astro` + 11 个 `.mdx`）放进 `docs/`，正好是本分支 Pages 的源目录，合并后 Pages 构建会因 Jekyll 解析 `.astro` 而失败（详见偏离清单第 14 条）。本分支已改用 Actions 发布：同步时**不要**删 `docs/index.html` 与 `docs/promo/`，也不要把 Pages 换回 legacy 的「从分支发布」。
 13. `packages/desktop/src/main/index.ts` 的 `@zcode/shared` 导入清单 —— 上游删除常量时，冲突解决会保留本分支的使用处却丢掉导入行，产物里成为未定义的自由变量，**启动期 ReferenceError 导致主窗口不再创建、应用只剩托盘**（2026-10-18 实测，详见偏离清单第 7 节末段）。合并后必须跑 `pnpm check:defaults`（已加该文件的导入完整性断言）并确认产物里不出现原样的 `ZCODE_TELEMETRY_ENABLED`。
+
+## v4.0.0 同步记录（2026-11-25）
+
+上游一个 `chore: sync ZCode source v4.0.0` 提交（`a4b44451`），2209 文件、+149k/−24k。冲突 7 个文件：
+
+- `package.json`：版本冲突，按上游版本号发布 `4.0.0`。
+- `README.md` / `README.en.md`：保留本分支带说明的更新记录，新增 v4.0.0 条目。
+- `packages/ui/src/WorkspaceHelpMenuButton.tsx`：采用上游 v4.0.0 的 fragment / `PreinstalledToolsDialog` 结构，重新套上本分支的 `LIBRE_VENDOR_SERVICES.feedback` 门禁（反馈、漏洞报告、产品建议入口隐藏）。
+- `packages/ui/src/settings/settingsPageConfig.ts`：保留本分支 `vendorServices` 分区，合入上游新增 `remoteDevices` 分区。
+- `packages/web/src/main.tsx`：保留 ZCode-Libre 页面标题与本地模式 auth 哨兵，回调回跳改用上游 `webAuthService.resolveCallbackReturnTo`。
+- `scripts/engineering-test-files.json`：合并本分支策略/品牌测试清单与上游新增测试。
+
+自动合并后需留意：
+
+- `packages/desktop/src/main/index.ts`、`packages/shared/src/channels.ts`、`packages/services/src/node.ts` 的本分支标记仍在：`webRemoteControlLocal`、`RefreshWebRemoteControlLocalPairing`、`LIBRE_VENDOR_SERVICES`。
+- 上游 v4.0.0 新增 `ClientConfigSnapshot.draftModelMigration`，本分支 `createDisabledClientConfigService` 补 `draftModelMigration: null` 以通过类型检查。
+- 上游新增文案中的 ZCode 已由 `scripts/apply-brand-naming.py --write` 补齐（8 处）。
+- 验证：`pnpm install --frozen-lockfile`、`pnpm bootstrap`、`pnpm typecheck`、`pnpm lint`、`check:defaults`、品牌检查均通过。
 
 ## v3.18.2 同步记录（2026-11-16）
 
