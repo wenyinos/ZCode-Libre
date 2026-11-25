@@ -39,13 +39,18 @@ export function extractPrebuiltArchive({ archivePath, archiveExt, extractDir, cw
   mkdirSync(extractDir, { recursive: true });
   if (archiveExt === "zip") {
     if (process.platform === "win32") {
+      // Expand-Archive 在 PowerShell 7 的 Archive 模块里会调用不存在的 3 参数
+      // ExtractToDirectory 重载（MethodCountCouldNotFindBest）；直接走 .NET 的
+      // 2 参数重载，先清空目标目录再解压。
+      const archive = archivePath.replaceAll("'", "''");
+      const destination = extractDir.replaceAll("'", "''");
       runCommand("powershell.exe", [
         "-NoProfile",
         "-NonInteractive",
         "-ExecutionPolicy",
         "Bypass",
         "-Command",
-        `Expand-Archive -LiteralPath '${archivePath.replaceAll("'", "''")}' -DestinationPath '${extractDir.replaceAll("'", "''")}' -Force`,
+        `if (Test-Path -LiteralPath '${destination}') { Remove-Item -LiteralPath '${destination}' -Recurse -Force }; Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('${archive}', '${destination}')`,
       ]);
       return;
     }
