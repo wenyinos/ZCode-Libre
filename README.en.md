@@ -107,15 +107,16 @@ Use the **standard API** template in Settings → Model Providers when you want 
 
 ## Updates
 
+- **2026-11-25**: Synced upstream ZCode v4.0.0 and released v4.0.0.
 - **2026-11-16**: Synced upstream ZCode v3.18.2 and released v3.18.4.
 - **2026-11-16**: Released v3.18.3 (local network / ZeroTier mobile remote control).
 - **2026-11-13**: Synced upstream ZCode v3.18.1 (Windows runtime host and installer process handling).
 - **2026-11-12**: Upstream re-published the v3.18.2 source; this fork bumped to v3.18.2.
-- **2026-11-11**: Synced upstream ZCode v3.18.0.
 
 <details>
 <summary>Earlier updates</summary>
 
+- **2026-11-11**: Synced upstream ZCode v3.18.0.
 - **2026-11-03**: Synced upstream ZCode v3.17.2.
 - **2026-10-30**: Synced upstream ZCode v3.17.1.
 - **2026-10-19**: Synced upstream ZCode v3.16.2 (remote connection and source server capabilities, workspace shell refactor).

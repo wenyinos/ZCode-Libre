@@ -216,6 +216,11 @@ export function createDesktopPlatform(options: {
     getZCodeStdioTapDevState: () =>
       window.zcode.getZCodeStdioTapDevState?.() ??
       Promise.resolve({ enabled: false, visible: false, logDir: "", statePath: "" }),
+    executePreinstalledToolsCommand: (command) =>
+      window.zcode.executePreinstalledToolsCommand!(command),
+    getPreinstalledToolsState: () => window.zcode.getPreinstalledToolsState!(),
+    onPreinstalledToolsState: (callback) =>
+      window.zcode.onPreinstalledToolsState?.(callback) ?? (() => {}),
     onSettingsChanged: (callback) => window.zcode.onSettingsChanged?.(callback) ?? (() => {}),
     onApplicationLocaleChanged: (callback) =>
       window.zcode.onApplicationLocaleChanged?.(callback) ?? (() => {}),
@@ -234,6 +239,7 @@ export function createDesktopPlatform(options: {
       window.zcode.openInEditor(editorId, path, editorOptions),
     executeDesktopCommand: (command) => window.zcode.executeDesktopCommand(command),
     setApplicationLocale: (locale) => window.zcode.setApplicationLocale(locale),
+    setReplyLanguage: (language) => window.zcode.setReplyLanguage(language),
     getSystemLocale: () =>
       window.zcode.getSystemLocale?.() ??
       Promise.resolve(resolveLocaleFromLanguageTag(navigator.language)),

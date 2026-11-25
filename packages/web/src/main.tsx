@@ -44,7 +44,6 @@ import { WebCallbackPage } from "./auth/WebCallbackPage.js";
 import { WebLoginPage } from "./auth/WebLoginPage.js";
 import { createWebAuthService } from "./auth/webAuthService.js";
 import { WEB_ZAI_OAUTH_CONFIG, resolveWebAuthDevReturnTo } from "./auth/webZaiOAuthConfig.js";
-import { parseOAuthState, resolveSafeAppReturnTo } from "./auth/oauthStateCodec.js";
 import {
   ConversationShareLandingLoader,
   ConversationShareLandingStatus,
@@ -296,11 +295,9 @@ function isWebOAuthCallback(params: URLSearchParams): boolean {
 }
 
 function renderWebAuthCallbackPage(): void {
-  document.title = "ZCode-Libre - Web Remote Control Sign In";
-  const callbackState = parseOAuthState(
-    new URLSearchParams(window.location.search).get("state") ?? "",
-  );
-  const safeRetryTarget = resolveSafeAppReturnTo(callbackState?.app_return_to);
+document.title = "ZCode-Libre - Web Remote Control Sign In";
+  // 区域登录的 state 来自服务端，回跳地址只记在 pending 里；必须在 handleCallback 取出前读取。
+  const safeRetryTarget = webAuthService.resolveCallbackReturnTo(window.location.href);
   root.render(
     <WebCallbackPage
       authService={webAuthService}
@@ -794,6 +791,7 @@ export function createHomeOnlyWebRemoteControlServices(): RootServices {
         pluginStoreOrder: null,
         zsrcUrl: null,
         uiPluginRecommendations: [],
+        draftModelMigration: null,
       }),
     }),
     // 手机 Web 未连接 shared-host attachment 时禁止直连 scenes HTTP；返回空配置保持首页可用。

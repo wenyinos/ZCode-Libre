@@ -43,6 +43,7 @@ const SETTINGS_SECTION_INTENT_KEY = "zcode-settings-section-intent",
 const SETTINGS_SOURCE_SERVER_ID_INTENT_KEY = "zcode-settings-source-server-id-intent";
 const SETTINGS_SOURCE_SERVER_DETAILS_INTENT_KEY = "zcode-settings-source-server-details-intent";
 const SETTINGS_MODEL_PROVIDER_ID_INTENT_KEY = "zcode-settings-model-provider-id-intent";
+const SETTINGS_HOOK_WORKSPACE_PATH_INTENT_KEY = "zcode-settings-hook-workspace-path-intent";
 const SETTINGS_SECTION_INTENT_EVENT = "zcode:settings-section-intent",
   SETTINGS_LAST_SECTION_STORAGE_KEY = "zcode-settings-last-section";
 const HIDDEN_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
@@ -69,6 +70,8 @@ export interface SettingsSectionIntentEventDetail {
   modelProviderId?: string;
   sourceServerId?: string;
   sourceServerDetails?: boolean;
+  /** 受管 worktree 任务「去审核」时的会话 cwd，钩子设置页按它发现声明（D23）。 */
+  hookWorkspacePath?: string;
 }
 
 export interface SettingsModelProviderTarget {
@@ -247,11 +250,14 @@ export function setPendingSettingsSectionIntent(
     sourceServerId?: string;
     sourceServerDetails?: boolean;
     usageTab?: SettingsUsageTabTarget;
+    hookWorkspacePath?: string;
   } = {},
 ): void {
   if (typeof window === "undefined") {
     return;
   }
+  const hookWorkspacePath =
+    section === "hooks" ? options.hookWorkspacePath?.trim() || undefined : undefined;
 
   try {
     window.sessionStorage.setItem(SETTINGS_SECTION_INTENT_KEY, section);
@@ -296,6 +302,11 @@ export function setPendingSettingsSectionIntent(
     } else {
       window.sessionStorage.removeItem(SETTINGS_MODEL_PROVIDER_ID_INTENT_KEY);
     }
+    if (hookWorkspacePath) {
+      window.sessionStorage.setItem(SETTINGS_HOOK_WORKSPACE_PATH_INTENT_KEY, hookWorkspacePath);
+    } else {
+      window.sessionStorage.removeItem(SETTINGS_HOOK_WORKSPACE_PATH_INTENT_KEY);
+    }
   } catch {
     // 忽略浏览器存储异常，不影响主流程。
   }
@@ -311,6 +322,7 @@ export function setPendingSettingsSectionIntent(
         pluginScopeKey: options.pluginScopeKey?.trim() || undefined,
         usageTab: options.usageTab,
         modelProviderId: options.modelProviderId,
+        hookWorkspacePath,
         ...(section === "remoteDevices" && options.sourceServerId?.trim()
           ? {
               sourceServerId: options.sourceServerId.trim(),
@@ -336,6 +348,7 @@ function clearPendingSettingsSectionIntent(): void {
     window.sessionStorage.removeItem(SETTINGS_PLUGIN_TAB_INTENT_KEY);
     window.sessionStorage.removeItem(SETTINGS_PLUGIN_ORIGIN_INTENT_KEY);
     window.sessionStorage.removeItem(SETTINGS_PLUGIN_SCOPE_KEY_INTENT_KEY);
+    window.sessionStorage.removeItem(SETTINGS_HOOK_WORKSPACE_PATH_INTENT_KEY);
   } catch {
     // 忽略浏览器存储异常，不影响主流程。
   }
@@ -405,6 +418,27 @@ export function consumePendingSettingsPluginScopeKey(): string | undefined {
     return raw?.trim() || undefined;
   } catch {
     return undefined;
+  }
+}
+
+/** 与 scopeKey 相同：挂载时读取，挂载完成后再清理，兼容 Strict Mode 双执行 initializer。 */
+export function consumePendingSettingsHookWorkspacePath(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    return (
+      window.sessionStorage.getItem(SETTINGS_HOOK_WORKSPACE_PATH_INTENT_KEY)?.trim() || undefined
+    );
+  } catch {
+    return undefined;
+  }
+}
+
+export function clearPendingSettingsHookWorkspacePath(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(SETTINGS_HOOK_WORKSPACE_PATH_INTENT_KEY);
+  } catch {
+    // 忽略浏览器存储异常，不影响主流程。
   }
 }
 
